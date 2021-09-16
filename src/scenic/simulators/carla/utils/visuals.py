@@ -250,7 +250,7 @@ class CameraManager(object):
 		self.images = []
 		self._camera_transforms = [
 			carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
-			carla.Transform(carla.Location(x=1.6, z=1.7))]
+			carla.Transform(carla.Location(x=1.6, z=1.2))]
 		self._transform_index = 1
 		self._sensors = [
 			['sensor.camera.rgb', cc.Raw, 'Camera RGB'],
@@ -292,6 +292,7 @@ class CameraManager(object):
 				attach_to=self._actor)
 			# Pass lambda a weak reference to self to avoid circular reference
 			weak_self = weakref.ref(self)
+			# IMPORTANT listener definition
 			self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
 		self._index = index
 

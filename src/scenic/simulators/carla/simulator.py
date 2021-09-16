@@ -97,7 +97,9 @@ class CarlaSimulation(DrivingSimulation):
 		if self.render:
 			self.displayDim = (1280, 720)
 			self.displayClock = pygame.time.Clock()
-			self.camTransform = 0
+			# 0 is third-person view
+			# 1 is First-person view
+			self.camTransform = 1
 			pygame.init()
 			pygame.font.init()
 			self.hud = visuals.HUD(*self.displayDim)
@@ -123,6 +125,7 @@ class CarlaSimulation(DrivingSimulation):
 				self.ego = obj
 
 				# Set up camera manager and collision sensor for ego
+				# IMPORTANT
 				if self.render:
 					camIndex = 0
 					camPosIndex = 0
@@ -196,6 +199,7 @@ class CarlaSimulation(DrivingSimulation):
 				obj._control = None
 
 	def step(self):
+		# IMPORTANT Listening happens in this function
 		# Run simulation for one timestep
 		self.world.tick()
 

@@ -29,7 +29,7 @@ class Simulator:
     """A simulator which can import/execute scenes from Scenic."""
 
     def simulate(self, scene, maxSteps=None, maxIterations=100, verbosity=0,
-                 raiseGuardViolations=False):
+                 raiseGuardViolations=False, imageDir=None):
         """Run a simulation for a given scene."""
 
         # Repeatedly run simulations until we find one satisfying the requirements
@@ -39,7 +39,7 @@ class Simulator:
             # Run a single simulation
             try:
                 simulation = self.createSimulation(scene, verbosity=verbosity)
-                simulation.run(maxSteps)
+                simulation.run(maxSteps, imageDir)
             except (RejectSimulationException, RejectionException, dynamics.GuardViolation) as e:
                 if verbosity >= 2:
                     print(f'  Rejected simulation {iterations} at time step '
@@ -71,11 +71,12 @@ class Simulation:
         self.trajectory = [self.currentState()]
         self.records = defaultdict(list)
         self.currentTime = 0
+        self.currentNumImages = 0
         self.timestep = timestep
         self.verbosity = verbosity
         self.worker_num = 0
 
-    def run(self, maxSteps):
+    def run(self, maxSteps, imageDir):
         """Run the simulation.
 
         Throws a RejectSimulationException if a requirement is violated.
@@ -110,8 +111,12 @@ class Simulation:
 
             # Run simulation
             assert self.currentTime == 0
+            # TODO currently only works for CARLA
+            assert len(self.cameraManager.images) == 0
             terminationReason = None
             while maxSteps is None or self.currentTime < maxSteps:
+            # IMPORTANT
+            # while maxSteps is None or (maxSteps is not None and self.currentTime < maxSteps) or (maxImages is None) or (maxImages is not None and self.currentNumImages < maxImages):
                 if self.verbosity >= 3:
                     print(f'    Time step {self.currentTime}:')
 
@@ -168,9 +173,28 @@ class Simulation:
                 self.executeActions(allActions)
 
                 # Run the simulation for a single step and read its state back into Scenic
+                # IMPORTANT the listening action happens here
                 self.step()
                 self.updateObjects()
                 self.currentTime += 1
+
+                # Hard-coded for Carla.
+                # TODO Need to perform a check is self is instance of CarlaSimulation
+                totalNumImages = len(self.cameraManager.images)
+                if (totalNumImages > self.currentNumImages):
+                    if self.verbosity >= 3:
+                        print(f'        New image(s) found')
+                    # Save image if directory is specified
+                    # print(imageDir)
+                    if imageDir is not None:
+                        for i in range(self.currentNumImages, totalNumImages):
+                            image = self.cameraManager.images[i]
+                            # image_path = '%s/%06d.png' % (imageDir, image.frame)
+                            image_path = '%s/%02d.png' % (imageDir, i)
+                            image.save_to_disk(image_path)
+                            if self.verbosity >= 3:
+                                print(f'        Saved at {image_path}.')
+                    self.currentNumImages = totalNumImages
 
                 # Save the new state
                 trajectory.append(self.currentState())

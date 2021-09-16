@@ -42,6 +42,10 @@ simOpts.add_argument('--count', help='number of successful simulations to run (d
                      type=int, default=0)
 simOpts.add_argument('--max-sims-per-scene', type=int, default=1, metavar='N',
                      help='max # of rejected simulations before sampling a new scene (default 1)')
+simOpts.add_argument('--image-dir', help='storage location for images',
+                     default=None)
+# simOpts.add_argument('--image-limit', help='max number of images to generate (default none)',
+#                      type=int, default=None)
 
 # Interactive rendering options
 intOptions = parser.add_argument_group('static scene diagramming options')
@@ -143,7 +147,7 @@ def runSimulation(scene):
     try:
         simulation = errors.callBeginningScenicTrace(
             lambda: simulator.simulate(scene, maxSteps=args.time, verbosity=args.verbosity,
-                                       maxIterations=args.max_sims_per_scene)
+                                       maxIterations=args.max_sims_per_scene, imageDir=args.image_dir)
         )
     except SimulationCreationError as e:
         if args.verbosity >= 1:
