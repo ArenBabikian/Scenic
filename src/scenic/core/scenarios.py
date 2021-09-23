@@ -52,6 +52,7 @@ class Scene:
 		self.workspace.show(plt)
 		# draw objects
 		for obj in self.objects:
+			print(obj.position)
 			obj.show(self.workspace, plt, highlight=(obj is self.egoObject))
 		# zoom in if requested
 		if zoom != None:
@@ -106,7 +107,11 @@ class Scenario:
 					behaviorDeps.append(value)
 		self.dependencies = self.objects + paramDeps + tuple(requirementDeps) + tuple(behaviorDeps)
 
-		self.validate()
+		if params.get('heuristic'):
+			self.heuristic = self.heuristic()
+		else:
+			if not params.get('no-validation'):
+				self.validate()
 
 	def isEquivalentTo(self, other):
 		if type(other) is not Scenario:
@@ -134,6 +139,7 @@ class Scenario:
 		staticBounds = [self.hasStaticBounds(obj) for obj in objects]
 		for i in range(len(objects)):
 			oi = objects[i]
+			# print(type(oi))
 			container = self.containerOfObject(oi)
 			# Trivial case where container is empty
 			if isinstance(container, EmptyRegion):
@@ -157,6 +163,58 @@ class Scenario:
 					if oi.intersects(oj):
 						raise InvalidScenarioError(f'Object at {oi.position} intersects'
 												   f' object at {oj.position}')
+
+	def heuristic(self):
+
+		# return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
+
+		objects = self.objects
+		staticVisibility = self.egoObject and not needsSampling(self.egoObject.visibleRegion)
+		staticBounds = [self.hasStaticBounds(obj) for obj in objects]
+
+		totalContainment = 0
+		totalVisibility = 0
+		totalIntersection = 0
+
+		for i in range(len(objects)):
+			oi = objects[i]
+			container = self.containerOfObject(oi)
+
+			
+			# # Trivial case where container is empty
+			# if isinstance(container, EmptyRegion):
+			# 	raise InvalidScenarioError(f'Container region of {oi} is empty')
+			# # skip objects with unknown positions or bounding boxes
+			# if not staticBounds[i]:
+			# 	continue
+
+			# ### How far is oi from a valid region that can contain it
+
+			# Require object to be contained in the workspace/valid region
+			if not needsSampling(container) and not container.containsObject(oi):
+				totalContainment += 10
+			
+			### How far is oi from being visible wrt. to ego
+			
+			# Require object to be visible from the ego object
+			if staticVisibility and oi.requireVisible is True and oi is not self.egoObject:
+				val = self.egoObject.canSeeHeuristic(oi)
+				# print(val)
+				totalVisibility += val
+			
+
+			# ### How much does oi need to move to not be coliding with oj anymore
+						
+			if not oi.allowCollisions:
+				# Require object to not intersect another object
+				for j in range(i):
+					oj = objects[j]
+					if oj.allowCollisions or not staticBounds[j]:
+						continue
+					if oi.intersects(oj):
+						totalIntersection += 10
+
+		return [totalVisibility, totalContainment, totalVisibility]
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -219,29 +277,30 @@ class Scenario:
 					raise InvalidScenarioError(
 						f'behavior {behavior} of Object {obj} is not a behavior')
 
-			# Check built-in requirements
-			for i in range(len(objects)):
-				vi = sample[objects[i]]
-				# Require object to be contained in the workspace/valid region
-				container = self.containerOfObject(vi)
-				if not container.containsObject(vi):
-					rejection = 'object containment'
-					break
-				# Require object to be visible from the ego object
-				if vi.requireVisible and vi is not ego and not ego.canSee(vi):
-					rejection = 'object visibility'
-					break
-				# Require object to not intersect another object
-				if not vi.allowCollisions:
-					for j in range(i):
-						vj = sample[objects[j]]
-						if not vj.allowCollisions and vi.intersects(vj):
-							rejection = 'object intersection'
-							break
+			if not self.params.get('no-validation'):
+				# Check built-in requirements
+				for i in range(len(objects)):
+					vi = sample[objects[i]]
+					# Require object to be contained in the workspace/valid region
+					container = self.containerOfObject(vi)
+					if not container.containsObject(vi):
+						rejection = 'object containment'
+						break
+					# Require object to be visible from the ego object
+					if vi.requireVisible and vi is not ego and not ego.canSee(vi):
+						rejection = 'object visibility'
+						break
+					# Require object to not intersect another object
+					if not vi.allowCollisions:
+						for j in range(i):
+							vj = sample[objects[j]]
+							if not vj.allowCollisions and vi.intersects(vj):
+								rejection = 'object intersection'
+								break
+					if rejection is not None:
+						break
 				if rejection is not None:
-					break
-			if rejection is not None:
-				continue
+					continue
 			# Check user-specified requirements
 			for req in activeReqs:
 				if not req.satisfiedBy(sample):

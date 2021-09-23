@@ -170,14 +170,15 @@ try:
     if args.gather_stats is None:   # Generate scenes interactively until killed
         import matplotlib.pyplot as plt
         successCount = 0
-        while True:
+        # print(args.count)
+        # print(successCount)
+        # print(successCount <= args.count)
+        while (args.count == 0 or successCount < args.count):
             scene, _ = generateScene()
             if args.simulate:
                 success = runSimulation(scene)
                 if success:
                     successCount += 1
-                    if 0 < args.count <= successCount:
-                        break
             else:
                 if delay is None:
                     scene.show(zoom=args.zoom)
@@ -185,6 +186,7 @@ try:
                     scene.show(zoom=args.zoom, block=False)
                     plt.pause(delay)
                     plt.clf()
+                successCount += 1
     else:   # Gather statistics over the specified number of scenes
         its = []
         startTime = time.time()

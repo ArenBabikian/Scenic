@@ -394,6 +394,7 @@ class _RotatedRectangle:
 		return self.polygon.intersects(pt)
 
 	def intersects(self, rect):
+		# IMPORTANT
 		return self.polygon.intersects(rect.polygon)
 
 	@cached_property

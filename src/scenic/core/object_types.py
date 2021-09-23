@@ -1,5 +1,6 @@
 """Implementations of the built-in Scenic classes."""
 
+from scenic.core.geometry import distanceToLine, distanceToSegment
 import collections
 import math
 import random
@@ -290,11 +291,21 @@ class Point(_Constructible):
 	def toVector(self) -> Vector:
 		return self.position
 
+	# IMPORTANT
 	def canSee(self, other) -> bool:	# TODO improve approximation?
 		for corner in other.corners:
 			if self.visibleRegion.containsPoint(corner):
 				return True
 		return False
+		
+	def canSeeHeuristic(self, other):
+		minDist = float('inf')
+		for corner in other.corners:
+			dist = self.visibleRegion.shortestDistanceTo(corner)
+			# print(dist)
+			if dist < minDist:
+				minDist = dist
+		return minDist
 
 	def sampleGiven(self, value):
 		sample = super().sampleGiven(value)

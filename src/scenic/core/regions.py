@@ -14,7 +14,7 @@ from scenic.core.distributions import (Samplable, RejectionException, needsSampl
 from scenic.core.lazy_eval import valueInContext
 from scenic.core.vectors import Vector, OrientedVector, VectorDistribution, VectorField
 from scenic.core.geometry import _RotatedRectangle
-from scenic.core.geometry import sin, cos, hypot, findMinMax, pointIsInCone, averageVectors
+from scenic.core.geometry import sin, cos, hypot, findMinMax, pointIsInCone, averageVectors, viewAngleToPoint, radialToCartesian, distanceToSegment
 from scenic.core.geometry import headingOfSegment, triangulatePolygon, plotPolygon, polygonUnion
 from scenic.core.type_support import toVector
 from scenic.core.utils import cached, cached_property, areEquivalent
@@ -315,11 +315,37 @@ class SectorRegion(Region):
 		return SectorRegion(center, radius, heading, angle,
 		                    name=self.name, resolution=self.resolution)
 
+	# This one
 	def containsPoint(self, point):
+		print("CORRECT CONTAINSPOINT")
+		print(self.radius)
 		point = point.toVector()
 		if not pointIsInCone(tuple(point), tuple(self.center), self.heading, self.angle):
 			return False
 		return point.distanceTo(self.center) <= self.radius
+
+	def shortestDistanceTo(self, point):
+		p = tuple(point)
+		c = tuple(self.center)
+		self.radius = 20
+		angleToPoint = viewAngleToPoint(p, c, self.heading)
+		# print(f'angle = {self.angle}')
+		leftPoint = tuple(radialToCartesian(c, self.radius, self.heading+(self.angle/2)))
+		rightPoint = tuple(radialToCartesian(c, self.radius, self.heading-(self.angle/2)))
+
+		if pointIsInCone(p, c, self.heading, self.angle):
+			# print("inCone")
+			return max(0, point.distanceTo(self.center) - self.radius)
+
+		if angleToPoint > 0:
+			# print("posAngle")
+			# print(p)
+			# print(c)
+			# print(rightPoint)
+			return distanceToSegment(p, c, rightPoint)
+		else:
+			# print("negAngle")
+			return distanceToSegment(p, c, leftPoint)
 
 	def uniformPointInner(self):
 		x, y = self.center
@@ -760,6 +786,7 @@ class PolygonalRegion(Region):
 		return self.prepared.intersects(shapely.geometry.Point(point))
 
 	def containsObject(self, obj):
+		# IMPORTANT 
 		objPoly = obj.polygon
 		if objPoly is None:
 			raise RuntimeError('tried to test containment of symbolic Object!')
