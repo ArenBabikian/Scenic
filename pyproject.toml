@@ -36,6 +36,7 @@ pynverse = "^0.1.4"
 pygame = "^2.0.1"
 attrs = "^19.3.0"
 decorator = "^5.0.9"
+pymoo = "0.5.0"
 importlib_metadata = { version = "^3.7", python = "~3.7" }
 
 pyproj = {version = "^3.0.0", optional = true}
