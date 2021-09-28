@@ -1,7 +1,6 @@
 """Scenario and scene objects."""
 
 import random
-import time
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
@@ -13,6 +12,12 @@ from scenic.core.utils import areEquivalent
 from scenic.core.errors import InvalidScenarioError
 from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
+from scenic.domains.driving.roads import Network
+
+from pymoo.core.problem import ElementwiseProblem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.factory import get_termination
+from pymoo.optimize import minimize
 
 class Scene:
 	"""Scene()
@@ -87,6 +92,7 @@ class Scenario:
 		self.monitors = tuple(monitors)
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
+		self.network = Network.fromFile(self.params['map'])
 
 		staticReqs, alwaysReqs, terminationConds = [], [], []
 		self.requirements = tuple(dynamicScenario._requirements)	# TODO clean up
@@ -164,57 +170,57 @@ class Scenario:
 						raise InvalidScenarioError(f'Object at {oi.position} intersects'
 												   f' object at {oj.position}')
 
-	def heuristic(self):
+	def fillSample(self, samp, objs, coords):
+		for i in range(len(objs)):
+			vi = samp[objs[i]]
+
+			# Notes: coords = [x_a0, y_a0, x_a1, y_a1, ...]
+			val_x = coords[2*i]
+			val_y = coords[2*i + 1]
+			v = Vector(val_x, val_y)
+
+			vi.position = v
+			vi.heading = self.network._defaultRoadDirection(v)
+			# TODO ensure that ego is first pair of values
+	
+	def heuristic(self, x, sample):
 
 		# return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
-
 		objects = self.objects
-		staticVisibility = self.egoObject and not needsSampling(self.egoObject.visibleRegion)
-		staticBounds = [self.hasStaticBounds(obj) for obj in objects]
+		ego = sample[self.egoObject]
 
-		totalContainment = 0
-		totalVisibility = 0
-		totalIntersection = 0
+		totContainment = 0
+		totVisibility = 0
+		totIntersection = 0
 
+		self.fillSample(sample, objects, x)
+
+		## GET HEURISTIC VALUES
+		## Assuming that ego position in actor llist does not change
 		for i in range(len(objects)):
-			oi = objects[i]
-			container = self.containerOfObject(oi)
+			vi = sample[objects[i]]
 
+			### How far is the farthest corner of vi from a valid region that can contain it
+			container = self.containerOfObject(vi)
+			d = vi.containedHeuristic(container)
+			totContainment += d
 			
-			# # Trivial case where container is empty
-			# if isinstance(container, EmptyRegion):
-			# 	raise InvalidScenarioError(f'Container region of {oi} is empty')
-			# # skip objects with unknown positions or bounding boxes
-			# if not staticBounds[i]:
-			# 	continue
+			### How far is vi from being visible wrt. to ego
+			if vi.requireVisible and vi is not ego:
+				# ego.visibleDistance = 20
+				val = ego.canSeeHeuristic(vi)
+				totVisibility += val			
 
-			# ### How far is oi from a valid region that can contain it
-
-			# Require object to be contained in the workspace/valid region
-			if not needsSampling(container) and not container.containsObject(oi):
-				totalContainment += 10
-			
-			### How far is oi from being visible wrt. to ego
-			
-			# Require object to be visible from the ego object
-			if staticVisibility and oi.requireVisible is True and oi is not self.egoObject:
-				val = self.egoObject.canSeeHeuristic(oi)
-				# print(val)
-				totalVisibility += val
-			
-
-			# ### How much does oi need to move to not be coliding with oj anymore
-						
-			if not oi.allowCollisions:
-				# Require object to not intersect another object
+			### How many intersecting pairs are there?
+			if not vi.allowCollisions:
 				for j in range(i):
-					oj = objects[j]
-					if oj.allowCollisions or not staticBounds[j]:
-						continue
-					if oi.intersects(oj):
-						totalIntersection += 10
+					vj = sample[objects[j]]
+					if not vj.allowCollisions:
+						if vi.intersects(vj):
+							totIntersection += 10
 
-		return [totalVisibility, totalContainment, totalVisibility]
+		# print([totVisibility, totContainment, totIntersection])
+		return [totVisibility, totContainment, totIntersection]
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -223,6 +229,47 @@ class Scenario:
 			return False
 		return True
 
+	def getNsgaPositions(self, sample):
+		scenario = self
+		objects = self.objects
+		tot_var = len(objects)*2
+		loBd, hiBd = [], []
+		for _ in range(len(objects)):
+			# TODO currently hard-coded wrt. the map
+			loBd.extend([-15, -315])
+			hiBd.extend([200, -98])
+		
+		class MyProblem(ElementwiseProblem):
+			def __init__(self):
+				super().__init__(n_var=tot_var, n_obj=3, n_constr=0,
+								xl=loBd, xu=hiBd)
+
+			# Notes: x = [x_a0, y_a0, x_a1, y_a1, ...]
+			def _evaluate(self, x, out, *args, **kwargs):
+				out["F"] = scenario.heuristic(x, sample)
+		
+		print("--Running NSGA--")   
+		problem = MyProblem()
+		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
+		algorithm = NSGA2(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
+		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
+
+		n_par = self.params.get('iterations')
+		n = n_par if n_par is not None else 40
+		termination = get_termination("n_gen", n)
+		res = minimize(problem, algorithm, termination,
+					seed=1, save_history=True, verbose=True)
+
+		print("--Results--")
+		print(res.X)
+		print(res.F)
+
+		# Replace positions and heading in the sample (to be sent out for generation)
+		self.fillSample(sample, objects, random.choice(res.X))
+
+		# TODO for now, we are only outputting one result set from the nsga.
+		# Later on, we may want to output a set of scenes, one for each dsolution found by nsga.
+	
 	def generate(self, maxIterations=2000, verbosity=0, feedback=None):
 		"""Sample a `Scene` from this scenario.
 
@@ -262,6 +309,12 @@ class Scenario:
 			except RejectionException as e:
 				rejection = e
 				continue
+	
+			# If using NSGA, replace object positions in the sample
+			if self.params.get('nsga'):
+				# TODO find a way to get qualitative abstractions from .scenic file
+				self.getNsgaPositions(sample)
+
 			rejection = None
 			ego = sample[self.egoObject]
 			# Normalize types of some built-in properties

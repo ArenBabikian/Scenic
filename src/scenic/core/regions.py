@@ -801,6 +801,7 @@ class PolygonalRegion(Region):
 
 	@distributionMethod
 	def distanceTo(self, point):
+		#IMPORTANT
 		return self.polygons.distance(shapely.geometry.Point(point))
 
 	def getAABB(self):

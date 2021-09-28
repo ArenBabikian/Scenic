@@ -397,7 +397,9 @@ class _RotatedRectangle:
 		# IMPORTANT
 		return self.polygon.intersects(rect.polygon)
 
-	@cached_property
+	# TODO fix this
+	# @cached_property
+	@property
 	def polygon(self):
 		position, heading, hw, hl = self.position, self.heading, self.hw, self.hl
 		if any(needsSampling(c) or needsLazyEvaluation(c)

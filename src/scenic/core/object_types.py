@@ -280,11 +280,13 @@ class Point(_Constructible):
 							 lambda self: PositionMutator(self.positionStdDev))
 	positionStdDev: 1
 
-	@cached_property
+	# TODO fix this\
+	@property 
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
 
-	@cached_property
+	# @cached_property
+	@property 
 	def corners(self):
 		return (self.position,)
 
@@ -306,6 +308,14 @@ class Point(_Constructible):
 			if dist < minDist:
 				minDist = dist
 		return minDist
+
+	def containedHeuristic(self, container):
+		maxDist = 0
+		for corner in self.corners:
+			dist = container.distanceTo(corner)
+			if dist > maxDist:
+				maxDist = dist
+		return maxDist
 
 	def sampleGiven(self, value):
 		sample = super().sampleGiven(value)
@@ -347,7 +357,9 @@ class OrientedPoint(Point):
 		lambda self: HeadingMutator(self.headingStdDev))
 	headingStdDev: math.radians(5)
 
-	@cached_property
+	# TODO fix this
+	# @cached_property
+	@property 
 	def visibleRegion(self):
 		return SectorRegion(self.position, self.visibleDistance,
 		                    self.heading, self.viewAngle)
@@ -458,45 +470,57 @@ class Object(OrientedPoint, _RotatedRectangle):
 		"""
 		pass
 
-	@cached_property
+	# TODO fix this
+	# @cached_property
+	@property 
 	def left(self):
 		return self.relativize(Vector(-self.hw, 0))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def right(self):
 		return self.relativize(Vector(self.hw, 0))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def front(self):
 		return self.relativize(Vector(0, self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def back(self):
 		return self.relativize(Vector(0, -self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def frontLeft(self):
 		return self.relativize(Vector(-self.hw, self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def frontRight(self):
 		return self.relativize(Vector(self.hw, self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def backLeft(self):
 		return self.relativize(Vector(-self.hw, -self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def backRight(self):
 		return self.relativize(Vector(self.hw, -self.hl))
 
-	@cached_property
+	# @cached_property
+	@property 
 	def visibleRegion(self):
 		camera = self.position.offsetRotated(self.heading, self.cameraOffset)
 		return SectorRegion(camera, self.visibleDistance, self.heading, self.viewAngle)
-
-	@cached_property
+	
+	# @cached_property
+	@property 
 	def corners(self):
+		# IMPORTANT
 		hw, hl = self.hw, self.hl
 		return (
 			self.relativePosition(Vector(hw, hl)),
