@@ -1,5 +1,6 @@
 """Scenario and scene objects."""
 
+from enum import Enum
 import random
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
@@ -183,44 +184,80 @@ class Scenario:
 			vi.heading = self.network._defaultRoadDirection(v)
 			# TODO ensure that ego is first pair of values
 	
-	def heuristic(self, x, sample):
+	def heuristic(self, x, sample, constraints):
 
 		# return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
 		objects = self.objects
 		ego = sample[self.egoObject]
-
-		totContainment = 0
-		totVisibility = 0
-		totIntersection = 0
-
 		self.fillSample(sample, objects, x)
 
+		totCont = 0
+		totVis = 0
+		totColl = 0
+		totPosRel = 0
+		totDistRel = 0
+
 		## GET HEURISTIC VALUES
-		## Assuming that ego position in actor llist does not change
-		for i in range(len(objects)):
-			vi = sample[objects[i]]
+		if False:
+			## Assuming that ego position in actor llist does not change
+			# Generic Constraints
+			for i in range(len(objects)):
+				vi = sample[objects[i]]
 
-			### How far is the farthest corner of vi from a valid region that can contain it
-			container = self.containerOfObject(vi)
-			d = vi.containedHeuristic(container)
-			totContainment += d
-			
-			### How far is vi from being visible wrt. to ego
-			if vi.requireVisible and vi is not ego:
-				# ego.visibleDistance = 20
-				val = ego.canSeeHeuristic(vi)
-				totVisibility += val			
+				### How far is the farthest corner of vi from a valid region that can contain it
+				container = self.containerOfObject(vi)
+				d = vi.containedHeuristic(container)
+				totCont += d
+				
+				### How far is vi from being visible wrt. to ego
+				if vi.requireVisible and vi is not ego:
+					# ego.visibleDistance = 20
+					val = ego.canSeeHeuristic(vi)
+					totVis += val			
 
-			### How many intersecting pairs are there?
-			if not vi.allowCollisions:
-				for j in range(i):
-					vj = sample[objects[j]]
-					if not vj.allowCollisions:
-						if vi.intersects(vj):
-							totIntersection += 10
+				### How many intersecting pairs are there?
+				if not vi.allowCollisions:
+					for j in range(i):
+						vj = sample[objects[j]]
+						if not vj.allowCollisions:
+							if vi.intersects(vj):
+								totColl += 10
+		else:
+			for c in constraints:
+				vi = sample[objects[c.args[0]]]
+				vj = None
+				if c.args[1] is not None:
+					vj = sample[objects[c.args[1]]]
+				
+				# Switch
+				if c.type == Cstr_type.ONROAD:
+					container = self.containerOfObject(vi)
+					totCont += vi.containedHeuristic(container)
+				if c.type == Cstr_type.NOCOLLISION:
+					if vi.intersects(vj):
+						totColl += 10
+				if c.type == Cstr_type.CANSEE:
+					totVis += vi.canSeeHeuristic(vj)
 
-		# print([totVisibility, totContainment, totIntersection])
-		return [totVisibility, totContainment, totIntersection]
+				if c.type == Cstr_type.HASTOLEFT:
+					totPosRel += vi.toLeftHeuristic(vj)
+				if c.type == Cstr_type.HASTORIGHT:
+					totPosRel += vi.toRightHeuristic(vj)
+				if c.type == Cstr_type.HASBEHIND:
+					totPosRel += vi.behindHeuristic(vj)
+				if c.type == Cstr_type.HASINFRONT:
+					totPosRel += vi.inFrontHeuristic(vj)
+
+				if c.type == Cstr_type.DISTCLOSE:
+					totDistRel += vi.distCloseHeuristic(vj)
+				if c.type == Cstr_type.DISTMED:
+					totDistRel += vi.distMedHeuristic(vj)
+				if c.type == Cstr_type.DISTFAR:
+					totDistRel += vi.distFarHeuristic(vj)
+
+		# print([totVis, totCont, totColl, totPosRel, totDistRel])
+		# exit()
+		return [totCont, totColl, totVis, totPosRel, totDistRel]
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -229,7 +266,7 @@ class Scenario:
 			return False
 		return True
 
-	def getNsgaPositions(self, sample):
+	def getNsgaPositions(self, sample, constraints):
 		scenario = self
 		objects = self.objects
 		tot_var = len(objects)*2
@@ -241,12 +278,12 @@ class Scenario:
 		
 		class MyProblem(ElementwiseProblem):
 			def __init__(self):
-				super().__init__(n_var=tot_var, n_obj=3, n_constr=0,
+				super().__init__(n_var=tot_var, n_obj=5, n_constr=0,
 								xl=loBd, xu=hiBd)
 
 			# Notes: x = [x_a0, y_a0, x_a1, y_a1, ...]
 			def _evaluate(self, x, out, *args, **kwargs):
-				out["F"] = scenario.heuristic(x, sample)
+				out["F"] = scenario.heuristic(x, sample, constraints)
 		
 		print("--Running NSGA--")   
 		problem = MyProblem()
@@ -255,7 +292,7 @@ class Scenario:
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
 		n_par = self.params.get('iterations')
-		n = n_par if n_par is not None else 40
+		n = n_par if n_par is not None else 100
 		termination = get_termination("n_gen", n)
 		res = minimize(problem, algorithm, termination,
 					seed=1, save_history=True, verbose=True)
@@ -265,7 +302,20 @@ class Scenario:
 		print(res.F)
 
 		# Replace positions and heading in the sample (to be sent out for generation)
-		self.fillSample(sample, objects, random.choice(res.X))
+		# For now, select the result set that has lowest sum
+		best_id = -1
+		lowest_sum = float('inf')
+		for i in range(len(res.X)):
+			tot = sum(res.F[i])
+			if tot < lowest_sum:
+				best_id = i
+				lowest_sum = tot
+		
+		print("--Selected Solution--")
+		print(f'x = {res.X[best_id]}')
+		print(f'f = {res.F[best_id]}')
+
+		self.fillSample(sample, objects, res.X[best_id])
 
 		# TODO for now, we are only outputting one result set from the nsga.
 		# Later on, we may want to output a set of scenes, one for each dsolution found by nsga.
@@ -313,7 +363,31 @@ class Scenario:
 			# If using NSGA, replace object positions in the sample
 			if self.params.get('nsga'):
 				# TODO find a way to get qualitative abstractions from .scenic file
-				self.getNsgaPositions(sample)
+				# Custom constraints
+
+				#We assume that ego is obect[0]
+				constraints = [
+					Cstr(Cstr_type.ONROAD, [0, None]),
+					Cstr(Cstr_type.ONROAD, [1, None]),
+					Cstr(Cstr_type.ONROAD, [2, None]),
+					Cstr(Cstr_type.ONROAD, [3, None]),
+
+					Cstr(Cstr_type.NOCOLLISION, [0, 1]),
+					Cstr(Cstr_type.NOCOLLISION, [0, 2]),
+					Cstr(Cstr_type.NOCOLLISION, [1, 2]),
+					Cstr(Cstr_type.NOCOLLISION, [0, 3]),
+					Cstr(Cstr_type.NOCOLLISION, [1, 3]),
+					Cstr(Cstr_type.NOCOLLISION, [2, 3]),
+
+					Cstr(Cstr_type.CANSEE, [0, 1]),
+					
+					Cstr(Cstr_type.HASTOLEFT, [1, 2]),
+					Cstr(Cstr_type.HASINFRONT, [2, 3]),
+
+					# Cstr(Cstr_type.DISTCLOSE, [1, 2]),
+					Cstr(Cstr_type.DISTFAR, [1, 3])
+					]
+				self.getNsgaPositions(sample, constraints)
 
 			rejection = None
 			ego = sample[self.egoObject]
@@ -399,3 +473,23 @@ class Scenario:
 			raise RuntimeError('scenario does not specify a simulator')
 		import scenic.syntax.veneer as veneer
 		return veneer.instantiateSimulator(self.simulator, self.params)
+
+class Cstr_type(Enum):
+	ONROAD = 1
+	NOCOLLISION = 2
+	CANSEE = 3
+	# TODO Add CANNOTSEE
+
+	HASTOLEFT = 4
+	HASTORIGHT = 5
+	HASBEHIND = 6
+	HASINFRONT = 7
+
+	DISTCLOSE = 8
+	DISTMED = 9
+	DISTFAR = 10
+
+class Cstr():
+	def __init__(self, t, a):
+		self.type = t
+		self.args = a
