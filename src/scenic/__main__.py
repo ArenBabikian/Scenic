@@ -6,6 +6,8 @@ import sys
 import time
 import argparse
 import random
+from datetime import datetime
+from pathlib import Path
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -129,16 +131,16 @@ if args.simulate:
 
 def generateScene():
     startTime = time.time()
-    scene, iterations = errors.callBeginningScenicTrace(
+    scenes, iterations = errors.callBeginningScenicTrace(
         lambda: scenario.generate(verbosity=args.verbosity)
     )
     if args.verbosity >= 1:
         totalTime = time.time() - startTime
-        print(f'  Generated scene in {iterations} iterations, {totalTime:.4g} seconds.')
+        print(f'  Generated {len(scenes)} scene(s) in {iterations} iterations, {totalTime:.4g} seconds.')
         if args.show_params:
             for param, value in scene.params.items():
                 print(f'    Parameter "{param}": {value}')
-    return scene, iterations
+    return scenes, iterations
 
 def runSimulation(scene):
     startTime = time.time()
@@ -174,19 +176,29 @@ try:
         # print(successCount)
         # print(successCount <= args.count)
         while (args.count == 0 or successCount < args.count):
-            scene, _ = generateScene()
-            if args.simulate:
-                success = runSimulation(scene)
-                if success:
-                    successCount += 1
+            scenes, _ = generateScene()
+            savePath = params.get('savePath')
+            if savePath:
+                folderName = datetime.now().strftime("%m-%d-%H-%M-%S")
+                Path(f'{savePath}/{folderName}/').mkdir(parents=True, exist_ok=True)
+                p = f'{savePath}/{folderName}'
             else:
-                if delay is None:
-                    scene.show(zoom=args.zoom)
+                p = None
+            max = min(5, len(scenes))
+            for i in range(max):
+                scene = scenes[i]
+                if args.simulate:
+                    success = runSimulation(scene)
+                    if success:
+                        successCount += 1
                 else:
-                    scene.show(zoom=args.zoom, block=False)
-                    plt.pause(delay)
-                    plt.clf()
-                successCount += 1
+                    if delay is None:
+                        scene.show(zoom=args.zoom, ind=i, path=p)
+                    else:
+                        scene.show(zoom=args.zoom, ind=i, path=p, block=False)
+                        plt.pause(delay)
+                        plt.clf()
+                    successCount += 1
     else:   # Gather statistics over the specified number of scenes
         its = []
         startTime = time.time()

@@ -331,7 +331,7 @@ class Point(_Constructible):
 			return 0
 
 	def distCloseHeuristic(self, other):
-		return self.distRelHeuristic(other, 2, 7)
+		return self.distRelHeuristic(other, 0, 7)
 
 	def distMedHeuristic(self, other):
 		return self.distRelHeuristic(other, 7, 12)
