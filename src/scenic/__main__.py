@@ -175,17 +175,24 @@ try:
         # print(args.count)
         # print(successCount)
         # print(successCount <= args.count)
+        savePath = params.get('savePath')
+        save_imgs = params.get('saveImgs') == 'True'
+        save_files = params.get('saveFiles') == 'True'
+        if not savePath and (save_imgs or save_files):
+            print(' You need to specify the savePath parameter if you want to save stuff')
+            exit(1)
+
+        # Define save folder path
+        folderName = datetime.now().strftime("%m-%d-%H-%M-%S")
+        p = f'{savePath}/{folderName}'
+        if save_files or save_imgs:
+            Path(f'{p}/').mkdir(parents=True, exist_ok=True)
+
         while (args.count == 0 or successCount < args.count):
             scenes, _ = generateScene()
-            savePath = params.get('savePath')
-            if savePath:
-                folderName = datetime.now().strftime("%m-%d-%H-%M-%S")
-                Path(f'{savePath}/{folderName}/').mkdir(parents=True, exist_ok=True)
-                p = f'{savePath}/{folderName}'
-            else:
-                p = None
-            max = min(5, len(scenes))
-            for i in range(max):
+            prevSuccessCount = successCount
+            for i in range(len(scenes)):
+                filePath = f'{p}/{prevSuccessCount}-{i}'
                 scene = scenes[i]
                 if args.simulate:
                     success = runSimulation(scene)
@@ -193,11 +200,13 @@ try:
                         successCount += 1
                 else:
                     if delay is None:
-                        scene.show(zoom=args.zoom, ind=i, path=p)
+                        scene.show(zoom=args.zoom, path=filePath, saveImages=save_imgs)
                     else:
-                        scene.show(zoom=args.zoom, ind=i, path=p, block=False)
+                        scene.show(zoom=args.zoom, path=filePath, saveImages=save_imgs, block=False)
                         plt.pause(delay)
                         plt.clf()
+                    if save_files:
+                        scene.saveExactCoords(path=filePath)
                     successCount += 1
     else:   # Gather statistics over the specified number of scenes
         its = []

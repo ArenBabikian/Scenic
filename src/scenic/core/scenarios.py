@@ -3,6 +3,7 @@
 from enum import Enum
 import os
 import random
+import re
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 
@@ -53,7 +54,7 @@ class Scene:
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
 
-	def show(self, zoom=None, ind=-2, path=None, block=True):
+	def show(self, zoom=None, path=None, saveImages=False, block=True):
 		"""Render a schematic of the scene for debugging."""
 		import matplotlib.pyplot as plt
 		fig = plt.figure()
@@ -66,13 +67,31 @@ class Scene:
 		# zoom in if requested
 		if zoom != None:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
-
-		if path:
-			savePath = f'{path}/{ind}.png'
-			fig.savefig(savePath)
-			print(f'  Saved image at {savePath}')
+		
+		if saveImages:
+			filePath = f'{path}.png'
+			fig.savefig(filePath)
+			print(f'  Saved image at             {filePath}')
 		else:
 			plt.show(block=block)
+
+	def saveExactCoords(self, path=None):
+		filePath = f'{path}.scenic'
+		ego = self.egoObject
+		with open(filePath, "w") as f:
+			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
+			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write('model scenic.simulators.carla.model\n')
+			f.write('\n')		
+			for i in range(len(self.objects)):
+				o = self.objects[i]
+				oName = f'o{i}'
+				if o is ego:
+					oName = 'ego'
+				f.write(f'{oName} = Car at {o.position}, with color{o.color}\n')
+
+		print(f'  Saved exact coordinates at {filePath}')
+
 
 class Scenario:
 	"""Scenario()
@@ -98,6 +117,7 @@ class Scenario:
 		self.egoObject = egoObject
 		self.params = dict(params)
 		self.nsga = params.get('nsga') == "True"
+		self.noValidation = self.nsga or params.get('no-validation') == "True"
 		self.externalParams = tuple(externalParams)
 		self.externalSampler = ExternalSampler.forParameters(self.externalParams, self.params)
 		self.monitors = tuple(monitors)
@@ -124,7 +144,7 @@ class Scenario:
 					behaviorDeps.append(value)
 		self.dependencies = self.objects + paramDeps + tuple(requirementDeps) + tuple(behaviorDeps)
 
-		if not self.nsga:
+		if not self.noValidation:
 			self.validate()
 
 	def isEquivalentTo(self, other):
@@ -204,7 +224,7 @@ class Scenario:
 		for c in constraints:
 			vi = objects[c.args[0]]
 			vj = None
-			if c.args[1] is not None:
+			if c.args[1] != -1:
 				vj = objects[c.args[1]]
 			
 			# Constraints Switch
@@ -256,7 +276,7 @@ class Scenario:
 		if map_name == "Town02.xodr":
 			bounds = [-15, -315, 200, -98]
 		if map_name == "tram05.xodr":
-			bounds = [-15, -315, 200, -98] # TODO
+			bounds = [-155, -101, 103, 80]
 		if map_name == "ZalaFull.xodr":
 			bounds = [-15, -315, 200, -98] # TODO
 
@@ -284,7 +304,7 @@ class Scenario:
 		algorithm = NSGA2(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
-		n_par = self.params.get('iterations')
+		n_par = self.params.get('nsga-Iters')
 		n = n_par if n_par is not None else 100
 		termination = get_termination("n_gen", n)
 		termination = MultiObjectiveSpaceToleranceTermination(tol=0.01,
@@ -294,8 +314,8 @@ class Scenario:
 					seed=1, save_history=True, verbose=True)
 
 		print("--Results--")
-		print(res.X)
-		print(res.F)
+		# print(res.X)
+		# print(res.F)
 		return res
 	
 	def generate(self, maxIterations=2000, verbosity=0, feedback=None):
@@ -321,76 +341,62 @@ class Scenario:
 
 		if self.nsga:
 			# If using NSGA, replace object positions in the sample
-
-			# TODO find a way to get qualitative abstractions from .scenic file
-			# Custom constraints
+			# Custom constraints coming from parameters
 
 			#We assume that ego is obect[0]
-			constraints = [
-				Cstr(Cstr_type.ONROAD, [0, None]),
-				Cstr(Cstr_type.ONROAD, [1, None]),
-				Cstr(Cstr_type.ONROAD, [2, None]),
-				Cstr(Cstr_type.ONROAD, [3, None]),
+			# Parse constraints from config file
+			str_cons = self.params.get('constraints')
+			list_cons = str_cons.split(';')
+			parsed_cons = []
 
-				Cstr(Cstr_type.NOCOLLISION, [0, 1]),
-				Cstr(Cstr_type.NOCOLLISION, [0, 2]),
-				Cstr(Cstr_type.NOCOLLISION, [1, 2]),
-				Cstr(Cstr_type.NOCOLLISION, [0, 3]),
-				Cstr(Cstr_type.NOCOLLISION, [1, 3]),
-				Cstr(Cstr_type.NOCOLLISION, [2, 3]),
+			# since last constraint also has a ";" at the end, we ignore last split
+			for con_str in list_cons[:-1]:
+				res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
+				con_type = Cstr_type[res.group(1)]
+				id1 = int(res.group(2))
+				id2 = int(res.group(3))
+				con = Cstr(con_type, [id1, id2])
+				parsed_cons.append(con)
 
-				Cstr(Cstr_type.CANSEE, [0, 1]),
-				
-				# Cstr(Cstr_type.HASINFRONT, [0, 3]),
-				Cstr(Cstr_type.HASTOLEFT, [1, 2]),
-				Cstr(Cstr_type.HASINFRONT, [2, 3]),
-
-				# Cstr(Cstr_type.DISTCLOSE, [1, 2]),
-				Cstr(Cstr_type.DISTFAR, [1, 3])
-				]
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
 						(lambda x:x**3),
 						(lambda x:x**2),
 						(lambda x:x**2),
 						(lambda x:x**2)]
-			nsgaRes = self.getNsgaNDSs(constraints, functions)
+			nsgaRes = self.getNsgaNDSs(parsed_cons, functions)
 
-			if self.params.get('selBest'):
-				# Replace positions and heading in the sample (to be sent out for generation)
-				# For now, select the result set that has lowest sum
-				best_id = -1
-				lowest_sum = float('inf')
-				for i in range(len(nsgaRes.X)):
-					tot = sum(nsgaRes.F[i])
-					if tot < lowest_sum:
-						best_id = i
-						lowest_sum = tot
-
-				# best_id  = 0
-				print("--Selected Solution--")
-				print(f'x = {nsgaRes.X[best_id]}')
-				print(f'f = {nsgaRes.F[best_id]}')
-
-				# fill sample (NSGA + sampling)
-				self.fillSample(nsgaRes.X[best_id])
-				allSamples.append(Samplable.sampleAll(self.dependencies))
+			# Get number of required nsga solutions
+			if not 'nsga-NumSols' in self.params:
+				# Default
+				numSols = 5
 			else:
-				# Rank the solutions by prioritising containment and collision objectives
-				aggregateFitness = []
-				for i in range(len(nsgaRes.F)):
-					f = nsgaRes.F[i]
-					aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
-				sortedFitness = sorted(aggregateFitness)
-				for aggFit in sortedFitness:
-					print(aggFit)
-					i = aggFit[2]
-					self.fillSample(nsgaRes.X[i])
-					allSamples.append(Samplable.sampleAll(self.dependencies))
+				val = int(self.params.get('nsga-NumSols'))
+				if  val == -1:
+					numSols = len(nsgaRes.F)
+				else:
+					numSols = min(len(nsgaRes.F), val)
 
-				# for i in range(len(nsgaRes.X)):
-				# 	self.fillSample(nsgaRes.X[i])
-				# 	allSamples.append(Samplable.sampleAll(self.dependencies))
+			# Rank the solutions by prioritising containment and collision objectives
+			aggregateFitness = []
+			for i in range(len(nsgaRes.F)):
+				f = nsgaRes.F[i]
+				aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
+				# ALTERNATE RANKING, just takes the total
+				#aggregateFitness.append((sum(f), i))
+			sortedFitness = sorted(aggregateFitness)
+
+			# save the selected number of sols
+			for i in range(numSols):
+				aggFit = sortedFitness[i]
+				j = aggFit[-1]
+				self.fillSample(nsgaRes.X[j])
+				allSamples.append(Samplable.sampleAll(self.dependencies))
+
+				print(f'--Solution {i}--')
+				print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
+				print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+
 		else:
 			# do rejection sampling until requirements are satisfied
 			rejection = True
@@ -412,48 +418,49 @@ class Scenario:
 					rejection = e
 					continue
 				rejection = None
-				ego = sample[self.egoObject]
-				# Normalize types of some built-in properties
-				for obj in objects:
-					sampledObj = sample[obj]
-					assert not needsSampling(sampledObj)
-					# position, heading
-					assert isinstance(sampledObj.position, Vector)
-					sampledObj.heading = float(sampledObj.heading)
-					# behavior
-					behavior = sampledObj.behavior
-					if behavior is not None and not isinstance(behavior, Behavior):
-						raise InvalidScenarioError(
-							f'behavior {behavior} of Object {obj} is not a behavior')
+				if not self.noValidation:
+					ego = sample[self.egoObject]
+					# Normalize types of some built-in properties
+					for obj in objects:
+						sampledObj = sample[obj]
+						assert not needsSampling(sampledObj)
+						# position, heading
+						assert isinstance(sampledObj.position, Vector)
+						sampledObj.heading = float(sampledObj.heading)
+						# behavior
+						behavior = sampledObj.behavior
+						if behavior is not None and not isinstance(behavior, Behavior):
+							raise InvalidScenarioError(
+								f'behavior {behavior} of Object {obj} is not a behavior')
 
-				# Check built-in requirements
-				for i in range(len(objects)):
-					vi = sample[objects[i]]
-					# Require object to be contained in the workspace/valid region
-					container = self.containerOfObject(vi)
-					if not container.containsObject(vi):
-						rejection = 'object containment'
-						break
-					# Require object to be visible from the ego object
-					if vi.requireVisible and vi is not ego and not ego.canSee(vi):
-						rejection = 'object visibility'
-						break
-					# Require object to not intersect another object
-					if not vi.allowCollisions:
-						for j in range(i):
-							vj = sample[objects[j]]
-							if not vj.allowCollisions and vi.intersects(vj):
-								rejection = 'object intersection'
-								break
+					# Check built-in requirements
+					for i in range(len(objects)):
+						vi = sample[objects[i]]
+						# Require object to be contained in the workspace/valid region
+						container = self.containerOfObject(vi)
+						if not container.containsObject(vi):
+							rejection = 'object containment'
+							break
+						# Require object to be visible from the ego object
+						if vi.requireVisible and vi is not ego and not ego.canSee(vi):
+							rejection = 'object visibility'
+							break
+						# Require object to not intersect another object
+						if not vi.allowCollisions:
+							for j in range(i):
+								vj = sample[objects[j]]
+								if not vj.allowCollisions and vi.intersects(vj):
+									rejection = 'object intersection'
+									break
+						if rejection is not None:
+							break
 					if rejection is not None:
-						break
-				if rejection is not None:
-					continue
-				# Check user-specified requirements
-				for req in activeReqs:
-					if not req.satisfiedBy(sample):
-						rejection = f'user-specified requirement (line {req.line})'
-						break
+						continue
+					# Check user-specified requirements
+					for req in activeReqs:
+						if not req.satisfiedBy(sample):
+							rejection = f'user-specified requirement (line {req.line})'
+							break
 
 			allSamples.append(sample)			
 
