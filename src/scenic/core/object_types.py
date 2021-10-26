@@ -7,7 +7,7 @@ import random
 from scenic.core.distributions import Samplable, needsSampling
 from scenic.core.specifiers import Specifier, PropertyDefault
 from scenic.core.vectors import Vector
-from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, distanceToSegment, radialToCartesian)
+from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, viewAngleToPoint, distanceToSegment, radialToCartesian)
 from scenic.core.regions import CircularRegion, SectorRegion
 from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
@@ -331,13 +331,13 @@ class Point(_Constructible):
 			return 0
 
 	def distCloseHeuristic(self, other):
-		return self.distRelHeuristic(other, 0, 7)
+		return self.distRelHeuristic(other, 0, 10)
 
 	def distMedHeuristic(self, other):
-		return self.distRelHeuristic(other, 7, 12)
+		return self.distRelHeuristic(other, 10, 20)
 
 	def distFarHeuristic(self, other):
-		return self.distRelHeuristic(other, 12, None)
+		return self.distRelHeuristic(other, 20, 50)
 
 	def sampleGiven(self, value):
 		sample = super().sampleGiven(value)
@@ -396,22 +396,25 @@ class OrientedPoint(Point):
 	def toHeading(self) -> float:
 		return self.heading
 
-	def posRelHeuristic(self, other, heading):
-		dist = 20
-		endPoint = radialToCartesian(self.position, dist, heading)
-		return distanceToSegment(tuple(other.position), self.position, endPoint)
+	def posRelHeuristic(self, other, heading, dist, angle):
+		a = viewAngleToPoint(tuple(other.position), self.position, heading)
+		# endPoint = radialToCartesian(self.position, dist, heading)
+		# return distanceToSegment(tuple(other.position), self.position, endPoint)
+		real_ang = abs(a)
+		inRange = real_ang - angle < 0
+		return 0 if inRange else real_ang - angle
 
 	def toLeftHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading+(math.pi / 2))
+		return self.posRelHeuristic(other, self.heading+(math.pi / 2), 20, math.atan(2.5/2))
 
 	def toRightHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading-(math.pi / 2))
+		return self.posRelHeuristic(other, self.heading-(math.pi / 2), 20, math.atan(2.5/2))
 
 	def inFrontHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading)
+		return self.posRelHeuristic(other, self.heading, 50, math.atan(2/5))
 
 	def behindHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading+math.pi)
+		return self.posRelHeuristic(other, self.heading+math.pi, 50, math.atan(2/5))
 
 ## Object
 

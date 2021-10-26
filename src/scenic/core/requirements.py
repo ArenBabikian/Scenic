@@ -29,7 +29,6 @@ class RequirementType(enum.Enum):
 
 class PendingRequirement:
     def __init__(self, ty, condition, line, prob, name, ego):
-        print(condition)
         self.ty = ty
         self.condition = condition
         self.line = line
@@ -48,7 +47,6 @@ class PendingRequirement:
         While we're at it, determine whether the requirement implies any relations
         we can use for pruning, and gather all of its dependencies.
         """
-        print("compile")
         bindings, ego, line = self.bindings, self.egoObject, self.line
         condition = self.condition
 
@@ -70,7 +68,6 @@ class PendingRequirement:
 
         # Construct closure
         def closure(values):
-            print("check closure")
             global evaluatingRequirement, currentScenario
             # rebind any names referring to sampled objects
             for name, value in bindings.items():

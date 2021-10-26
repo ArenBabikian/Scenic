@@ -317,8 +317,6 @@ class SectorRegion(Region):
 
 	# This one
 	def containsPoint(self, point):
-		print("CORRECT CONTAINSPOINT")
-		print(self.radius)
 		point = point.toVector()
 		if not pointIsInCone(tuple(point), tuple(self.center), self.heading, self.angle):
 			return False
@@ -327,7 +325,7 @@ class SectorRegion(Region):
 	def shortestDistanceTo(self, point):
 		p = tuple(point)
 		c = tuple(self.center)
-		self.radius = 20
+		self.radius = 50 ##
 		angleToPoint = viewAngleToPoint(p, c, self.heading)
 		# print(f'angle = {self.angle}')
 		leftPoint = tuple(radialToCartesian(c, self.radius, self.heading+(self.angle/2)))
@@ -1023,7 +1021,7 @@ class IntersectionRegion(Region):
 		return f'IntersectionRegion({self.regions})'
 
 class DifferenceRegion(Region):
-	def __init__(self, regionA, regionB, sampler=None, name=None):
+	def __init__(self, regionA, regionB, orientation=None, sampler=None, name=None):
 		self.regionA, self.regionB = regionA, regionB
 		super().__init__(name, regionA, regionB, orientation=regionA.orientation)
 		if sampler is None:
