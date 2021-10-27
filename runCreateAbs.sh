@@ -4,15 +4,15 @@
 # tram05
 # ZalaFull
 
-config="3actors"
+config="2actors"
 map="tram05"
 
 cmd="poetry run scenic \
--b --count 1 -v 3 \
+-b --count 20 -v 3 \
 -p nsga False \
--p measure True \
--p outputWS measurements \
--p outputDir ${config} \
+-p getAbsScene True \
+-p outputWS measurements/data \
+-p outputDir ${map}/${config} \
 -p saveImgs True \
 -p saveFiles True \
 -p map ../maps/${map}.xodr

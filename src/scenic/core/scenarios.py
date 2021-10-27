@@ -6,9 +6,12 @@ import os
 import random
 import re
 import copy
+import time
 from numpy.core.numeric import full
+from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
+from pymoo.util.termination.max_time import TimeBasedTermination
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
@@ -58,7 +61,7 @@ class Scene:
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
 
-	def show(self, zoom=None, path=None, saveImages=False, block=True):
+	def show(self, zoom=None, dirPath=None, saveImages=False, viewImages=False, block=True):
 		"""Render a schematic of the scene for debugging."""
 		import matplotlib.pyplot as plt
 		fig = plt.figure()
@@ -73,14 +76,14 @@ class Scene:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
 		
 		if saveImages:
-			filePath = f'{path}.png'
+			filePath = f'{dirPath}/image.png'
 			fig.savefig(filePath)
 			print(f'  Saved image at                {filePath}')
-		else:
+		if viewImages:
 			plt.show(block=block)
 
 	def saveExactCoords(self, path=None):
-		filePath = f'{path}-exact.scenic'
+		filePath = f'{path}/exact.scenic'
 		ego = self.egoObject
 		with open(filePath, "w") as f:
 			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
@@ -99,7 +102,8 @@ class Scene:
 				f.write(f'{oName} = Car at {o.position}, with color{o.color}\n')
 		print(f'  Saved exact coordinates at    {filePath}')
 
-	def measureHeuristics(self, path=None):
+	def getAbsScene(self, path=None):
+		stats = {}
 		all_heur = {}
 		accepted_cstrs = []
 		# NOTE: ignoring bidirectional relations
@@ -159,21 +163,27 @@ class Scene:
 				all_heur[ind] = cur_heur
 
 		# sort constraints wrt. type
-		accepted_cstrs.sort(key=lambda x:x.type.value)
+		accepted_cstrs.sort(key=lambda x: x.type.value)
+		stats['all'] = [str(c) for c in accepted_cstrs]
 
 		# NSGA : includes all constraints (full repr of abs scen)
 		self.generateNsgaConfig(accepted_cstrs, path)
 
 		# Scenic : some things are not representible
 		sorted_cstrs = self.seperateByType(accepted_cstrs)
-		self.generateVeneerRequireConfig(copy.deepcopy(sorted_cstrs), path)
-		self.generateRegionRequireConfig(copy.deepcopy(sorted_cstrs), path)
-		self.generateRegionOnlyConfig(copy.deepcopy(accepted_cstrs), path)
+		del_sc1 = self.generateVeneerRequireConfig(copy.deepcopy(sorted_cstrs), path)
+		stats['deleted-sc1'] = del_sc1
+		del_sc2 = self.generateRegionRequireConfig(copy.deepcopy(sorted_cstrs), path)
+		stats['deleted-sc2'] = del_sc2
+		del_sc3 = self.generateRegionOnlyConfig(copy.deepcopy(accepted_cstrs), path)
+		stats['deleted-sc3'] = del_sc3
+
+		return stats
 
 		
 
 	def generateNsgaConfig(self, constraints, path):
-		filePath = f'{path}-d-nsga.scenic'
+		filePath = f'{path}/d-nsga.scenic'
 		with open(filePath, "w") as f:
 
 			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
@@ -369,9 +379,10 @@ class Scene:
 			# print(f'{i} = {deps}')
 			if len(deps) > 1:
 				numToDel = len(deps) - 1
-				for j in range(numToDel):
+				for _ in range(numToDel):
 					itemToDel = random.choice(deps)
 					posCstrs.remove(itemToDel)
+					deps.remove(itemToDel)
 					removedCstrs.append(itemToDel)
 
 
@@ -381,7 +392,7 @@ class Scene:
 		# At this stage, we have: canSee, posRel, distRel, removed Constraints
 
 		ind_to_name = self.get_actor_names()
-		filePath = f'{path}-d-sc1.scenic'
+		filePath = f'{path}/d-sc1.scenic'
 		with open(filePath, "w") as f:
 			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
 			f.write(f'param map = localPath(\'{mapPath}\')\n')
@@ -468,6 +479,7 @@ class Scene:
 					f.write(f'require 20 <= (distance from {src} to {tgt}) <= 50 \n')
 
 		print(f'  Saved ven-req config file at  {filePath}')
+		return [str(c) for c in removedCstrs]
 
 	def generateRegionOnlyConfig(self, allConstraints, path):
 		
@@ -508,7 +520,7 @@ class Scene:
 		### START WRITING FILE
 		# At this stage, we have: canSee, posRel, distRel, removed Constraints
 		ind_to_name = self.get_actor_names()
-		filePath = f'{path}-d-sc3.scenic'
+		filePath = f'{path}/d-sc3.scenic'
 		with open(filePath, "w") as f:
 			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
 			f.write(f'param map = localPath(\'{mapPath}\')\n')
@@ -580,6 +592,7 @@ class Scene:
 				raise Error('Remaining constraints!!')
 
 		print(f'  Saved reg-onl config file at  {filePath}')
+		return [str(c) for c in removedCstrs]
 
 	def generateRegionRequireConfig(self, sorted_constraints, path):
 		
@@ -618,7 +631,7 @@ class Scene:
 		### START WRITING FILE
 		# At this stage, we have: canSee, posRel, distRel, removed Constraints
 		ind_to_name = self.get_actor_names()
-		filePath = f'{path}-d-sc2.scenic'
+		filePath = f'{path}/d-sc2.scenic'
 		with open(filePath, "w") as f:
 			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
 			f.write(f'param map = localPath(\'{mapPath}\')\n')
@@ -696,6 +709,7 @@ class Scene:
 					f.write(f'require 20 <= (distance from {src} to {tgt}) <= 50 \n')
 
 		print(f'  Saved reg-req config file at  {filePath}')
+		return [str(c) for c in removedCstrs]
 
 
 class Scenario:
@@ -723,6 +737,7 @@ class Scenario:
 		self.params = dict(params)
 		self.nsga = params.get('nsga') == "True"
 		self.noValidation = self.nsga or params.get('no-validation') == "True"
+		self.timeout = None if not params.get('timeout') else int(self.params.get('timeout'))
 		self.externalParams = tuple(externalParams)
 		self.externalSampler = ExternalSampler.forParameters(self.externalParams, self.params)
 		self.monitors = tuple(monitors)
@@ -872,7 +887,7 @@ class Scenario:
 			return False
 		return True
 
-	def getNsgaNDSs(self, constraints, funcs):
+	def getNsgaNDSs(self, constraints, funcs, verbosity):
 		scenario = self
 		objects = self.objects
 		tot_var = len(objects)*2
@@ -903,7 +918,9 @@ class Scenario:
 				# out["F"] = heuristics[2:]
 				out["F"] = heuristics
 		
-		print("--Running NSGA--")   
+		
+		if verbosity >= 2:
+			print("--Running NSGA--")   
 		problem = MyProblem()
 		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
 		algorithm = NSGA2(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
@@ -915,10 +932,33 @@ class Scenario:
 		termination = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
 																n_last=10,
 																n_max_gen=n)
-		res = minimize(problem, algorithm, termination,
-					seed=1, save_history=True, verbose=True)
+		# TEMP
+		t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
+																n_last=10)
+		t2 = TimeBasedTermination(max_time=self.timeout)
+		termination = TerminationCollection(t1, t2)
+
+		# FOR REPEATABILITY: use seed=1 option
+		res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1))
 		return res
 	
+	def parseConfigConstraints(self):
+		# Parse constraints from config file
+		str_cons = self.params.get('constraints')
+		list_cons = str_cons.split(';')
+		parsed_cons = []
+
+		# since last constraint also has a ";" at the end, we ignore last split
+		for con_str in list_cons[:-1]:
+			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
+			con_type = Cstr_type[res.group(1)]
+			id1 = int(res.group(2))
+			id2 = int(res.group(3))
+			con = Cstr(con_type, id1, id2)
+			parsed_cons.append(con)
+		
+		return parsed_cons
+
 	def generate(self, maxIterations=2000, verbosity=0, feedback=None):
 		"""Sample a `Scene` from this scenario.
 
@@ -940,32 +980,24 @@ class Scenario:
 		# choose which custom requirements will be enforced for this sample
 		activeReqs = [req for req in self.initialRequirements if random.random() <= req.prob]
 
+		totalTime = -1
+		iterations = 0
+		failed = False
 		if self.nsga:
 			# If using NSGA, replace object positions in the sample
 			# Custom constraints coming from parameters
 
 			#We assume that ego is obect[0]
-			# Parse constraints from config file
-			str_cons = self.params.get('constraints')
-			list_cons = str_cons.split(';')
-			parsed_cons = []
-
-			# since last constraint also has a ";" at the end, we ignore last split
-			for con_str in list_cons[:-1]:
-				res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
-				con_type = Cstr_type[res.group(1)]
-				id1 = int(res.group(2))
-				id2 = int(res.group(3))
-				con = Cstr(con_type, id1, id2)
-				parsed_cons.append(con)
-
+			parsed_cons = self.parseConfigConstraints()
+			
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
 						(lambda x:x**3),
 						(lambda x:x**2),
 						(lambda x:x**2),
 						(lambda x:x**2)]
-			nsgaRes = self.getNsgaNDSs(parsed_cons, functions)
+			nsgaRes = self.getNsgaNDSs(parsed_cons, functions, verbosity)
+			totalTime = nsgaRes.exec_time
 
 			# Get number of required nsga solutions
 			if not 'nsga-NumSols' in self.params:
@@ -988,30 +1020,40 @@ class Scenario:
 			sortedFitness = sorted(aggregateFitness)
 
 			# save the selected number of sols
-			print("--Results--")
-			print("f = [Cont, Coll, Vis, PosRel, DistRel]")
+			if verbosity >= 2:
+				print("--Results--")
+				print("f = [Cont, Coll, Vis, PosRel, DistRel]")
 			for i in range(numSols):
 				aggFit = sortedFitness[i]
 				j = aggFit[-1]
 				self.fillSample(nsgaRes.X[j])
 				allSamples.append(Samplable.sampleAll(self.dependencies))
 
-				print(f'--Solution {i}--')
-				print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
-				print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+				if verbosity >= 2:
+					print(f'--Solution {i}--')
+					print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
+					print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+
+			# did it succeed? i.e did it converge to all 0s?
+			if aggregateFitness[0][0] + aggregateFitness[0][1] != 0:
+				failed = True
 
 		else:
 			# do rejection sampling until requirements are satisfied
 			rejection = True
-			iterations = 0
-			while rejection is not None:
+			startTime = time.time()
+			while rejection is not None and not failed:
 				if iterations > 0:	# rejected the last sample
 					if verbosity >= 2:
 						print(f'  Rejected sample {iterations} because of: {rejection}')
 					if self.externalSampler is not None:
 						feedback = self.externalSampler.rejectionFeedback
-				if iterations >= maxIterations:
-					raise RejectionException(f'failed to generate scenario in {iterations} iterations')
+				if not self.timeout and iterations >= maxIterations:
+					# raise RejectionException(f'failed to generate scenario in {iterations} iterations')
+					failed = True
+				execTime = time.time()-startTime
+				if execTime > self.timeout:
+					failed = True
 				iterations += 1
 				try:
 					if self.externalSampler is not None:
@@ -1064,8 +1106,65 @@ class Scenario:
 						if not req.satisfiedBy(sample):
 							rejection = f'user-specified requirement (line {req.line})'
 							break
+			totalTime = time.time()-startTime
+			if not failed:
+				allSamples.append(sample)
 
-			allSamples.append(sample)			
+		stats = {}
+		stats['success'] = not failed # DONE
+		stats['time'] = totalTime # DONE
+		stats['num_iterations'] = iterations # TODO adapt to nsga
+
+		if failed and not self.nsga:
+			print('  Could not generate scene.')
+			return [None], stats
+
+		# get list of included constraints
+		# These are removed constraints for scenic
+		# these are all constraints for NSGA
+		parsed_cons = self.parseConfigConstraints()
+		vals = {}
+
+		for c in parsed_cons:
+			# assuming only a single scene is generated 
+			vi = allSamples[0][objects[c.src]]
+			vj = None
+			if c.tgt != -1:
+				vj = allSamples[0][objects[c.tgt]]
+			if c.type == Cstr_type.ONROAD:
+				vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+			if c.type == Cstr_type.NOCOLLISION:
+				collision = 1 if vi.intersects(vj) else 0
+				vals[str(c)] = collision
+			if c.type == Cstr_type.CANSEE:
+				vals[str(c)] = vi.canSeeHeuristic(vj)
+
+			if c.type == Cstr_type.HASTOLEFT:
+				vals[str(c)] = vi.toLeftHeuristic(vj)
+			if c.type == Cstr_type.HASTORIGHT:
+				vals[str(c)] = vi.toRightHeuristic(vj)
+			if c.type == Cstr_type.HASBEHIND:
+				vals[str(c)] = vi.behindHeuristic(vj)
+			if c.type == Cstr_type.HASINFRONT:
+				vals[str(c)] = vi.inFrontHeuristic(vj)
+
+			if c.type == Cstr_type.DISTCLOSE:
+				vals[str(c)] = vi.distCloseHeuristic(vj)
+			if c.type == Cstr_type.DISTMED:
+				vals[str(c)] = vi.distMedHeuristic(vj)
+			if c.type == Cstr_type.DISTFAR:
+				vals[str(c)] = vi.distFarHeuristic(vj)
+
+
+
+		if not self.nsga:
+			stats['num_rm_con'] = len(parsed_cons)
+			stats['num_sat_rm_con'] = len(list(filter(lambda p: p[1] == 0, vals.items())))
+			stats['rm_con_vals'] = vals
+		else:
+			stats['num_con'] = len(parsed_cons)
+			stats['num_sat_con'] = len(list(filter(lambda p: p[1] == 0, vals.items())))
+			stats['rm_con_vals'] = vals
 
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
@@ -1097,7 +1196,7 @@ class Scenario:
 						self.monitors, sampledNamespaces, self.dynamicScenario)
 			allScenes.append(scene)
 		
-		return allScenes, -1 if self.nsga else iterations
+		return allScenes, stats
 
 	def resetExternalSampler(self):
 		"""Reset the scenario's external sampler, if any.

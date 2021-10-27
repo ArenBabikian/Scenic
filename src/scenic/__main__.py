@@ -6,8 +6,10 @@ import sys
 import time
 import argparse
 import random
+import os
 from datetime import datetime
 from pathlib import Path
+import json
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -130,17 +132,22 @@ if args.simulate:
     simulator = errors.callBeginningScenicTrace(scenario.getSimulator)
 
 def generateScene():
-    startTime = time.time()
-    scenes, iterations = errors.callBeginningScenicTrace(
+    # startTime = time.time()
+    scenes, stats = errors.callBeginningScenicTrace(
         lambda: scenario.generate(verbosity=args.verbosity)
     )
     if args.verbosity >= 1:
-        totalTime = time.time() - startTime
-        print(f'  Generated {len(scenes)} scene(s) in {iterations} iterations, {totalTime:.4g} seconds.')
+        # totalTime = time.time() - startTime
+        i = stats['num_iterations']
+        t = stats['time']
+        if stats['success']:
+            print(f'  Generated {len(scenes)} scene(s) in {i} iterations, {t:.4g} seconds.')
+        else:
+            print(f'  Failed to generated a scene in {i-1} iterations, {t:.4g} seconds.')
         if args.show_params:
             for param, value in scene.params.items():
                 print(f'    Parameter "{param}": {value}')
-    return scenes, iterations
+    return scenes, stats
 
 def runSimulation(scene):
     startTime = time.time()
@@ -178,8 +185,11 @@ try:
         ws = params.get('outputWS')
         save_imgs = params.get('saveImgs') == 'True'
         save_files = params.get('saveFiles') == 'True'
-        meas_heur = params.get('measure') == 'True'
-        if not ws and (save_imgs or save_files):
+        view_imgs = params.get('viewImgs') == 'True'
+        get_meas_stats = params.get('saveStats') == 'True'
+        save_something = save_imgs or save_files or get_meas_stats
+        get_abs_scene = params.get('getAbsScene') == 'True'
+        if not ws and save_something:
             print(' You need to specify the outputWS parameter if you want to save stuff.')
             exit(1)
 
@@ -188,31 +198,64 @@ try:
         if folderName == None or folderName == "None":
             folderName = datetime.now().strftime("%m-%d-%H-%M-%S")
         p = f'{ws}/{folderName}'
-        if save_files or save_imgs:
+        if save_something:
             Path(f'{p}/').mkdir(parents=True, exist_ok=True)
 
+        if get_meas_stats:
+            measurementStats = {}
+            measurementStats['map'] = scenario.params.get('map')
+            measurementStats['num_actors'] = len(scenario.objects)
+            measurementStats['sourcePath'] = args.scenicFile
+            approach = 'unspecified'
+            b_name = os.path.basename(args.scenicFile)
+            if b_name.startswith('d-') :
+                approach = b_name[2:-7]
+            measurementStats['approach'] = approach
+            measurementStats['results'] = []
+
+        absSceneStats = {}
         while (args.count == 0 or successCount < args.count):
-            scenes, _ = generateScene()
+            scenes, stats = generateScene()
             prevSuccessCount = successCount
             for i in range(len(scenes)):
-                filePath = f'{p}/{prevSuccessCount}-{i}'
+                dirPath = f'{p}/{prevSuccessCount}-{i}'
+                if save_files or save_imgs:
+                    os.makedirs(dirPath, exist_ok=True)
                 scene = scenes[i]
+                if get_meas_stats:
+                    measurementStats['results'].append(stats)
+                if scene is None:
+                    # failed to generate scene
+                    successCount +=1
+                    # currently, the count is the number of attempts
+                    continue
                 if args.simulate:
                     success = runSimulation(scene)
                     if success:
                         successCount += 1
                 else:
                     if delay is None:
-                        scene.show(zoom=args.zoom, path=filePath, saveImages=save_imgs)
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
                     else:
-                        scene.show(zoom=args.zoom, path=filePath, saveImages=save_imgs, block=False)
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
                         plt.pause(delay)
                         plt.clf()
                     successCount += 1
                 if save_files:
-                    scene.saveExactCoords(path=filePath)
-                if meas_heur:
-                    scene.measureHeuristics(path=filePath)
+                    scene.saveExactCoords(path=dirPath)
+                if get_abs_scene:
+                    stats = scene.getAbsScene(path=dirPath)
+                    absSceneStats[dirPath] = stats
+        if get_abs_scene:
+            json_path = f'{p}/_allstats.json'
+            print(f'  Saved json stats at           {json_path}')
+            with open(json_path, 'w') as outfile:
+                json.dump(absSceneStats, outfile, indent=4)
+        if get_meas_stats:
+            meas_path = f'{p}/_measurementstats.json'
+            print(f'  Saved measurement stats at    {meas_path}')
+            with open(meas_path, 'w') as outfile:
+                json.dump(measurementStats, outfile, indent=4)
     else:   # Gather statistics over the specified number of scenes
         its = []
         startTime = time.time()
