@@ -214,16 +214,19 @@ try:
             measurementStats['results'] = []
 
         absSceneStats = {}
-        while (args.count == 0 or successCount < args.count):
+        count = args.count
+        if params.get('nsga-NumSols') == 'measurement' :
+            count *= 2
+        while (count == 0 or successCount < count):
             scenes, stats = generateScene()
             prevSuccessCount = successCount
+            if get_meas_stats:
+                measurementStats['results'].append(stats)
             for i in range(len(scenes)):
                 dirPath = f'{p}/{prevSuccessCount}-{i}'
                 if save_files or save_imgs:
                     os.makedirs(dirPath, exist_ok=True)
                 scene = scenes[i]
-                if get_meas_stats:
-                    measurementStats['results'].append(stats)
                 if scene is None:
                     # failed to generate scene
                     successCount +=1
@@ -244,10 +247,10 @@ try:
                 if save_files:
                     scene.saveExactCoords(path=dirPath)
                 if get_abs_scene:
-                    stats = scene.getAbsScene(path=dirPath)
-                    absSceneStats[dirPath] = stats
+                    absSceneStats = scene.getAbsScene(path=dirPath)
+                    absSceneStats[dirPath] = absSceneStats
         if get_abs_scene:
-            json_path = f'{p}/_allstats.json'
+            json_path = f'{p}/_genstats.json'
             print(f'  Saved json stats at           {json_path}')
             with open(json_path, 'w') as outfile:
                 json.dump(absSceneStats, outfile, indent=4)

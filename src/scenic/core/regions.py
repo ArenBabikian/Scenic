@@ -1048,7 +1048,7 @@ class DifferenceRegion(Region):
 		                        sampler=self.sampler, name=self.name)
 
 	def containsPoint(self, point):
-		return regionA.containsPoint(point) and not regionB.containsPoint(point)
+		return self.regionA.containsPoint(point) and not self.regionB.containsPoint(point)
 
 	def uniformPointInner(self):
 		return self.orient(self.sampler(self))

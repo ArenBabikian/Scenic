@@ -6,7 +6,7 @@ import json
 
 maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
-num_scenes = 5 #20
+num_scenes = 20 #20
 approaches = ['sc1', 'sc2', 'sc3', 'nsga']
 
 data = {}
@@ -14,25 +14,46 @@ for m in maps:
     data[m] = {}
     for config in configurations:
         data[m][config] = {}
+        gen_base_path = f'measurements/data/{m}/{config}/'
+        gen_stats_path = gen_base_path+'_genstats.json'
+        with open(gen_stats_path) as f:
+            gen_stats_data = json.load(f)
         for approach in approaches:
             current_data = {}
+            scenes_count = 0
             num_attempts = 0
             num_successes = 0
             all_times = []
+            fail_times = []
+
+            all_num_cons = []
+            all_num_hard_cons = []
+            all_num_soft_cons = []
+            all_num_removed_cons = []
             # NSGA
-            all_nsga_succ_percentages = []
+            nsga_s1_con_sat_perc = []
+            nsga_s1_con_hard_sat_perc = []
+            nsga_s1_con_soft_sat_perc = []
+            nsga_s2_con_sat_perc = []
+            nsga_s2_con_hard_sat_perc = []
+            nsga_s2_con_soft_sat_perc = []
 
             # Scenic
             num_removed_succ = 0
             all_removed_succ_percentages = []
 
+            found_at_least_one_measurement = False
+
             for i in range(num_scenes):
                 json_path = f'measurements/results/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
                 if os.path.exists(json_path):
+                    found_at_least_one_measurement = True
                     with open(json_path) as f:
                         json_data = json.load(f)
                     
                     json_res = json_data['results']
+                    if len(json_res) > 0:
+                        scenes_count += 1
                     num_attempts += len(json_res)
 
                     for r in json_res:
@@ -40,32 +61,95 @@ for m in maps:
                             num_successes += 1
                             all_times.append(r['time'])
 
+                            # num_iterations ignored for now
+
                             if approach != 'nsga':
-                                if r['num_rm_con'] == r['num_sat_rm_con']:
+                                if r['CON_sat_%_rm'] == 1:
                                     num_removed_succ += 1
-                                if r['num_rm_con'] != 0:
-                                    all_removed_succ_percentages.append(r['num_sat_rm_con']/r['num_rm_con'])
+                                if r['CON_sat_%_rm'] != -1:
+                                    all_removed_succ_percentages.append(r['CON_sat_%_rm'])
+                        else:
+                            fail_times.append(r['time'])
+
                         
                         if approach == 'nsga':
-                            if r['num_con'] != 0:
-                                all_nsga_succ_percentages.append(r['num_sat_con']/r['num_con'])
+                            # andling the 2 solutions
+                            s1 = r['solutions']['sol_best_global']
+                            if s1['CON_sat_%'] != -1:
+                                nsga_s1_con_sat_perc.append(s1['CON_sat_%'])
+                            if s1['CON_sat_%_hard'] != -1:
+                                nsga_s1_con_hard_sat_perc.append(s1['CON_sat_%_hard'])
+                            if s1['CON_sat_%_soft'] != -1:
+                                nsga_s1_con_soft_sat_perc.append(s1['CON_sat_%_soft'])
+
+                            s2 = r['solutions']['sol_best_Hard_Prio']
+                            if s2['CON_sat_%'] != -1:
+                                nsga_s2_con_sat_perc.append(s2['CON_sat_%'])
+                            if s2['CON_sat_%_hard'] != -1:
+                                nsga_s2_con_hard_sat_perc.append(s2['CON_sat_%_hard'])
+                            if s2['CON_sat_%_soft'] != -1:
+                                nsga_s2_con_soft_sat_perc.append(s2['CON_sat_%_soft'])
+
+                    gen_stats_id = f'{gen_base_path}{i}-0'
+
+                    # accessing _genstats.json
+                    all_num_cons.append(gen_stats_data[gen_stats_id]['num_cons'])
+                    all_num_hard_cons.append(gen_stats_data[gen_stats_id]['num_hard_cons'])
+                    all_num_soft_cons.append(gen_stats_data[gen_stats_id]['num_soft_cons'])
+                    if approach != 'nsga':
+                        all_num_removed_cons.append(len(gen_stats_data[gen_stats_id][f'deleted-{approach}']))
             
-            current_data['total_attempts'] = num_attempts
-            current_data['total_successes'] = num_successes
+            if not found_at_least_one_measurement:
+                continue
+
+            # Success Analysis
+            totals = {}
+            totals['scenes'] = scenes_count
+            totals['attempts'] = num_attempts
+            totals['successes'] = num_successes
             p = -1 if num_attempts == 0 else num_successes / num_attempts
-            current_data['percentage_succ'] = p
-            median = -1 if not all_times else statistics.median(all_times)
-            current_data['median_time_of_success'] = median
-            
+            totals['%_succ'] = p
+            totals['median_time_of_success'] = -1 if not all_times else statistics.median(all_times)
+            totals['max_time_of_success'] = -1 if not all_times else max(all_times)
+            totals['median_time_of_failure_(timeout)'] = -1 if not fail_times else statistics.median(fail_times)
+            current_data['TOTALS'] = totals
+
+            # Constraint removal analysis
+            cons = {}
+            cons['avg_num'] = statistics.mean(all_num_cons)
+            cons['avg_num_hard'] = statistics.mean(all_num_hard_cons)
+            cons['avg_num_soft'] = statistics.mean(all_num_soft_cons)
+            # approach-specific analysis
             if approach == 'nsga':
-                median2 = -1 if not all_nsga_succ_percentages else statistics.mean(all_nsga_succ_percentages)
-                current_data['NS_average_percentage_of_sat'] = median2
+                current_data['CONSTRAINTS'] = cons
+                solutions = {}
+                s1_dict = {}
+                s1_dict['CON_avg_%_sat'] = -1 if not nsga_s1_con_sat_perc else statistics.mean(nsga_s1_con_sat_perc)
+                s1_dict['CON_avg_%_sat_hard'] = -1 if not nsga_s1_con_hard_sat_perc else statistics.mean(nsga_s1_con_hard_sat_perc)
+                s1_dict['CON_avg_%_sat_soft'] = -1 if not nsga_s1_con_soft_sat_perc else statistics.mean(nsga_s1_con_soft_sat_perc)
+
+                s2_dict = {}
+                s2_dict['CON_avg_%_sat'] = -1 if not nsga_s2_con_sat_perc else statistics.mean(nsga_s2_con_sat_perc)
+                s2_dict['CON_avg_%_sat_hard'] = -1 if not nsga_s2_con_hard_sat_perc else statistics.mean(nsga_s2_con_hard_sat_perc)
+                s2_dict['CON_avg_%_sat_soft'] = -1 if not nsga_s2_con_soft_sat_perc else statistics.mean(nsga_s2_con_soft_sat_perc)
+
+                solutions['sol_best_global'] = s1_dict
+                solutions['sol_best_Hard_Prio'] = s2_dict
+                current_data['NSGA_SOLS'] = solutions
             else:
-                current_data['SC_total_succ_and_removed_sat'] = num_removed_succ
+                # removal analysis
+                cons['avg_num_soft_rm'] = 0 if not all_num_removed_cons else statistics.mean(all_num_removed_cons)
+                cons['avg_%_soft_rm'] = cons['avg_num_soft_rm'] / cons['avg_num_soft']
+                current_data['CONSTRAINTS'] = cons
+
+                # rm sat analysis
+                solution = {}
+                solution['tot_succ_and_rm_sat'] = num_removed_succ
                 p2 = -1 if num_attempts == 0 else num_removed_succ / num_attempts
-                current_data['SC_percentage_succ_and_removed_sat'] = p2
+                solution['%_succ_and_rm_sat'] = p2
                 median2 = -1 if not all_removed_succ_percentages else statistics.median(all_removed_succ_percentages)
-                current_data['SC_median_percentage_of_removed_sat'] = median2
+                solution['median_%_of_rm_sat'] = median2
+                current_data['SCENIC-SOL'] = solution
 
 
             data[m][config][approach] = current_data

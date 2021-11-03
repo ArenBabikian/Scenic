@@ -12,6 +12,7 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
+from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
@@ -28,7 +29,6 @@ from scenic.simulators.utils.colors import Color
 
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.factory import get_termination
 from pymoo.optimize import minimize
 
 class Scene:
@@ -164,6 +164,11 @@ class Scene:
 
 		# sort constraints wrt. type
 		accepted_cstrs.sort(key=lambda x: x.type.value)
+		n_obj = len(self.objects)
+		n_hard_cons = n_obj + (n_obj * (n_obj-1))/2 #onroad + nocollisions
+		stats['num_cons'] = n_hard_cons + len(accepted_cstrs)
+		stats['num_hard_cons'] = n_hard_cons
+		stats['num_soft_cons'] = len(accepted_cstrs)
 		stats['all'] = [str(c) for c in accepted_cstrs]
 
 		# NSGA : includes all constraints (full repr of abs scen)
@@ -570,10 +575,16 @@ class Scene:
 						reg += f'CircularRegion({s_name}, 10)'
 					if d.type.value == 9:
 						# DISTMED
-						reg += f'CircularRegion({s_name}, 20)).difference(CircularRegion({s_name}, 10)'
+						reg += f'CircularRegion({s_name}, 20)'
+						if addIntersect : reg += ")"
+						reg += f'.difference(CircularRegion({s_name}, 10)'
+						if not addIntersect : reg += ")"
 					if d.type.value == 10:
-						# DISTMED
-						reg += f'CircularRegion({s_name}, 50)).difference(CircularRegion({s_name}, 20)'
+						# DISTFAR
+						reg += f'CircularRegion({s_name}, 50)'
+						if addIntersect : reg += ")"
+						reg += f'.difference(CircularRegion({s_name}, 20)'
+						if not addIntersect : reg += ")"
 					allConstraints.remove(d)
 					
 					if addIntersect:
@@ -926,15 +937,17 @@ class Scenario:
 		algorithm = NSGA2(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
-		n_par = self.params.get('nsga-Iters')
-		n = n_par if n_par is not None else 100
-		termination = get_termination("n_gen", n)
-		termination = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
-																n_last=10,
-																n_max_gen=n)
+		# n_par = self.params.get('nsga-Iters')
+		# n = n_par if n_par is not None else 100
+		# termination = get_termination("n_gen", n)
+		# termination = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
+		# 														n_last=10,
+		# 														n_max_gen=n)
 		# TEMP
-		t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
-																n_last=10)
+		# t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025, n_last=30)	
+		# t1 = ConstraintViolationToleranceTermination(n_last=20, tol=1e-6,)	
+		# t1 = IGDTermination	
+		t1 = OneSolutionHeuristicTermination(heu_vals=[0, 0, 0, 0, 0])
 		t2 = TimeBasedTermination(max_time=self.timeout)
 		termination = TerminationCollection(t1, t2)
 
@@ -945,6 +958,8 @@ class Scenario:
 	def parseConfigConstraints(self):
 		# Parse constraints from config file
 		str_cons = self.params.get('constraints')
+		if str_cons == None:
+			return []
 		list_cons = str_cons.split(';')
 		parsed_cons = []
 
@@ -1000,43 +1015,55 @@ class Scenario:
 			totalTime = nsgaRes.exec_time
 
 			# Get number of required nsga solutions
+			measurement_outputs = False
 			if not 'nsga-NumSols' in self.params:
 				# Default
 				numSols = 5
 			else:
-				val = int(self.params.get('nsga-NumSols'))
-				if  val == -1:
-					numSols = len(nsgaRes.F)
+				if self.params.get('nsga-NumSols') == 'measurement':
+					measurement_outputs = True
 				else:
-					numSols = min(len(nsgaRes.F), val)
+					val = int(self.params.get('nsga-NumSols'))
+					if  val == -1:
+						numSols = len(nsgaRes.F)
+					else:
+						numSols = min(len(nsgaRes.F), val)
 
-			# Rank the solutions by prioritising containment and collision objectives
-			aggregateFitness = []
-			for i in range(len(nsgaRes.F)):
-				f = nsgaRes.F[i]
-				aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
-				# ALTERNATE RANKING, just takes the total
-				#aggregateFitness.append((sum(f), i))
-			sortedFitness = sorted(aggregateFitness)
-
-			# save the selected number of sols
 			if verbosity >= 2:
 				print("--Results--")
 				print("f = [Cont, Coll, Vis, PosRel, DistRel]")
-			for i in range(numSols):
-				aggFit = sortedFitness[i]
-				j = aggFit[-1]
-				self.fillSample(nsgaRes.X[j])
-				allSamples.append(Samplable.sampleAll(self.dependencies))
 
-				if verbosity >= 2:
-					print(f'--Solution {i}--')
-					print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
-					print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+			if not measurement_outputs :
+				# Rank the solutions by prioritising containment and collision objectives
+				aggregateFitness = []
+				for i in range(len(nsgaRes.F)):
+					f = nsgaRes.F[i]
+					aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
+					# ALTERNATE RANKING, just takes the total
+					#aggregateFitness.append((sum(f), i))
+				sortedFitness = sorted(aggregateFitness)
+				
+				# save the selected number of sols
+				for i in range(numSols):
+					aggFit = sortedFitness[i]
+					j = aggFit[-1]
+					self.fillSample(nsgaRes.X[j])
+					allSamples.append(Samplable.sampleAll(self.dependencies))
 
-			# did it succeed? i.e did it converge to all 0s?
-			if aggregateFitness[0][0] + aggregateFitness[0][1] != 0:
-				failed = True
+					if verbosity >= 2:
+						print(f'--Solution {i}--')
+						print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
+						print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+
+			else :
+				# keep all solutions, and we will do selection of the required 2 later on
+				for i in range(len(nsgaRes.F)):
+					if verbosity >= 2:
+							print(f'--Solution {i}--')
+							print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[i]])}')
+							print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[i]])}')
+					self.fillSample(nsgaRes.X[i])
+					allSamples.append(Samplable.sampleAll(self.dependencies))			
 
 		else:
 			# do rejection sampling until requirements are satisfied
@@ -1115,56 +1142,125 @@ class Scenario:
 		stats['time'] = totalTime # DONE
 		stats['num_iterations'] = iterations # TODO adapt to nsga
 
-		if failed and not self.nsga:
-			print('  Could not generate scene.')
-			return [None], stats
+		if self.params.get('saveStats') == "True":
 
-		# get list of included constraints
-		# These are removed constraints for scenic
-		# these are all constraints for NSGA
-		parsed_cons = self.parseConfigConstraints()
-		vals = {}
+			# get list of included constraints
+			# These are removed constraints for scenic
+			# these are all constraints for NSGA
+			parsed_cons = self.parseConfigConstraints()
+			
+			allVals = {}
+			numVioMap = {}
+			sortingGlobal = []
+			sortingHardPrio = []
 
-		for c in parsed_cons:
-			# assuming only a single scene is generated 
-			vi = allSamples[0][objects[c.src]]
-			vj = None
-			if c.tgt != -1:
-				vj = allSamples[0][objects[c.tgt]]
-			if c.type == Cstr_type.ONROAD:
-				vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
-			if c.type == Cstr_type.NOCOLLISION:
-				collision = 1 if vi.intersects(vj) else 0
-				vals[str(c)] = collision
-			if c.type == Cstr_type.CANSEE:
-				vals[str(c)] = vi.canSeeHeuristic(vj)
+			for i in range(len(allSamples)):
+				sample = allSamples[i]
+				
+				vals = {}
+				num_hard_cons = 0
+				numVioHard = 0
+				numVioSoft = 0
+				for c in parsed_cons:
+					vi = sample[objects[c.src]]
+					vj = None
+					if c.tgt != -1:
+						vj = sample[objects[c.tgt]]
+					if c.type == Cstr_type.ONROAD:
+						vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+						if vals[str(c)] != 0 : numVioHard += 1
+						num_hard_cons += 1
+					if c.type == Cstr_type.NOCOLLISION:
+						vals[str(c)] = 1 if vi.intersects(vj) else 0
+						if vals[str(c)] != 0 : numVioHard += 1
+						num_hard_cons += 1
+					if c.type == Cstr_type.CANSEE:
+						vals[str(c)] = vi.canSeeHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
 
-			if c.type == Cstr_type.HASTOLEFT:
-				vals[str(c)] = vi.toLeftHeuristic(vj)
-			if c.type == Cstr_type.HASTORIGHT:
-				vals[str(c)] = vi.toRightHeuristic(vj)
-			if c.type == Cstr_type.HASBEHIND:
-				vals[str(c)] = vi.behindHeuristic(vj)
-			if c.type == Cstr_type.HASINFRONT:
-				vals[str(c)] = vi.inFrontHeuristic(vj)
+					if c.type == Cstr_type.HASTOLEFT:
+						vals[str(c)] = vi.toLeftHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
+					if c.type == Cstr_type.HASTORIGHT:
+						vals[str(c)] = vi.toRightHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
+					if c.type == Cstr_type.HASBEHIND:
+						vals[str(c)] = vi.behindHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
+					if c.type == Cstr_type.HASINFRONT:
+						vals[str(c)] = vi.inFrontHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
 
-			if c.type == Cstr_type.DISTCLOSE:
-				vals[str(c)] = vi.distCloseHeuristic(vj)
-			if c.type == Cstr_type.DISTMED:
-				vals[str(c)] = vi.distMedHeuristic(vj)
-			if c.type == Cstr_type.DISTFAR:
-				vals[str(c)] = vi.distFarHeuristic(vj)
+					if c.type == Cstr_type.DISTCLOSE:
+						vals[str(c)] = vi.distCloseHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
+					if c.type == Cstr_type.DISTMED:
+						vals[str(c)] = vi.distMedHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
+					if c.type == Cstr_type.DISTFAR:
+						vals[str(c)] = vi.distFarHeuristic(vj)
+						if vals[str(c)] != 0 : numVioSoft += 1
 
+				sortingGlobal.append((numVioHard+numVioSoft, i))
+				sortingHardPrio.append((numVioHard, numVioSoft, i))
+				allVals[sample] = vals
+				numVioMap[sample] = [numVioHard, numVioSoft]
 
+			# sort according to conditions
+			sortedGlobal= sorted(sortingGlobal)
+			sortedHardPrio = sorted(sortingHardPrio)
 
-		if not self.nsga:
-			stats['num_rm_con'] = len(parsed_cons)
-			stats['num_sat_rm_con'] = len(list(filter(lambda p: p[1] == 0, vals.items())))
-			stats['rm_con_vals'] = vals
-		else:
-			stats['num_con'] = len(parsed_cons)
-			stats['num_sat_con'] = len(list(filter(lambda p: p[1] == 0, vals.items())))
-			stats['rm_con_vals'] = vals
+			# nsga succeeds if best solution satisfies all constraints 
+			if self.nsga and measurement_outputs:
+				failed = sortedGlobal[0][0] > 0
+			
+			# Gather statistics
+			stats['success'] = not failed # DONE
+
+			if failed and not self.nsga:
+				print('  Could not generate scene.')
+				return [None], stats
+
+			if not self.nsga:
+				#at this stage we should have exactly one solution
+				if len(allSamples) != 1 :
+					 raise Error('something went wrong')
+				stats['CON_num_rm'] = len(parsed_cons)
+				stats['CON_sat_num_rm'] = len(parsed_cons) - sum(numVioMap[allSamples[0]])
+				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
+				stats['CON_rm_vals'] = vals
+			else:
+				num_cons = len(parsed_cons)
+				stats['CON_num'] = num_cons
+				stats['CON_num_hard'] = num_hard_cons
+				num_soft_cons = len(parsed_cons) - num_hard_cons
+				stats['CON_num_soft'] = num_soft_cons
+				
+				allSolStats = {}
+				if measurement_outputs:
+					bestGlobal = allSamples[sortedGlobal[0][-1]]
+					bestHardPrio = allSamples[sortedHardPrio[0][-1]]
+
+					allSamples = [bestGlobal, bestHardPrio]
+					names = ['sol_best_global', 'sol_best_Hard_Prio']
+
+					# TODO fix this printing
+					
+					for i in range(len(allSamples)):
+						sol = allSamples[i]						
+						solStats = {}
+						solNumVioHard, solNumVioSoft = numVioMap[sol]
+						solStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
+						solStats['CON_sat_%'] = solStats['CON_sat_num'] / num_cons
+						solStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
+						solStats['CON_sat_%_hard'] = solStats['CON_sat_num_hard'] / num_hard_cons
+						solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
+						solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
+						solStats['CON_vals'] = allVals[sol]
+
+						allSolStats[names[i]] = solStats					
+
+				stats['solutions'] = allSolStats
 
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
