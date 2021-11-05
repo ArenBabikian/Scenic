@@ -1,13 +1,16 @@
 
-import subprocess
+from copy import Error
 import statistics
 import os
 import json
 
 maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
-num_scenes = 20 #20
+num_scenes = range(1, 20) #range(20)
 approaches = ['sc1', 'sc2', 'sc3', 'nsga']
+
+history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+tolerance = 1
 
 data = {}
 for m in maps:
@@ -37,6 +40,10 @@ for m in maps:
             nsga_s2_con_sat_perc = []
             nsga_s2_con_hard_sat_perc = []
             nsga_s2_con_soft_sat_perc = []
+            history_failures = [ 0 for _ in history_times]
+            history_con_sat_perc = [ [] for _ in history_times]
+            history_con_soft_sat_perc = [ [] for _ in history_times]
+            history_con_hard_sat_perc = [ [] for _ in history_times]
 
             # Scenic
             num_removed_succ = 0
@@ -44,7 +51,7 @@ for m in maps:
 
             found_at_least_one_measurement = False
 
-            for i in range(num_scenes):
+            for i in num_scenes:
                 json_path = f'measurements/results/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
                 if os.path.exists(json_path):
                     found_at_least_one_measurement = True
@@ -89,6 +96,35 @@ for m in maps:
                                 nsga_s2_con_hard_sat_perc.append(s2['CON_sat_%_hard'])
                             if s2['CON_sat_%_soft'] != -1:
                                 nsga_s2_con_soft_sat_perc.append(s2['CON_sat_%_soft'])
+
+                            # Handling history
+                            if 'history' in r:
+                                h_sols_map = r['history']
+                                t_ind = 0
+                                for h_time in reversed(list(h_sols_map.keys())):
+                                    h_t = float(h_time)
+                                    expected_t = history_times[t_ind]
+                                    if h_t > expected_t + tolerance:
+                                        raise ValueError(f'expecting time {expected_t}, got time {h_t}')
+
+                                    h_bestSol = h_sols_map[h_time]['sol_best_global']
+                                    history_con_sat_perc[t_ind].append(h_bestSol['CON_sat_%'])
+                                    history_con_hard_sat_perc[t_ind].append(h_bestSol['CON_sat_%_hard'])
+                                    history_con_soft_sat_perc[t_ind].append(h_bestSol['CON_sat_%_soft'])
+                                    
+                                    history_failures[t_ind] += 1
+                                    t_ind += 1
+                                
+                                tot = len(history_times)
+                                for j in range(t_ind, tot):
+                                    history_con_sat_perc[j].append(1)
+                                    history_con_hard_sat_perc[j].append(1)
+                                    history_con_soft_sat_perc[j].append(1)
+
+                                # for x in range(len(history_con_hard_sat_perc)):
+                                #     print(history_con_sat_perc[x], end=" ")
+                                #     print(history_con_hard_sat_perc[x], end=" ")
+                                #     print(history_con_soft_sat_perc[x])
 
                     gen_stats_id = f'{gen_base_path}{i}-0'
 
@@ -136,6 +172,22 @@ for m in maps:
                 solutions['sol_best_global'] = s1_dict
                 solutions['sol_best_Hard_Prio'] = s2_dict
                 current_data['NSGA_SOLS'] = solutions
+
+                # history
+                if 'history' in r:
+                    history = []
+                    for x in range(len(history_times)):
+                        h_sol_stats = {}
+                        h_sol_stats['timeout'] = history_times[x]
+                        history_succ_perc = (num_attempts - history_failures[x]) / num_attempts
+                        h_sol_stats['%_succ'] = history_succ_perc
+                        h_sol_stats['CON_avg_%_sat'] = statistics.mean(history_con_sat_perc[x])
+                        h_sol_stats['CON_avg_%_sat_hard'] = statistics.mean(history_con_hard_sat_perc[x])
+                        h_sol_stats['CON_avg_%_sat_soft'] = statistics.mean(history_con_soft_sat_perc[x])
+
+                        history.append(h_sol_stats)
+
+                    current_data['HISTORY'] = history
             else:
                 # removal analysis
                 cons['avg_num_soft_rm'] = 0 if not all_num_removed_cons else statistics.mean(all_num_removed_cons)

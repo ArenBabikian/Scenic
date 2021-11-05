@@ -213,9 +213,9 @@ try:
             measurementStats['approach'] = approach
             measurementStats['results'] = []
 
-        absSceneStats = {}
+        absSceneStatsMap = {}
         count = args.count
-        if params.get('nsga-NumSols') == 'measurement' :
+        if params.get('nsga-NumSols') == 'measurement' and get_meas_stats :
             count *= 2
         while (count == 0 or successCount < count):
             scenes, stats = generateScene()
@@ -248,12 +248,12 @@ try:
                     scene.saveExactCoords(path=dirPath)
                 if get_abs_scene:
                     absSceneStats = scene.getAbsScene(path=dirPath)
-                    absSceneStats[dirPath] = absSceneStats
+                    absSceneStatsMap[dirPath] = absSceneStats
         if get_abs_scene:
             json_path = f'{p}/_genstats.json'
             print(f'  Saved json stats at           {json_path}')
             with open(json_path, 'w') as outfile:
-                json.dump(absSceneStats, outfile, indent=4)
+                json.dump(absSceneStatsMap, outfile, indent=4)
         if get_meas_stats:
             meas_path = f'{p}/_measurementstats.json'
             print(f'  Saved measurement stats at    {meas_path}')

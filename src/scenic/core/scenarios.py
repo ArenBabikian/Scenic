@@ -12,6 +12,7 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
+from scenic.core.nsga2mod import NSGA2M
 from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
@@ -314,6 +315,13 @@ class Scene:
 						cycles.append([c1, c2, c3, c4])
 
 		if max < 5: return cycles
+
+		for c1 in deps:
+			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
+				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
+					for c4 in list(filter(lambda x : x.src == c3.tgt, deps)):
+						for c5 in list(filter(lambda y : y.src == c4.tgt and y.tgt == c1.src, deps)):
+							cycles.append([c1, c2, c3, c4, c5])
 
 		if max < 6: return cycles
 
@@ -934,7 +942,7 @@ class Scenario:
 			print("--Running NSGA--")   
 		problem = MyProblem()
 		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
-		algorithm = NSGA2(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
+		algorithm = NSGA2M(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
 		# n_par = self.params.get('nsga-Iters')
@@ -991,6 +999,7 @@ class Scenario:
 		"""
 		objects = self.objects
 		allSamples = []
+		historicSolSets = []
 
 		# choose which custom requirements will be enforced for this sample
 		activeReqs = [req for req in self.initialRequirements if random.random() <= req.prob]
@@ -1048,7 +1057,13 @@ class Scenario:
 					aggFit = sortedFitness[i]
 					j = aggFit[-1]
 					self.fillSample(nsgaRes.X[j])
-					allSamples.append(Samplable.sampleAll(self.dependencies))
+					found = False
+					while not found:
+						try:
+							allSamples.append(Samplable.sampleAll(self.dependencies))
+							found = True
+						except:
+							print('failed to sample')
 
 					if verbosity >= 2:
 						print(f'--Solution {i}--')
@@ -1063,7 +1078,29 @@ class Scenario:
 							print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[i]])}')
 							print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[i]])}')
 					self.fillSample(nsgaRes.X[i])
-					allSamples.append(Samplable.sampleAll(self.dependencies))			
+					found = False
+					while not found:
+						try:
+							allSamples.append(Samplable.sampleAll(self.dependencies))
+							found = True
+						except:
+							print('failed to sample - all')
+
+				#only keep the intersting historic results
+				# Must be in ascending order
+				timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+				# timesToKeep = [5, 10, 20, 30, 45]
+				timeIndex = 0
+
+				for i in range(len(nsgaRes.history)):
+					solAtI = nsgaRes.history[i]
+					r = solAtI.result()
+					ex_t = solAtI.exec_time
+					# print(f'{i}. exec={ex_t}, termin={nsgaRes.history[i].has_terminated}, tgt={timesToKeep[timeIndex]}, sol[0]={r.X[0][0]}')
+					if ex_t != None and timeIndex < len(timesToKeep) and ex_t > timesToKeep[timeIndex]:
+						# create a list of samples
+						historicSolSets.append((ex_t, list(r.X)))
+						timeIndex += 1
 
 		else:
 			# do rejection sampling until requirements are satisfied
@@ -1148,67 +1185,15 @@ class Scenario:
 			# These are removed constraints for scenic
 			# these are all constraints for NSGA
 			parsed_cons = self.parseConfigConstraints()
+			num_hard_cons = len(list(filter(lambda x : x.type == Cstr_type.ONROAD or x.type == Cstr_type.NOCOLLISION, parsed_cons)))
 			
-			allVals = {}
-			numVioMap = {}
-			sortingGlobal = []
-			sortingHardPrio = []
+			# Analyse the allSamples (final set of samples)
+			allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, allSamples)
 
-			for i in range(len(allSamples)):
-				sample = allSamples[i]
-				
-				vals = {}
-				num_hard_cons = 0
-				numVioHard = 0
-				numVioSoft = 0
-				for c in parsed_cons:
-					vi = sample[objects[c.src]]
-					vj = None
-					if c.tgt != -1:
-						vj = sample[objects[c.tgt]]
-					if c.type == Cstr_type.ONROAD:
-						vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
-						if vals[str(c)] != 0 : numVioHard += 1
-						num_hard_cons += 1
-					if c.type == Cstr_type.NOCOLLISION:
-						vals[str(c)] = 1 if vi.intersects(vj) else 0
-						if vals[str(c)] != 0 : numVioHard += 1
-						num_hard_cons += 1
-					if c.type == Cstr_type.CANSEE:
-						vals[str(c)] = vi.canSeeHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-
-					if c.type == Cstr_type.HASTOLEFT:
-						vals[str(c)] = vi.toLeftHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-					if c.type == Cstr_type.HASTORIGHT:
-						vals[str(c)] = vi.toRightHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-					if c.type == Cstr_type.HASBEHIND:
-						vals[str(c)] = vi.behindHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-					if c.type == Cstr_type.HASINFRONT:
-						vals[str(c)] = vi.inFrontHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-
-					if c.type == Cstr_type.DISTCLOSE:
-						vals[str(c)] = vi.distCloseHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-					if c.type == Cstr_type.DISTMED:
-						vals[str(c)] = vi.distMedHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-					if c.type == Cstr_type.DISTFAR:
-						vals[str(c)] = vi.distFarHeuristic(vj)
-						if vals[str(c)] != 0 : numVioSoft += 1
-
-				sortingGlobal.append((numVioHard+numVioSoft, i))
-				sortingHardPrio.append((numVioHard, numVioSoft, i))
-				allVals[sample] = vals
-				numVioMap[sample] = [numVioHard, numVioSoft]
-
-			# sort according to conditions
-			sortedGlobal= sorted(sortingGlobal)
-			sortedHardPrio = sorted(sortingHardPrio)
+			# no stats if failed and not nsga
+			if failed and not self.nsga:
+				print('  Could not generate scene.')
+				return [None], stats
 
 			# nsga succeeds if best solution satisfies all constraints 
 			if self.nsga and measurement_outputs:
@@ -1217,10 +1202,6 @@ class Scenario:
 			# Gather statistics
 			stats['success'] = not failed # DONE
 
-			if failed and not self.nsga:
-				print('  Could not generate scene.')
-				return [None], stats
-
 			if not self.nsga:
 				#at this stage we should have exactly one solution
 				if len(allSamples) != 1 :
@@ -1228,7 +1209,7 @@ class Scenario:
 				stats['CON_num_rm'] = len(parsed_cons)
 				stats['CON_sat_num_rm'] = len(parsed_cons) - sum(numVioMap[allSamples[0]])
 				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
-				stats['CON_rm_vals'] = vals
+				stats['CON_rm_vals'] = allVals[allSamples[0]]
 			else:
 				num_cons = len(parsed_cons)
 				stats['CON_num'] = num_cons
@@ -1243,8 +1224,6 @@ class Scenario:
 
 					allSamples = [bestGlobal, bestHardPrio]
 					names = ['sol_best_global', 'sol_best_Hard_Prio']
-
-					# TODO fix this printing
 					
 					for i in range(len(allSamples)):
 						sol = allSamples[i]						
@@ -1262,6 +1241,55 @@ class Scenario:
 
 				stats['solutions'] = allSolStats
 
+			# Analyse HISTORIC sample sets
+			if self.nsga:
+
+				historyStats = {}
+				for historicSolSet in reversed(historicSolSets):
+					# get historic solutions as samples:
+					historicSamples = []
+					t = historicSolSet[0]
+					historicSols = historicSolSet[1]
+					for historicSol in historicSols:
+						self.fillSample(historicSol)
+						found = False
+						while not found:
+							try:
+								historicSamples.append(Samplable.sampleAll(self.dependencies))
+								found = True
+							except:
+								print('failed to sample - history')							
+
+					allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, historicSamples)
+					
+					allSolStats = {}
+					if measurement_outputs:
+						bestGlobal = historicSamples[sortedGlobal[0][-1]]
+						bestHardPrio = historicSamples[sortedHardPrio[0][-1]]
+
+						sampleSet = [bestGlobal, bestHardPrio]
+						names = ['sol_best_global', 'sol_best_Hard_Prio']
+						
+						for i in range(len(sampleSet)):
+							sol = sampleSet[i]						
+							solStats = {}
+							solNumVioHard, solNumVioSoft = numVioMap[sol]
+							solStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
+							solStats['CON_sat_%'] = solStats['CON_sat_num'] / num_cons
+							solStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
+							solStats['CON_sat_%_hard'] = solStats['CON_sat_num_hard'] / num_hard_cons
+							solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
+							solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
+							solStats['CON_vals'] = allVals[sol]
+
+							allSolStats[names[i]] = solStats
+
+						historyStats[t] = allSolStats
+
+				stats['history'] = historyStats
+
+				# print(stats)
+			
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
 		for sample in allSamples:
@@ -1293,6 +1321,71 @@ class Scenario:
 			allScenes.append(scene)
 		
 		return allScenes, stats
+
+	def analyseSolSet(self, parsed_cons, allSamples):
+		allVals = {}
+		numVioMap = {}
+		sortingGlobal = []
+		sortingHardPrio = []
+
+		for i in range(len(allSamples)):
+			sample = allSamples[i]
+			
+			vals = {}
+			# num_hard_cons = 0
+			numVioHard = 0
+			numVioSoft = 0
+			for c in parsed_cons:
+				vi = sample[self.objects[c.src]]
+				vj = None
+				if c.tgt != -1:
+					vj = sample[self.objects[c.tgt]]
+				if c.type == Cstr_type.ONROAD:
+					vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+					if vals[str(c)] != 0 : numVioHard += 1
+					# num_hard_cons += 1
+				if c.type == Cstr_type.NOCOLLISION:
+					vals[str(c)] = 1 if vi.intersects(vj) else 0
+					if vals[str(c)] != 0 : numVioHard += 1
+					# num_hard_cons += 1
+				if c.type == Cstr_type.CANSEE:
+					vals[str(c)] = vi.canSeeHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+
+				if c.type == Cstr_type.HASTOLEFT:
+					vals[str(c)] = vi.toLeftHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+				if c.type == Cstr_type.HASTORIGHT:
+					vals[str(c)] = vi.toRightHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+				if c.type == Cstr_type.HASBEHIND:
+					vals[str(c)] = vi.behindHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+				if c.type == Cstr_type.HASINFRONT:
+					vals[str(c)] = vi.inFrontHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+
+				if c.type == Cstr_type.DISTCLOSE:
+					vals[str(c)] = vi.distCloseHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+				if c.type == Cstr_type.DISTMED:
+					vals[str(c)] = vi.distMedHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+				if c.type == Cstr_type.DISTFAR:
+					vals[str(c)] = vi.distFarHeuristic(vj)
+					if vals[str(c)] != 0 : numVioSoft += 1
+
+			sortingGlobal.append((numVioHard+numVioSoft, i))
+			sortingHardPrio.append((numVioHard, numVioSoft, i))
+			allVals[sample] = vals
+			numVioMap[sample] = [numVioHard, numVioSoft]
+
+		# sort according to conditions
+		sortedGlobal= sorted(sortingGlobal)
+		sortedHardPrio = sorted(sortingHardPrio)
+
+		return (allVals, numVioMap, sortedGlobal, sortedHardPrio)
+
 
 	def resetExternalSampler(self):
 		"""Reset the scenario's external sampler, if any.

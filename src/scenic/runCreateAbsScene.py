@@ -4,9 +4,10 @@ import sys
 import os
 
 maps = ['tram05']
-configurations = ['2actors', '3actors', '4actors']
+configurations = ['2actors', '3actors', '4actors', '5actors']
 num_scenes = 20
 verbosity = 0
+timeout = 60
 
 for m in maps:
     for config in configurations:
@@ -15,6 +16,7 @@ for m in maps:
         command.extend(['-v', str(verbosity)])
         command.extend(['-p', 'nsga', 'False'])
         command.extend(['-p', 'getAbsScene', 'True'])
+        command.extend(['-p', 'timeout', str(timeout)])
         command.extend(['-p', 'outputWS', 'measurements/data'])
         command.extend(['-p', 'outputDir', f'{m}/{config}'])
         command.extend(['-p', 'saveImgs', 'True'])
