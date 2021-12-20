@@ -10,6 +10,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 import json
+import gc
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -201,6 +202,9 @@ try:
         if save_something:
             Path(f'{p}/').mkdir(parents=True, exist_ok=True)
 
+        meas_path = f'{p}/_measurementstats.json'
+        json_path = f'{p}/_genstats.json'
+        
         if get_meas_stats:
             measurementStats = {}
             measurementStats['map'] = scenario.params.get('map')
@@ -222,6 +226,9 @@ try:
             prevSuccessCount = successCount
             if get_meas_stats:
                 measurementStats['results'].append(stats)
+                print(f'  Saved measurement stats at    {meas_path}')
+                with open(meas_path, 'w') as outfile:
+                    json.dump(measurementStats, outfile, indent=4)
             for i in range(len(scenes)):
                 dirPath = f'{p}/{prevSuccessCount}-{i}'
                 if save_files or save_imgs:
@@ -249,16 +256,13 @@ try:
                 if get_abs_scene:
                     absSceneStats = scene.getAbsScene(path=dirPath)
                     absSceneStatsMap[dirPath] = absSceneStats
-        if get_abs_scene:
-            json_path = f'{p}/_genstats.json'
-            print(f'  Saved json stats at           {json_path}')
-            with open(json_path, 'w') as outfile:
-                json.dump(absSceneStatsMap, outfile, indent=4)
-        if get_meas_stats:
-            meas_path = f'{p}/_measurementstats.json'
-            print(f'  Saved measurement stats at    {meas_path}')
-            with open(meas_path, 'w') as outfile:
-                json.dump(measurementStats, outfile, indent=4)
+                    print(f'  Saved json stats at           {json_path}')
+                    with open(json_path, 'w') as outfile:
+                        json.dump(absSceneStatsMap, outfile, indent=4)
+
+            gc.collect()
+            gc.collect()
+            gc.collect()
     else:   # Gather statistics over the specified number of scenes
         its = []
         startTime = time.time()

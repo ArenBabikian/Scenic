@@ -27,6 +27,8 @@ def cached(oldMethod):
 def cached_property(oldMethod):
     return property(cached(oldMethod))
 
+# TODO add some trigger between cache and no cache
+
 def argsToString(args):
     names = (f'{a[0]}={a[1]}' if isinstance(a, tuple) else str(a) for a in args)
     joinedArgs = ', '.join(names)

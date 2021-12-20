@@ -3,24 +3,19 @@ import subprocess
 import sys
 import os
 
-maps = ['town02']
-configurations = ['2actors']
-scene_ids = range(20) #20
-approaches = ['sc1', 'sc2', 'sc3', 'nsga']
+maps = ['tram05', 'town02']
+configurations = ['5actors']
+scene_ids = range(6, 20) #20
+approaches = ['nsga']
 
-# TODO range (17, 20), [sc1, sc2, sc3], 5 iter, 300 timeout
-# TODO 16, sc3, 5 iter, 300 timeout
-# TODO 4actors, range (10, 20), [nsga], 5 iter, 3600 timeout
-# TODO 4actors, range (10, 20), [sci, sc2, sc3], 5 iter, 300 timeout
-
-num_iterations = 10 #10
-timeout = [300, 300, 300, 1800]
-verbosity = 3
+num_iterations = 3 #10
+timeout = [1800]
+verbosity = 0
 save = True
 
-for m in maps:
-    for config in configurations:
-        for i in scene_ids:
+for i in scene_ids:
+    for m in maps:
+        for config in configurations:
             for a_ind in range(len(approaches)):
                 approach = approaches[a_ind]
                 pathToFile = f'{m}/{config}/{i}-0/d-{approach}'

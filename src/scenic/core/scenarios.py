@@ -912,7 +912,7 @@ class Scenario:
 		tot_var = len(objects)*2
 		map_name = os.path.basename(self.params.get('map'))
 		bounds = []
-		if map_name == "Town02.xodr":
+		if map_name == "town02.xodr":
 			bounds = [-15, -315, 200, -98]
 		if map_name == "tram05.xodr":
 			bounds = [-155, -101, 103, 80]
@@ -1320,6 +1320,8 @@ class Scenario:
 						self.monitors, sampledNamespaces, self.dynamicScenario)
 			allScenes.append(scene)
 		
+		if not allScenes:
+			return [None], stats
 		return allScenes, stats
 
 	def analyseSolSet(self, parsed_cons, allSamples):

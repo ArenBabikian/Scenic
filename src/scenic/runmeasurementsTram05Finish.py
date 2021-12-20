@@ -3,19 +3,19 @@ import subprocess
 import sys
 import os
 
-maps = ['town02']
-configurations = ['2actors']
-scene_ids = range(20) #20
+maps = ['tram05']
+configurations = ['4actors']
+scene_ids = range(10, 20) #20
 approaches = ['sc1', 'sc2', 'sc3', 'nsga']
 
 # TODO range (17, 20), [sc1, sc2, sc3], 5 iter, 300 timeout
 # TODO 16, sc3, 5 iter, 300 timeout
-# TODO 4actors, range (10, 20), [nsga], 5 iter, 3600 timeout
-# TODO 4actors, range (10, 20), [sci, sc2, sc3], 5 iter, 300 timeout
+# HANDLES TODO 4actors, range (10, 20), [nsga], 5 iter, 3600 timeout
+# HANDLES TODO 4actors, range (10, 20), [sci, sc2, sc3], 5 iter, 300 timeout
 
-num_iterations = 10 #10
+num_iterations = 5 #10
 timeout = [300, 300, 300, 1800]
-verbosity = 3
+verbosity = 0
 save = True
 
 for m in maps:
