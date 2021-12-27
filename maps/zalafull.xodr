@@ -20420,6 +20420,7 @@
     </road>
     <road name="" length="5.9754707482041759e+01" id="5236" junction="-1">
         <link>
+            <predecessor elementType="junction" elementId="40" />
             <successor elementType="junction" elementId="46" />
         </link>
         <planView>
