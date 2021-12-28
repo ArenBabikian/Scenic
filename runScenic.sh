@@ -14,7 +14,8 @@ cmd="poetry run scenic \
 -p outputWS out-nsga \
 -p outputDir _ \
 -p saveImgs False \
+-p viewImgs True \
 -p saveFiles False \
--p map ../maps/tram05.xodr
+-p map maps/zalaFullCrop.xodr
 ../config/run.scenic"
 eval $cmd
