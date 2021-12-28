@@ -413,15 +413,8 @@ class Road:
         last_lefts = None
         last_rights = None
         cur_p = None
-
-        if self.id_ == 11865:
-            print("started")
-            print(f'num ref points = {[len(x) for x in ref_points]}')
-        print(f'{self.id_}, {len(self.lane_secs)}')
             
         for i in range(len(self.lane_secs)):
-            if self.id_ == 8863:
-                print(f'new sec')
             cur_sec = self.lane_secs[i]
             cur_sec_points = []
             if i < len(self.lane_secs) - 1:
@@ -436,8 +429,6 @@ class Road:
             end_of_sec = False
 
             while ref_points and not end_of_sec:
-                if self.id_ == 8863:
-                    print(f'ref points left = {[len(x) for x in ref_points]}. Ended = {end_of_sec}. S_stop = {(cur_p and cur_p[2] >= s_stop)}. Ref_pt = {any(ref_points)}. Pop = {not any(ref_points[0])}')
                 if not ref_points[0]:
                     ref_points.pop(0)
                 if not ref_points or (cur_p and cur_p[2] >= s_stop):
@@ -533,9 +524,6 @@ class Road:
                             lane.left_bounds.append(left_bound)
                             lane.right_bounds.append(right_bound)
                             lane.centerline.append(centerline)
-            
-            if self.id_ == 8863:
-                print(f'cur_sec_points = {len(cur_sec_points)}')
             assert len(cur_sec_points) >= 2, i
             sec_points.append(cur_sec_points)
             sec_polys.append(buffer_union(cur_sec_polys, tolerance=tolerance))
@@ -892,8 +880,6 @@ class Road:
                 sec = roadSections[-1]
                 startLanes = sec.backwardLanes
             leftPoints = []
-            if not startLanes:
-                print(f'PROBLEM WITH ROAD {self.id_}')
             current = startLanes[-1]    # get leftmost lane of the first section
             while current and isinstance(current, roadDomain.LaneSection):
                 if current._laneToLeft and current._laneToLeft.isForward == forward:
@@ -1417,8 +1403,6 @@ class RoadMap:
                 elif l < 1e-6:
                     warn(f'road {road.id_} reference line has a geometry of '
                          f'length {l}; skipping it')
-                    # print('uh-oh 1')
-
                 else:
                     refLine.append(lastCurve)
                 lastS = s0
@@ -1426,7 +1410,6 @@ class RoadMap:
             if refLine and lastCurve.length < 1e-6:
                 warn(f'road {road.id_} reference line has a geometry of '
                      f'length {lastCurve.length}; skipping it')
-                # print('uh-oh 2')
             else:
                 # even if the last curve is shorter than the threshold, we'll keep it if
                 # it is the only curve; getting rid of the road entirely is handled by
@@ -1590,13 +1573,10 @@ class RoadMap:
                     if pred is None:
                         continue
                     # assert pred in lanesB
-                    # print('----')
-                    # print(roadA.id)
-                    # print(roadB.id)
-                    # print(laneA._predecessor)
-                    # print(lanesB)
+                    # ^ changed for Zalazone
                     if pred not in lanesB:
                         continue
+                    # ^ added for Zalazone
                     laneB = lanesB[pred]
                     laneA._predecessor = laneB
                     laneA.lane._predecessor = laneB.lane
@@ -1607,6 +1587,7 @@ class RoadMap:
                         continue
                     if succ not in lanesB:
                         continue
+                    # ^ added for Zalazone
                     assert succ in lanesB
                     laneB = lanesB[succ]
                     laneA._successor = laneB
@@ -1657,13 +1638,6 @@ class RoadMap:
                     assert incomingSection is None
                     incomingSection = incomingRoad.sections[-1]
                     remapping = None
-                # print("-------")
-                # print(incomingID)
-                # print(oldRoad)
-                # print(jid)
-                # print(incomingRoad.id)
-                # print(incomingRoad.sections)
-
                 assert incomingSection is not None
                 if remapping is None:
                     incomingLaneIDs = incomingSection.lanesByOpenDriveID
@@ -1733,14 +1707,13 @@ class RoadMap:
             # Gather maneuvers
             allManeuvers = []
             for lane, maneuvers in maneuversForLane.items():
-                # print(lane.maneuvers)
                 # assert lane.maneuvers == ()
+                # ^ changed for Zalazone
                 lane.maneuvers = tuple(maneuvers)
                 allManeuvers.extend(maneuvers)
 
             # Order connected roads and lanes by adjacency
             def cyclicOrder(elements, contactStart=None):
-                # print(jid)
                 points = []
                 for element in elements:
                     if contactStart is None:
@@ -1749,7 +1722,6 @@ class RoadMap:
                         contactStart = (old.predecessor == jid)
                     point = element.centerline[0 if contactStart else -1]
                     points.append(point)
-                # print(points)
                 centroid = sum(points, Vector(0, 0)) / len(points)
                 pairs = sorted(zip(elements, points), key=lambda pair: centroid.angleTo(pair[1]))
                 return tuple(elem for elem, pt in pairs)
