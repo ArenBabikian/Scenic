@@ -3,21 +3,27 @@ from copy import Error
 import statistics
 import os
 import json
+from pathlib import Path
 
-maps = ['tram05']
+maps = ['tram05', 'town02', 'zalafullcrop']
 configurations = ['2actors', '3actors', '4actors']
-num_scenes = range(1, 20) #range(20)
+num_scenes = range(0, 20) #range(20)
 approaches = ['sc1', 'sc2', 'sc3', 'nsga']
 
 history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
 tolerance = 1
+
+data_dir = 'measurements/data'
+src_dir = 'measurements/results'
+out_dir = f'{src_dir}/aggregate'
+Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
 data = {}
 for m in maps:
     data[m] = {}
     for config in configurations:
         data[m][config] = {}
-        gen_base_path = f'measurements/data/{m}/{config}/'
+        gen_base_path = f'{data_dir}/{m}/{config}/'
         gen_stats_path = gen_base_path+'_genstats.json'
         with open(gen_stats_path) as f:
             gen_stats_data = json.load(f)
@@ -52,7 +58,7 @@ for m in maps:
             found_at_least_one_measurement = False
 
             for i in num_scenes:
-                json_path = f'measurements/results/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
                 if os.path.exists(json_path):
                     found_at_least_one_measurement = True
                     with open(json_path) as f:
@@ -206,7 +212,7 @@ for m in maps:
 
             data[m][config][approach] = current_data
 
-out_path = 'measurements/results/aggregate.json'
+out_path = f'{out_dir}/results.json'
 with open(out_path, 'w') as outfile:
     json.dump(data, outfile, indent=4)
 
