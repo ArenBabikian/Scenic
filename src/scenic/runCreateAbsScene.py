@@ -3,8 +3,8 @@ import subprocess
 import sys
 import os
 
-maps = ['tram05']
-configurations = ['2actors', '3actors', '4actors', '5actors']
+maps = ['zalaFullCrop']
+configurations = ['2actors', '3actors', '4actors']
 num_scenes = 20
 verbosity = 0
 timeout = 60
@@ -21,7 +21,7 @@ for m in maps:
         command.extend(['-p', 'outputDir', f'{m}/{config}'])
         command.extend(['-p', 'saveImgs', 'True'])
         command.extend(['-p', 'saveFiles', 'True'])
-        command.extend(['-p', 'map', f'../maps/{m}.xodr'])
+        command.extend(['-p', 'map', f'maps/{m}.xodr'])
         command.append(f'measurements/config/{config}.scenic')
 
         p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=True)
