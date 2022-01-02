@@ -3,9 +3,12 @@ import subprocess
 import sys
 import os
 
-maps = ['tram05', 'town02']
+# maps = ['tram05', 'town02']
+# configurations = ['2actors', '3actors', '4actors']
+# num_scenes = 10
+maps = ['zalaFullCrop']
 configurations = ['2actors', '3actors', '4actors']
-num_scenes = 10
+num_scenes = 20
 verbosity = 0
 timeout = 60
 

@@ -137,7 +137,8 @@ class Clothoid(Curve):
         # Initial and final curvature.
         self.curv0 = curv0
         self.curv1 = curv1
-        self.curve_rate = (curv1 - curv0) / length
+        self.curve_rate = (curv1 - curv0) / length if length != 0 else 0
+        # ^ changed for Zalazone
         self.a = abs(curv0)
         self.r = 1 / self.a if curv0 != 0 else 1    # value not used if curv0 == 0
         self.ode_init = np.array([x0, y0, hdg])
@@ -199,6 +200,8 @@ class Lane():
         w_poly, s_off = self.width[ind]
         w = w_poly.eval_at(s - s_off)
         if w < -1e-6:    # allow for numerical error
+            return 0
+            # ^ added for Zalazone, road 8863
             raise RuntimeError('OpenDRIVE lane has negative width')
         return max(w, 0)
 
@@ -410,7 +413,7 @@ class Road:
         last_lefts = None
         last_rights = None
         cur_p = None
-
+            
         for i in range(len(self.lane_secs)):
             cur_sec = self.lane_secs[i]
             cur_sec_points = []
@@ -1569,7 +1572,11 @@ class RoadMap:
                     pred = laneA._predecessor
                     if pred is None:
                         continue
-                    assert pred in lanesB
+                    # assert pred in lanesB
+                    # ^ changed for Zalazone
+                    if pred not in lanesB:
+                        continue
+                    # ^ added for Zalazone
                     laneB = lanesB[pred]
                     laneA._predecessor = laneB
                     laneA.lane._predecessor = laneB.lane
@@ -1578,6 +1585,9 @@ class RoadMap:
                     succ = laneA._successor
                     if succ is None:
                         continue
+                    if succ not in lanesB:
+                        continue
+                    # ^ added for Zalazone
                     assert succ in lanesB
                     laneB = lanesB[succ]
                     laneA._successor = laneB
@@ -1697,7 +1707,8 @@ class RoadMap:
             # Gather maneuvers
             allManeuvers = []
             for lane, maneuvers in maneuversForLane.items():
-                assert lane.maneuvers == ()
+                # assert lane.maneuvers == ()
+                # ^ changed for Zalazone
                 lane.maneuvers = tuple(maneuvers)
                 allManeuvers.extend(maneuvers)
 

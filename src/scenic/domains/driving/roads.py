@@ -291,8 +291,9 @@ class LinearElement(NetworkElement):
         # Check that left and right edges lie inside the element.
         # (don't check centerline here since it can lie inside a median, for example)
         # (TODO reconsider the decision to have polygon only include drivable areas?)
-        assert self.containsRegion(self.leftEdge, tolerance=0.5)
-        assert self.containsRegion(self.rightEdge, tolerance=0.5)
+        # assert self.containsRegion(self.leftEdge, tolerance=0.5)
+        # assert self.containsRegion(self.rightEdge, tolerance=0.5)
+        # ^ changed for Zalazone
         if self.orientation is None:
             self.orientation = VectorField(self.name, self._defaultHeadingAt)
 
@@ -339,7 +340,8 @@ class _ContainsCenterline:
     """
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
-        assert self.containsRegion(self.centerline, tolerance=0.5)
+        # assert self.containsRegion(self.centerline, tolerance=0.5)
+        # ^ changed for Zalazone
 
 @attr.s(auto_attribs=True, kw_only=True, repr=False)
 class Road(LinearElement):

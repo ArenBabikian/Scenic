@@ -915,8 +915,9 @@ class Scenario:
 			bounds = [-15, -315, 200, -98]
 		if map_name == "tram05.xodr":
 			bounds = [-155, -101, 103, 80]
-		if map_name == "ZalaFull.xodr":
-			bounds = [-15, -315, 200, -98] # TODO
+		if map_name == "zalafullcrop.xodr":
+			bounds = [-59, 1337, 211, 1811] # full smart-city section
+			# bounds = [-59, 211, 1337, 1811] # smaller version
 
 		loBd, hiBd = [], []
 		for _ in range(len(objects)):
