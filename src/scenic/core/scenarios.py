@@ -83,12 +83,16 @@ class Scene:
 		if viewImages:
 			plt.show(block=block)
 
+	def getParamMap(self):
+		mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
+		return f'param map = localPath(\'{mapPath}\')\n'
+
+
 	def saveExactCoords(self, path=None):
 		filePath = f'{path}/exact.scenic'
 		ego = self.egoObject
 		with open(filePath, "w") as f:
-			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write(self.getParamMap())
 			f.write('model scenic.simulators.carla.model\n')
 			f.write('\n')
 			# Actor initializations
@@ -191,9 +195,7 @@ class Scene:
 	def generateNsgaConfig(self, constraints, path):
 		filePath = f'{path}/d-nsga.scenic'
 		with open(filePath, "w") as f:
-
-			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write(self.getParamMap())
 			f.write('param constraints = \" \\')
 
 			# Default constraints
@@ -407,8 +409,7 @@ class Scene:
 		ind_to_name = self.get_actor_names()
 		filePath = f'{path}/d-sc1.scenic'
 		with open(filePath, "w") as f:
-			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write(self.getParamMap())
 
 			### handle REMOVED constraints
 			if removedCstrs:
@@ -535,8 +536,7 @@ class Scene:
 		ind_to_name = self.get_actor_names()
 		filePath = f'{path}/d-sc3.scenic'
 		with open(filePath, "w") as f:
-			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write(self.getParamMap())
 
 			### handle REMOVED constraints
 			if removedCstrs:
@@ -652,8 +652,7 @@ class Scene:
 		ind_to_name = self.get_actor_names()
 		filePath = f'{path}/d-sc2.scenic'
 		with open(filePath, "w") as f:
-			mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-			f.write(f'param map = localPath(\'{mapPath}\')\n')
+			f.write(self.getParamMap())
 
 			### handle REMOVED constraints
 			if removedCstrs:
@@ -1088,7 +1087,8 @@ class Scenario:
 
 				#only keep the intersting historic results
 				# Must be in ascending order
-				timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+				timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
+				# timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
 				# timesToKeep = [5, 10, 20, 30, 45]
 				timeIndex = 0
 

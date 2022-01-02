@@ -9,8 +9,11 @@ configurations = ['2actors', '3actors', '4actors']
 num_scenes = range(1, 20) #range(20)
 approaches = ['sc1', 'sc2', 'sc3', 'nsga']
 
-history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+# history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+history_times = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
 tolerance = 1
+
+root = 'docker'
 
 data = {}
 for m in maps:
@@ -19,6 +22,9 @@ for m in maps:
         data[m][config] = {}
         gen_base_path = f'measurements/data/{m}/{config}/'
         gen_stats_path = gen_base_path+'_genstats.json'
+        if not os.path.isfile(gen_stats_path):
+            continue
+
         with open(gen_stats_path) as f:
             gen_stats_data = json.load(f)
         for approach in approaches:
@@ -52,7 +58,7 @@ for m in maps:
             found_at_least_one_measurement = False
 
             for i in num_scenes:
-                json_path = f'measurements/results/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                json_path = f'{root}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
                 if os.path.exists(json_path):
                     found_at_least_one_measurement = True
                     with open(json_path) as f:
@@ -206,7 +212,7 @@ for m in maps:
 
             data[m][config][approach] = current_data
 
-out_path = 'measurements/results/aggregate.json'
+out_path = f'{root}/aggregate.json'
 with open(out_path, 'w') as outfile:
     json.dump(data, outfile, indent=4)
 
