@@ -6,14 +6,21 @@ import json
 from pathlib import Path
 import seaborn as sns
 import pandas as pd
-
+import math
+from colorama import Fore, Back, Style
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-maps = ['tram05', 'town02', 'zalafullcrop']
+from scipy.stats import fisher_exact
+from scipy.stats import chisquare
+from scipy.stats import mannwhitneyu
+from scipy.stats import wilcoxon
+
+
+maps = ['tram05', 'town02']
 configurations = ['2actors', '3actors', '4actors']
-num_scenes = range(0, 20) #range(20)
+num_scenes = range(10) #range(10)
 approaches = ['nsga', 'sc1', 'sc2', 'sc3']
 
 history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
@@ -22,9 +29,10 @@ tolerance = 1
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 opacity = 0.5
 
-data_dir = 'measurements/data'
-src_dir = 'measurements/results'
-out_dir = f'{src_dir}/aggregate'
+base_dir = 'meas-off'
+data_dir = f'{base_dir}/data'
+src_dir = f'{base_dir}/results'
+out_dir = f'{base_dir}/aggregate'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
 ##########################
@@ -39,7 +47,9 @@ def figure1():
         fig1_data = {}
 
         for approach in approaches:
+            ns_data = []
             sr_data = []
+            ns_rm_data = []
             sr_rm_data = []
             num_at_data = []
             for config in configurations:
@@ -62,15 +72,21 @@ def figure1():
                                 if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
                                     num_rm_successes += 1
 
+                ns_data.append(num_successes)
                 succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
                 sr_data.append(succ_rate)
+                ns_rm_data.append(num_rm_successes)
                 succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
                 sr_rm_data.append(succ_rm_rate)
                 num_at_data.append(num_attempts)
 
-            fig1_data[approach] = {'sr':sr_data, 'at':num_at_data, 'srrm':sr_rm_data}
+            fig1_data[approach] = {'sr':sr_data, 'ns':ns_data, 'at':num_at_data, 'srrm':sr_rm_data, 'nsrm':ns_rm_data}
 
         data[m] = fig1_data
+
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
 
     #create figs
     for m in maps:
@@ -118,6 +134,36 @@ def figure1():
 
         print(f'Saved figure at {save_path}')
 
+        print(">>>Statistical Significance<<<")
+        thresh=0.05
+        print(f'Map: {m}')
+        for i_c in range(len(configurations)):
+            config = configurations[i_c]
+            print(f'  Config: {config}')
+            print('  Details:')
+            for approach in approaches:
+                at = data[m][approach]['at'][i_c]
+                ns = data[m][approach]['ns'][i_c]
+                nsrm = data[m][approach]['nsrm'][i_c]
+                print(f'    {approach}(at={at}, ns={ns}, ns-rm={nsrm})')
+
+            print('    Results:')
+            nsga_at = data[m]['nsga']['at'][i_c]
+            nsga_ns = data[m]['nsga']['ns'][i_c]
+            for approach in approaches[1:]:
+                at = data[m][approach]['at'][i_c]
+                ns = data[m][approach]['ns'][i_c]
+                nsrm = data[m][approach]['nsrm'][i_c]
+
+                _, pvalue = fisher_exact([[nsga_at, nsga_ns],[at, ns]])
+                # if pvalue > thresh:
+                #     Fore.RED
+                print(('~~~~' if pvalue>thresh else '    ') + f'nsga*{approach}: (pvalue={pvalue})')
+                
+                _, pvaluerm = fisher_exact([[nsga_at, nsga_ns],[at, nsrm]])
+                print(('~~~~' if pvaluerm>thresh else '    ') + f'nsga*{approach}-rm: (pvalue={pvaluerm})')
+        print(">>>End Statistical Significance<<<")
+
 
 ##########################
 # FIGURE 2: Success Rate Distribution
@@ -136,9 +182,6 @@ def figure2():
             agg_rm_data = []
             for m in maps:
                 m_data = []
-                num_attempts = 0
-                num_successes = 0
-                num_rm_successes = 0
 
                 for i in num_scenes:
                     json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
@@ -147,20 +190,22 @@ def figure2():
                             json_data = json.load(f)
                         
                         json_res = json_data['results']
-                        num_attempts += len(json_res)
+                        num_attempts = len(json_res)
 
+                        num_successes = 0
+                        num_rm_successes = 0
                         for r in json_res:
                             if r['success']:
                                 num_successes += 1
                                 if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
                                     num_rm_successes += 1
 
-                    succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
-                    m_data.append(succ_rate)
-                    agg_data.append(succ_rate)
+                        succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+                        m_data.append(succ_rate)
+                        agg_data.append(succ_rate)
 
-                    succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
-                    agg_rm_data.append(succ_rm_rate)
+                        succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+                        agg_rm_data.append(succ_rm_rate)
 
                 # approach_data[m] = m_data
 
@@ -175,64 +220,55 @@ def figure2():
 
         data[config] = fig2_data
 
+    
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
+
 
     #create figs
-    max_val = 105
-    n_groups = 21
+    max_val = 110
+    n_groups = 11
     index = np.arange(0, max_val, max_val/n_groups)
-    bar_width = 4
+    bar_width = 9
     for config in configurations:
 
         # PLOT - w/o RM
-        fig, ax = plt.subplots()
-        # ax.set_yscale('log')
-        cur_heights = [0 for _ in range(n_groups)]
-        for i in range(len(approaches)):
-            approach = approaches[i]
-            vals = np.array(data[config][approach]['aggregate'])
-            
-            hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
-            # plt.scatter(index, hist_vals, label=approach)
-            plt.bar(index, hist_vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, bottom=cur_heights, label=approach)
-            cur_heights += hist_vals
+        fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
+        
+        # PLOT - w/ RM
+        fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
 
-        plt.xlabel('Success rate')
-        plt.ylabel('# Scenes')
-        plt.title(config)
-        plt.xticks(index)
-        plt.legend()
+def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, add):
+    fig, ax = plt.subplots()
+    cur_heights = [0 for _ in range(n_groups)]
+    for i in range(len(approaches)):
+        approach = approaches[i]
+        vals = np.array(data[config][approach][f'aggregate{add}'])
+        
+        hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
+        # OPTION 1
+        # plt.bar(index, hist_vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, bottom=cur_heights, label=f'{approach}{add}')
+        # cur_heights += hist_vals
 
-        plt.tight_layout()
-        # plt.show()
-        save_path = f'{fig2_out_dir}/{config}.png'
-        plt.savefig(save_path)
+        # OPTION 2
+        sub_width = bar_width/4
+        pos = index+(i-1.5)*sub_width
+        plt.bar(pos, hist_vals, sub_width, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
 
-        print(f'Saved figure at {save_path}')
 
-        # PLOT - RM
-        fig, ax = plt.subplots()
-        cur_heights = [0 for _ in range(n_groups)]
-        for i in range(len(approaches)):
-            approach = approaches[i]
-            vals_rm = np.array(data[config][approach]['aggregate-rm'])
-            
-            hist_vals_rm,_=np.histogram(vals_rm,bins=np.linspace(0,max_val,n_groups+1))
-            # plt.scatter(index, hist_vals, label=approach)
-            plt.bar(index, hist_vals_rm, bar_width, color=colors[i], alpha=1, bottom=cur_heights, label=f'{approach}-rm')
-            cur_heights+=hist_vals_rm
+    plt.xlabel('Success rate')
+    plt.ylabel('# Scenes')
+    plt.title(f'{config}{add}')
+    plt.xticks(index)
+    plt.legend()
 
-        plt.xlabel('Success rate')
-        plt.ylabel('# Scenes')
-        plt.title(f'{config}-rm')
-        plt.xticks(index)
-        plt.legend()
+    plt.tight_layout()
+    # plt.show()
+    save_path = f'{fig2_out_dir}/{config}{add}.png'
+    plt.savefig(save_path)
 
-        plt.tight_layout()
-        # plt.show()
-        save_path = f'{fig2_out_dir}/{config}-rm.png'
-        plt.savefig(save_path)
-
-        print(f'Saved figure at {save_path}')
+    print(f'Saved figure at {save_path}')
 
 
 ##########################
@@ -254,11 +290,12 @@ def figure3():
             for config in configurations:
                 
                 gen_base_path = f'{data_dir}/{m}/{config}/'
+                gen_base_path_key = f'measurements/data/{m}/{config}/' # TEMP
                 gen_stats_path = gen_base_path+'_genstats.json'
                 with open(gen_stats_path) as f:
                     gen_stats_data = json.load(f)
                 
-                num_rm_cons = [] # gnna find the median # LATER 2
+                num_rm_cons = [] # gnna find the median # TODO LATER
                 perc_sat_rm = [] # will be shown in the stripplot
 
                 for i in num_scenes:
@@ -266,10 +303,9 @@ def figure3():
                     if os.path.exists(json_path):
 
                         # get number of removed constraints
-                        gen_stats_id = f'{gen_base_path}{i}-0'
+                        gen_stats_id = f'{gen_base_path_key}{i}-0'
                         rmed_cons = gen_stats_data[gen_stats_id][f'deleted-{approach}']
                         num_rm_cons.append(len(rmed_cons))
-                        print
 
                         # get rm sat percentage
                         with open(json_path) as f:
@@ -277,8 +313,6 @@ def figure3():
                         for r in json_data['results']:
                             if r['success']:
                                 perc_sat = r['CON_sat_%_rm']
-                                # if config == '2actors':
-                                #     print(perc_sat)
                                 if perc_sat != -1:
                                     perc_sat_rm.append(perc_sat * 100)
 
@@ -290,30 +324,25 @@ def figure3():
         data[m] = fig3_data
 
     #create figs
+    split = 0.25
     for m in maps:
         fig, ax = plt.subplots()
         df_data = pd.DataFrame(columns=['approach', 'config', 'perc'])
-        for i in range(len(approaches)):
-            approach = approaches[i]
+        for i_a in range(len(approaches)):
+            approach = approaches[i_a]
             if approach == 'nsga':
-                continue
-
-            # vals = data[m][approach]['percsat']
-            # medians = [statistics.mean(x) for x in vals]
-            # print(medians)
-            # print(pos)
-            # plt.bar(pos, medians, bar_width, alpha=opacity, label=approach)
-            
-            vals = data[m][approach]['percsat'] # TODO currently only for ac2
+                continue            
+            vals = data[m][approach]['percsat']
             for i_c in range(len(vals)):
                 c_vals = vals[i_c]
                 config = configurations[i_c]
                 for v in c_vals:
                     df_data = df_data.append({'approach': approach, 'config': config, 'perc': v}, ignore_index=True)
 
-            # attempts = data[m][approach]['at']
-            # for i, v in enumerate(attempts):
-            #     ax.text(pos[i], max(0, vals[i])+1, str(v), ha='center', fontweight='bold')
+            
+                vals_rm = data[m][approach]['numrm'][i_c]
+                median_rm = round(statistics.mean(vals_rm))
+                ax.text(i_c-2*split+i_a*split, -12.5, str(median_rm), ha='center', va='center', size='large', bbox=dict(ec='k', fc='w'))
 
         df_counts = df_data.groupby(['approach', 'config', 'perc']).size().astype(float).reset_index(name='counts')
         
@@ -322,6 +351,7 @@ def figure3():
 
         plt.xlabel('Configurations')
         plt.ylabel(f'% of rm-ed constraints that are satisfied')
+        ax.set_ylim(bottom=-20)
         plt.title(f'{m} - \nAmong successes, what % of rm-ed constraints are satisfied?')
         plt.legend()
 
@@ -374,10 +404,6 @@ def figure4():
     
     data['Aggregate'] = agg_data
 
-    # import pprint 
-    # pp = pprint.PrettyPrinter(indent=2)
-    # pp.pprint(data)
-
     #create figs
     max_val = 110
     n_groups = 11
@@ -413,8 +439,110 @@ def figure4():
         print(f'Saved figure at {save_path}')
 
 
+##########################
+# FIGURE 5: Runtime Analysis
+##########################
+def figure5():
+    fig5_out_dir = f'{out_dir}/fig5'
+    Path(f'{fig5_out_dir}/').mkdir(parents=True, exist_ok=True)
 
-# figure1()
-# figure2()
-# figure3()
+    data = {}
+    for m in maps:
+        fig5_data = {}
+        for approach in approaches:
+            rt_data = [] # 2D array
+            su_data = []
+            sr_data = [] #obs
+            sr_rm_data = [] #obs
+            num_at_data = [] #obs
+            for config in configurations:
+                rt_con_data = []
+                num_attempts = 0 #obs
+                num_successes = 0 #obs
+                num_rm_successes = 0 #obs
+
+                for i in num_scenes:
+                    json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                    if os.path.exists(json_path):
+                        with open(json_path) as f:
+                            json_data = json.load(f)
+                        
+                        json_res = json_data['results']
+                        num_attempts += len(json_res)
+
+                        for r in json_res:
+                            if r['success']:
+                                rt_con_data.append(r['time'])
+                                num_successes += 1
+                                if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
+                                    num_rm_successes += 1
+
+                rt_data.append(rt_con_data)
+                su_data.append(num_successes)
+                # OBS
+                succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+                sr_data.append(succ_rate)
+                succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+                sr_rm_data.append(succ_rm_rate)
+                num_at_data.append(num_attempts)
+
+            fig5_data[approach] = {'rt': rt_data, 'su':su_data, 'sr':sr_data, 'at':num_at_data, 'srrm':sr_rm_data}
+
+        data[m] = fig5_data
+
+    #create figs
+    for m in maps:
+
+        n_groups = len(configurations)
+        fig, ax = plt.subplots()
+        # ax.set_yscale('log')
+        index = np.arange(n_groups)
+        bar_width = 0.2
+
+        bps = []
+
+        for i in range(len(approaches)):
+            approach = approaches[i]
+            pos = index+i*bar_width
+
+            vals = data[m][approach]['rt']
+            # means = [statistics.mean(x) for x in vals]
+            # plt.bar(pos, means, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, label=approach)
+            bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
+                patch_artist=True,
+                boxprops=dict(facecolor=colors[i],color='k'),
+                capprops=dict(color='k'),
+                whiskerprops=dict(color=colors[i]),
+                flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+                medianprops=dict(color='k'),
+                labels=[approach, approach, approach]))
+
+            # # vals = data[m][approach]['rt']
+            # medians = [statistics.median(x) for x in vals]
+            # plt.scatter(pos, medians, color='k', alpha=1 if approach == 'nsga' else opacity, label=approach)
+
+            # # #print number of successes
+            # attempts = data[m][approach]['at']
+            # successes = data[m][approach]['su']
+            # for j, v in enumerate(successes):
+            #     ax.text(pos[j], means[j]+math.log(2), str(v), ha='center', fontweight='bold')
+
+        plt.xlabel('Configurations')
+        plt.ylabel('Runtime (s)')
+        plt.title(m)
+        plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
+        plt.legend([bp['boxes'][0] for bp in bps], approaches)
+
+        plt.tight_layout()
+        # plt.show()
+        save_path = f'{fig5_out_dir}/{m}.png'
+        plt.savefig(save_path)
+
+        print(f'Saved figure at {save_path}')
+
+
+figure1()
+figure2()
+figure3()
 figure4()
+figure5()
