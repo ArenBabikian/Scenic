@@ -13,3 +13,5 @@ a3 = Car in CircularRegion(ego, r).intersect(CircularRegion(a1, r)).intersect(Ci
     with color [219/256, 191/256, 105/256] # yellow
 a4 = Car in CircularRegion(ego, r).intersect(CircularRegion(a1, r)).intersect(CircularRegion(a2, r)).intersect(CircularRegion(a3, r)), \
     with color [68/256, 160/256, 135/256] # green
+a5 = Car in CircularRegion(ego, r).intersect(CircularRegion(a1, r)).intersect(CircularRegion(a2, r)).intersect(CircularRegion(a3, r)).intersect(CircularRegion(a4, r)), \
+    with color [197/256, 166/256, 134/256] # brown

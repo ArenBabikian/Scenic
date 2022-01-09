@@ -321,11 +321,44 @@ class Scene:
 		for c1 in deps:
 			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
 				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda x : x.src == c3.tgt, deps)):
+					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
 						for c5 in list(filter(lambda y : y.src == c4.tgt and y.tgt == c1.src, deps)):
 							cycles.append([c1, c2, c3, c4, c5])
 
 		if max < 6: return cycles
+		
+		for c1 in deps:
+			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
+				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
+					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
+						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
+							for c6 in list(filter(lambda y : y.src == c5.tgt and y.tgt == c1.src, deps)):
+								cycles.append([c1, c2, c3, c4, c5, c6])
+
+		if max < 7: return cycles
+		
+		for c1 in deps:
+			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
+				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
+					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
+						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
+							for c6 in list(filter(lambda u : u.src == c5.tgt, deps)):
+								for c7 in list(filter(lambda y : y.src == c6.tgt and y.tgt == c1.src, deps)):
+									cycles.append([c1, c2, c3, c4, c5, c6, c7])
+
+		if max < 8: return cycles
+
+		for c1 in deps:
+			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
+				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
+					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
+						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
+							for c6 in list(filter(lambda u : u.src == c5.tgt, deps)):
+								for c7 in list(filter(lambda t : t.src == c6.tgt, deps)):
+									for c8 in list(filter(lambda y : y.src == c7.tgt and y.tgt == c1.src, deps)):
+										cycles.append([c1, c2, c3, c4, c5, c6, c7, c8])
+
+		if max < 9: return cycles
 
 
 	def get_actor_names(self):
