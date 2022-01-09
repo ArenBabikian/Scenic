@@ -755,7 +755,7 @@ class Scenario:
 		self.params = dict(params)
 		self.nsga = params.get('nsga') == "True"
 		self.noValidation = self.nsga or params.get('no-validation') == "True"
-		self.timeout = None if not params.get('timeout') else int(self.params.get('timeout'))
+		self.timeout = None if not params.get('timeout') else float(self.params.get('timeout'))
 		self.externalParams = tuple(externalParams)
 		self.externalSampler = ExternalSampler.forParameters(self.externalParams, self.params)
 		self.monitors = tuple(monitors)
@@ -942,7 +942,8 @@ class Scenario:
 			print("--Running NSGA--")   
 		problem = MyProblem()
 		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
-		algorithm = NSGA2M(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
+		restart = float(self.params.get('restart-time'))
+		algorithm = NSGA2M(pop_size=20, n_offsprings=10, restart_time=restart, eliminate_duplicates=True)
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
 		# n_par = self.params.get('nsga-Iters')
@@ -1006,6 +1007,7 @@ class Scenario:
 
 		totalTime = -1
 		iterations = 0
+		restarts = None
 		failed = False
 		if self.nsga:
 			# If using NSGA, replace object positions in the sample
@@ -1085,6 +1087,9 @@ class Scenario:
 							found = True
 						except:
 							print('failed to sample - all')
+
+				# Restart stats
+				restarts = nsgaRes.history[-1].all_restarts
 
 				#only keep the intersting historic results
 				# Must be in ascending order
@@ -1212,6 +1217,7 @@ class Scenario:
 				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
 				stats['CON_rm_vals'] = allVals[allSamples[0]]
 			else:
+				stats['restarts'] = restarts
 				num_cons = len(parsed_cons)
 				stats['CON_num'] = num_cons
 				stats['CON_num_hard'] = num_hard_cons

@@ -10,6 +10,7 @@ class NSGA2M(NSGA2):
     def __init__(self,
                  pop_size=100,
                  n_offsprings=None,
+                 restart_time=-1.0,
                  **kwargs):
         """
 
@@ -30,6 +31,10 @@ class NSGA2M(NSGA2):
                          **kwargs)
         self.end_time = None
         self.exec_time = None
+        self.restart_time = restart_time
+        self.last_restart_time = time.time()
+        self.to_restart = False
+        self.all_restarts = []
 
 
     def _post_advance(self):
@@ -57,3 +62,28 @@ class NSGA2M(NSGA2):
             self.history.append(obj)
             self.end_time = time.time()
             self.exec_time = self.end_time-self.start_time
+
+
+    def _infill(self):
+        cur_t = time.time()
+        t_since_last_restart = cur_t-self.last_restart_time
+        self.to_restart = t_since_last_restart > self.restart_time
+        if self.restart_time != -1 and self.to_restart:
+            self.last_restart_time = time.time()
+            t = cur_t - self.start_time
+            self.all_restarts.append(t)
+            return None
+        else:
+            return super()._infill()
+
+
+    def _advance(self, infills=None, **kwargs):
+        if self.restart_time != -1 and self.to_restart:
+            self.to_restart = False
+            print("RESTARTED")
+            infills = self.initialization.do(self.problem, self.pop_size, algorithm=self)
+            self.evaluator.eval(self.problem, infills, algorithm=self)
+            self.pop = infills
+            self._initialize_advance(infills=infills, **kwargs)
+        else:
+            super()._advance(infills, **kwargs)
