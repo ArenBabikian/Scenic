@@ -1,0 +1,313 @@
+{
+    "measurements/data/zalaFullcrop/3actors/0-0": {
+        "num_cons": 14.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 8,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [0, 2];",
+            "CANSEE : [1, 2];",
+            "HASTOLEFT : [1, 0];",
+            "HASTORIGHT : [0, 1];",
+            "DISTCLOSE : [1, 0];",
+            "DISTMED : [2, 0];",
+            "DISTMED : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTORIGHT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASTORIGHT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASTORIGHT : [0, 1];",
+            "DISTMED : [2, 1];",
+            "DISTMED : [2, 0];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/1-0": {
+        "num_cons": 14.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 8,
+        "all": [
+            "CANSEE : [2, 1];",
+            "HASTOLEFT : [0, 2];",
+            "HASTOLEFT : [2, 0];",
+            "HASBEHIND : [1, 2];",
+            "HASINFRONT : [2, 1];",
+            "DISTMED : [2, 0];",
+            "DISTFAR : [1, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [0, 2];",
+            "HASINFRONT : [2, 1];"
+        ],
+        "deleted-sc2": [
+            "HASTOLEFT : [0, 2];",
+            "HASBEHIND : [1, 2];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [2, 1];",
+            "HASINFRONT : [2, 1];",
+            "DISTFAR : [2, 1];",
+            "HASTOLEFT : [2, 0];",
+            "DISTMED : [2, 0];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/2-0": {
+        "num_cons": 12.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 6,
+        "all": [
+            "HASTOLEFT : [0, 1];",
+            "HASTOLEFT : [2, 0];",
+            "HASBEHIND : [0, 2];",
+            "DISTMED : [1, 0];",
+            "DISTFAR : [2, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [2, 0];"
+        ],
+        "deleted-sc2": [
+            "HASTOLEFT : [2, 0];"
+        ],
+        "deleted-sc3": [
+            "HASBEHIND : [0, 2];",
+            "HASTOLEFT : [0, 1];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/3-0": {
+        "num_cons": 18.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 12,
+        "all": [
+            "CANSEE : [1, 0];",
+            "CANSEE : [1, 2];",
+            "CANSEE : [2, 0];",
+            "HASBEHIND : [0, 1];",
+            "HASBEHIND : [0, 2];",
+            "HASBEHIND : [2, 1];",
+            "HASINFRONT : [1, 0];",
+            "HASINFRONT : [1, 2];",
+            "HASINFRONT : [2, 0];",
+            "DISTCLOSE : [2, 1];",
+            "DISTMED : [2, 0];",
+            "DISTFAR : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASBEHIND : [2, 1];",
+            "HASINFRONT : [2, 0];",
+            "HASBEHIND : [0, 1];",
+            "HASINFRONT : [1, 2];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [2, 0];",
+            "HASINFRONT : [1, 0];",
+            "HASBEHIND : [2, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [1, 2];",
+            "HASINFRONT : [1, 2];",
+            "CANSEE : [1, 0];",
+            "HASINFRONT : [1, 0];",
+            "DISTFAR : [1, 0];",
+            "CANSEE : [2, 0];",
+            "HASINFRONT : [2, 0];",
+            "DISTMED : [2, 0];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/4-0": {
+        "num_cons": 14.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 8,
+        "all": [
+            "CANSEE : [1, 0];",
+            "HASTOLEFT : [0, 2];",
+            "HASTOLEFT : [1, 2];",
+            "HASTOLEFT : [2, 0];",
+            "HASTOLEFT : [2, 1];",
+            "DISTMED : [1, 0];",
+            "DISTMED : [2, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [0, 2];",
+            "HASTOLEFT : [2, 1];"
+        ],
+        "deleted-sc2": [
+            "HASTOLEFT : [0, 2];",
+            "HASTOLEFT : [2, 1];"
+        ],
+        "deleted-sc3": [
+            "HASTOLEFT : [2, 1];",
+            "DISTFAR : [2, 1];",
+            "HASTOLEFT : [2, 0];",
+            "DISTMED : [2, 0];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/5-0": {
+        "num_cons": 18.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 12,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [0, 2];",
+            "CANSEE : [2, 1];",
+            "HASBEHIND : [1, 0];",
+            "HASBEHIND : [1, 2];",
+            "HASBEHIND : [2, 0];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [0, 2];",
+            "HASINFRONT : [2, 1];",
+            "DISTMED : [2, 0];",
+            "DISTMED : [2, 1];",
+            "DISTFAR : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASBEHIND : [1, 0];",
+            "HASBEHIND : [2, 0];",
+            "HASINFRONT : [2, 1];",
+            "HASINFRONT : [0, 2];"
+        ],
+        "deleted-sc2": [
+            "HASBEHIND : [1, 2];",
+            "HASINFRONT : [0, 2];",
+            "HASBEHIND : [1, 0];"
+        ],
+        "deleted-sc3": [
+            "HASBEHIND : [1, 0];",
+            "DISTFAR : [1, 0];",
+            "HASBEHIND : [2, 0];",
+            "DISTMED : [2, 0];",
+            "HASBEHIND : [1, 2];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/6-0": {
+        "num_cons": 18.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 12,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [0, 2];",
+            "CANSEE : [2, 0];",
+            "HASTOLEFT : [1, 0];",
+            "HASTOLEFT : [1, 2];",
+            "HASTORIGHT : [0, 2];",
+            "HASTORIGHT : [2, 1];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [2, 0];",
+            "DISTMED : [2, 0];",
+            "DISTFAR : [1, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [1, 2];",
+            "HASTORIGHT : [0, 2];",
+            "HASTOLEFT : [1, 0];",
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [2, 0];",
+            "HASTORIGHT : [2, 1];",
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 2];",
+            "HASTORIGHT : [0, 2];",
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];",
+            "HASTOLEFT : [1, 2];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/7-0": {
+        "num_cons": 18.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 12,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [0, 2];",
+            "CANSEE : [1, 0];",
+            "CANSEE : [1, 2];",
+            "CANSEE : [2, 1];",
+            "HASBEHIND : [2, 0];",
+            "HASINFRONT : [0, 2];",
+            "HASINFRONT : [1, 0];",
+            "HASINFRONT : [2, 1];",
+            "DISTCLOSE : [2, 0];",
+            "DISTMED : [1, 0];",
+            "DISTMED : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 2];",
+            "HASINFRONT : [1, 0];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 2];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 2];",
+            "HASINFRONT : [0, 2];",
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 2];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/8-0": {
+        "num_cons": 16.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 10,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 0];",
+            "CANSEE : [1, 2];",
+            "CANSEE : [2, 0];",
+            "CANSEE : [2, 1];",
+            "HASTOLEFT : [2, 0];",
+            "HASTORIGHT : [0, 2];",
+            "DISTCLOSE : [2, 0];",
+            "DISTFAR : [1, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [2, 0];"
+        ],
+        "deleted-sc2": [
+            "HASTOLEFT : [2, 0];"
+        ],
+        "deleted-sc3": [
+            "HASTORIGHT : [0, 2];",
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 2];"
+        ]
+    },
+    "measurements/data/zalaFullcrop/3actors/9-0": {
+        "num_cons": 14.0,
+        "num_hard_cons": 6.0,
+        "num_soft_cons": 8,
+        "all": [
+            "CANSEE : [0, 2];",
+            "HASTOLEFT : [0, 1];",
+            "HASTOLEFT : [1, 0];",
+            "HASBEHIND : [2, 0];",
+            "HASINFRONT : [0, 2];",
+            "DISTCLOSE : [1, 0];",
+            "DISTMED : [2, 0];",
+            "DISTFAR : [2, 1];"
+        ],
+        "deleted-sc1": [
+            "HASTOLEFT : [0, 1];",
+            "HASBEHIND : [2, 0];"
+        ],
+        "deleted-sc2": [
+            "HASTOLEFT : [1, 0];",
+            "HASBEHIND : [2, 0];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 2];",
+            "HASINFRONT : [0, 2];",
+            "HASTOLEFT : [0, 1];"
+        ]
+    }
+}
