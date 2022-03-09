@@ -4,17 +4,17 @@ import sys
 import json
 
 maps = ['zalafullcrop']
-configurations = ['2actors']
+configurations = ['3actors']
 scene_ids = range(10) # TODO 10
 approach = 'nsga'
 iterations = range(1,2)
 
 global_timeout = 30
-verbosity = 0
-save = True
+verbosity = 3
+save = False
 
 resWS = 'measurements/results'
-restart_times = [90]
+restart_times = [5]
 
 for m in maps:
     for config in configurations:
