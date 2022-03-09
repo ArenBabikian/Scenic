@@ -1,6 +1,0 @@
-param map = localPath('/usr/src/app/maps/tram05.xodr')
-model scenic.simulators.carla.model
-
-ego = Car at (-84.15814333421535 @ 28.641686587227817), with color[0.734375, 0.72265625, 0.71484375]
-o1 = Car at (-77.05334254256186 @ 31.800380481216095), with color[0.7578125, 0.359375, 0.33203125]
-o2 = Car at (-60.90735356717066 @ 20.92325728238584), with color[0.29296875, 0.46484375, 0.61328125]
