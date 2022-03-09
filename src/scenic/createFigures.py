@@ -1,45 +1,61 @@
 
-from copy import Error
 import statistics
 import os
 import json
 from pathlib import Path
 import seaborn as sns
 import pandas as pd
-import math
-from colorama import Fore, Back, Style
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from scipy.stats import fisher_exact
-from scipy.stats import chisquare
-from scipy.stats import mannwhitneyu
-from scipy.stats import wilcoxon
+from scipy.stats import ranksums
+from pingouin import mwu
 
 
-maps = ['tram05', 'town02']
+maps = ['tram05', 'town02', 'zalaFullcrop']
 configurations = ['2actors', '3actors', '4actors']
+
 num_scenes = range(10) #range(10)
-approaches = ['nsga', 'sc1', 'sc2', 'sc3']
+approaches = ['sc1', 'sc3', 'sc2', 'nsga']
+names_app = ['SceDef', 'SceReg', 'SceHyb', 'MOO']
 
 history_times = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
 tolerance = 1
 
-colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-opacity = 0.5
+default = plt.rcParams['axes.prop_cycle'].by_key()['color']
+colors = ['#A50205', '#0876B5', '#CC6400', '#5813B7', default[4], default[5], default[6]]
+colors_light = ['#E8BFC0', '#C1DDEC', '#F2D8BF']
+opacity = 0.25
 
 base_dir = 'meas-off'
 data_dir = f'{base_dir}/data'
 src_dir = f'{base_dir}/results'
-out_dir = f'{base_dir}/aggregate'
+out_dir = f'{base_dir}/aggregate-temp'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
+
+
+def adjustSize(ax=plt, s=14):
+    # ax.tick_params(axis='both', labelsize=MED_SIZE)
+    
+    ax.rc('font', size=s)         
+    ax.rc('axes', titlesize=s)    
+    ax.rc('axes', labelsize=s)
+    ax.rc('xtick', labelsize=s)
+    ax.rc('ytick', labelsize=s)
+    ax.rc('legend', fontsize=s)
+    ax.rc('figure', titlesize=s)
+
 
 ##########################
 # FIGURE 1: Success Rate Comparison
 ##########################
-def figure1():
-    fig1_out_dir = f'{out_dir}/fig1'
+def figure1(stat_sig=True, noPartial=False):
+    if noPartial:
+        fig1_out_dir = f'{out_dir}/fig1-noPartial'
+    else:
+        fig1_out_dir = f'{out_dir}/fig1'
     Path(f'{fig1_out_dir}/').mkdir(parents=True, exist_ok=True)
 
     data = {}
@@ -89,6 +105,7 @@ def figure1():
     # pp.pprint(data)
 
     #create figs
+    adjustSize()
     for m in maps:
 
         n_groups = len(configurations)
@@ -98,10 +115,18 @@ def figure1():
 
         for i in range(len(approaches)):
             approach = approaches[i]
+            name = names_app[i]
             pos = index+i*bar_width
 
-            vals = data[m][approach]['sr']
-            plt.bar(pos, vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, label=approach)
+            if not noPartial or (noPartial and approach == 'nsga'):
+                vals = data[m][approach]['sr']
+                plt.bar(pos, vals, bar_width, 
+                    # color=colors[i], 
+                    color=colors[i] if approach == 'nsga' else colors_light[i],
+                    # alpha=1 if approach == 'nsga' else opacity, 
+                    label=name if approach == 'nsga' else f'{name}-sub', 
+                    edgecolor=colors[i], 
+                    hatch='//')
 
             # #print number of attempts
             # attempts = data[m][approach]['at']
@@ -109,60 +134,83 @@ def figure1():
             #     ax.text(pos[i], max(0, vals[i])+1, str(v), ha='center', fontweight='bold')
             
             # print success ratio
-            for j, v in enumerate(vals):
-                ax.text(pos[j], max(0, vals[j])+1, str(round(v)), ha='center', fontweight='bold')
+            # for j, v in enumerate(vals):
+            #     ax.text(pos[j], max(0, vals[j])+1, str(round(v)), ha='center', fontweight='bold')
 
             # PRINT w/ RM SAT
             if approach != 'nsga':
                 vals_rm = data[m][approach]['srrm']
-                plt.bar(pos, vals_rm, bar_width, color=colors[i], alpha=1, label=f'{approach}-rm')
+                plt.bar(pos, vals_rm, bar_width, color=colors[i], alpha=1, label=name)
                 
                 # print success ratio
-                for i, v in enumerate(vals_rm):
-                    ax.text(pos[i], max(0, vals_rm[i])+1, str(round(v)), ha='center', fontweight='bold')
+                # for i, v in enumerate(vals_rm):
+                #     ax.text(pos[i], max(0, vals_rm[i])+1, str(round(v)), ha='center', fontweight='bold')
 
-        plt.xlabel('Configurations')
-        plt.ylabel('Success rates')
-        plt.title(m)
+        plt.xlabel('Scene size')
+        plt.ylabel('Success rate (%)')
+        # plt.title(m)
         plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
-        plt.legend()
-
+        # plt.legend()
         plt.tight_layout()
         # plt.show()
-        save_path = f'{fig1_out_dir}/{m}.png'
+        save_path = f'{fig1_out_dir}/{m}.pdf'
         plt.savefig(save_path)
 
         print(f'Saved figure at {save_path}')
 
-        print(">>>Statistical Significance<<<")
-        thresh=0.05
-        print(f'Map: {m}')
-        for i_c in range(len(configurations)):
-            config = configurations[i_c]
-            print(f'  Config: {config}')
-            print('  Details:')
-            for approach in approaches:
-                at = data[m][approach]['at'][i_c]
-                ns = data[m][approach]['ns'][i_c]
-                nsrm = data[m][approach]['nsrm'][i_c]
-                print(f'    {approach}(at={at}, ns={ns}, ns-rm={nsrm})')
+        if m == 'zalaFullcrop':
+            # export Legend
+            # legend = plt.legend(loc=3, framealpha=1, frameon=False)
+            plt.axis('off')
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 + box.height * 0.2,
+                            box.width, box.height * 0.9])
 
-            print('    Results:')
-            nsga_at = data[m]['nsga']['at'][i_c]
-            nsga_ns = data[m]['nsga']['ns'][i_c]
-            for approach in approaches[1:]:
-                at = data[m][approach]['at'][i_c]
-                ns = data[m][approach]['ns'][i_c]
-                nsrm = data[m][approach]['nsrm'][i_c]
+            # Put a legend below current axis
+            legend = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), framealpha=1, frameon=False, ncol=7)
 
-                _, pvalue = fisher_exact([[nsga_at, nsga_ns],[at, ns]])
-                # if pvalue > thresh:
-                #     Fore.RED
-                print(('~~~~' if pvalue>thresh else '    ') + f'nsga*{approach}: (pvalue={pvalue})')
-                
-                _, pvaluerm = fisher_exact([[nsga_at, nsga_ns],[at, nsrm]])
-                print(('~~~~' if pvaluerm>thresh else '    ') + f'nsga*{approach}-rm: (pvalue={pvaluerm})')
-        print(">>>End Statistical Significance<<<")
+            # legend = plt.legend(ncol=7, framealpha=1, frameon=False)
+            fig  = legend.figure
+            fig.canvas.draw()
+            bbox  = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            legend_path = f'{fig1_out_dir}/legend.pdf'
+            fig.savefig(legend_path, dpi="figure", bbox_inches=bbox)
+            # fig.savefig(legend_path)
+            print(f'Saved figure at {legend_path}')
+
+
+        if stat_sig:
+            print(">>>Statistical Significance<<<")
+            thresh=0.05
+            print(f'Map: {m}')
+            for i_c in range(len(configurations)):
+                config = configurations[i_c]
+                print(f'  Config: {config}')
+                print('  Details:')
+                for approach in approaches:
+                    at = data[m][approach]['at'][i_c]
+                    ns = data[m][approach]['ns'][i_c]
+                    nsrm = data[m][approach]['nsrm'][i_c]
+                    print(f'    {approach}(at={at}, ns={ns}, ns-rm={nsrm})')
+
+                print('    Results:')
+                nsga_at = data[m]['nsga']['at'][i_c]
+                nsga_ns = data[m]['nsga']['ns'][i_c]
+                for approach in approaches[:-1]:
+                    at = data[m][approach]['at'][i_c]
+                    ns = data[m][approach]['ns'][i_c]
+                    nsrm = data[m][approach]['nsrm'][i_c]
+
+                    # _, pvalue = fisher_exact([[nsga_at, nsga_ns],[at, ns]])
+                    # # if pvalue > thresh:
+                    # #     Fore.RED
+                    # print(('~~~~' if pvalue>thresh else '    ') + f'nsga*{approach}: (pvalue={pvalue})')
+                    
+                    # print(f'nsga: {nsga_at}/{nsga_ns} | {approach}: {at}/{nsrm}')
+                    # print([[at-nsrm, nsrm],[nsga_at-nsga_ns, nsga_ns]])
+                    oddsratio, pvaluerm = fisher_exact([[nsga_ns, nsga_at-nsga_ns],[nsrm, at-nsrm]])
+                    print(('~~~~' if pvaluerm>thresh else '    ') + f'nsga*{approach}-rm: (pvalue={pvaluerm}) (oddsrat={oddsratio})')
+            print(">>>End Statistical Significance<<<")
 
 
 ##########################
@@ -221,21 +269,24 @@ def figure2():
         data[config] = fig2_data
 
     
-    # import pprint 
-    # pp = pprint.PrettyPrinter(indent=2)
-    # pp.pprint(data)
+    import pprint 
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(data)
 
 
     #create figs
-    max_val = 110
-    n_groups = 11
+    num_cols = 5
+
+    n_groups = num_cols+1
+    max_val = 100 + (100/num_cols)
+    bar_width = 100/num_cols-1
     index = np.arange(0, max_val, max_val/n_groups)
-    bar_width = 9
+    adjustSize()
+
     for config in configurations:
 
         # PLOT - w/o RM
-        fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
-        
+        # fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
         # PLOT - w/ RM
         fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
 
@@ -257,15 +308,22 @@ def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir,
         plt.bar(pos, hist_vals, sub_width, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
 
 
-    plt.xlabel('Success rate')
-    plt.ylabel('# Scenes')
-    plt.title(f'{config}{add}')
-    plt.xticks(index)
-    plt.legend()
+    plt.xlabel('Success rate (%)')
+    plt.ylabel('Number of  Scenes')
+    # plt.title(f'{config}{add}')
+    if n_groups != 6:
+        plt.xticks(index)
+    else:
+        plt.xticks(index, ['0,10', '20,30', '40,50', '60,70', '80,90', '100'])
+
+    # plt.legend()
 
     plt.tight_layout()
     # plt.show()
-    save_path = f'{fig2_out_dir}/{config}{add}.png'
+    if add:
+        save_path = f'{fig2_out_dir}/{config}.pdf'
+    else:
+        save_path = f'{fig2_out_dir}/obs-{config}.pdf'
     plt.savefig(save_path)
 
     print(f'Saved figure at {save_path}')
@@ -317,6 +375,14 @@ def figure3():
                                     perc_sat_rm.append(perc_sat * 100)
 
                 perc_sat_rm_data.append(perc_sat_rm)
+                if len(perc_sat_rm) == 0:
+                    mean = 'NA'
+                    median = 'NA'
+                else:
+                    mean = statistics.mean(perc_sat_rm)
+                    median = statistics.median(perc_sat_rm)
+                print(f'{m}|{approach}|{config} = [mean={mean}, median={median}]')
+
                 num_rm_data.append(num_rm_cons)
 
             fig3_data[approach] = {'numrm':num_rm_data, 'percsat':perc_sat_rm_data}
@@ -357,7 +423,7 @@ def figure3():
 
         plt.tight_layout()
         # plt.show()
-        save_path = f'{fig3_out_dir}/{m}.png'
+        save_path = f'{fig3_out_dir}/{m}.pdf'
         plt.savefig(save_path)
 
         print(f'Saved figure at {save_path}')
@@ -433,7 +499,7 @@ def figure4():
 
         plt.tight_layout()
         # plt.show()
-        save_path = f'{fig4_out_dir}/{m}.png'
+        save_path = f'{fig4_out_dir}/{m}.pdf'
         plt.savefig(save_path)
 
         print(f'Saved figure at {save_path}')
@@ -442,7 +508,7 @@ def figure4():
 ##########################
 # FIGURE 5: Runtime Analysis
 ##########################
-def figure5():
+def figure5(stat_sig=False):
     fig5_out_dir = f'{out_dir}/fig5'
     Path(f'{fig5_out_dir}/').mkdir(parents=True, exist_ok=True)
 
@@ -472,10 +538,13 @@ def figure5():
 
                         for r in json_res:
                             if r['success']:
-                                rt_con_data.append(r['time'])
+                                # rt_con_data.append(r['time']) # TEMP RMed
                                 num_successes += 1
-                                if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
+                                if approach == 'nsga':
+                                    rt_con_data.append(r['time'])
+                                elif  r['CON_sat_%_rm'] == 1:
                                     num_rm_successes += 1
+                                    rt_con_data.append(r['time'])
 
                 rt_data.append(rt_con_data)
                 su_data.append(num_successes)
@@ -490,7 +559,12 @@ def figure5():
 
         data[m] = fig5_data
 
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
+
     #create figs
+    adjustSize()
     for m in maps:
 
         n_groups = len(configurations)
@@ -506,6 +580,11 @@ def figure5():
             pos = index+i*bar_width
 
             vals = data[m][approach]['rt']
+            if len(vals[2]) == 0:
+                median = 'NA'
+            else:
+                median = statistics.median(vals[2])
+            # print(f'{m}|{approach} = [median={median}]')
             # means = [statistics.mean(x) for x in vals]
             # plt.bar(pos, means, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, label=approach)
             bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
@@ -527,22 +606,205 @@ def figure5():
             # for j, v in enumerate(successes):
             #     ax.text(pos[j], means[j]+math.log(2), str(v), ha='center', fontweight='bold')
 
-        plt.xlabel('Configurations')
+        plt.xlabel('Scene size')
         plt.ylabel('Runtime (s)')
-        plt.title(m)
+        # plt.title(m)
         plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
-        plt.legend([bp['boxes'][0] for bp in bps], approaches)
+        # plt.legend([bp['boxes'][0] for bp in bps], approaches)
 
         plt.tight_layout()
         # plt.show()
-        save_path = f'{fig5_out_dir}/{m}.png'
+        save_path = f'{fig5_out_dir}/{m}.pdf'
         plt.savefig(save_path)
 
         print(f'Saved figure at {save_path}')
 
+        if stat_sig:
+            alt = "greater"
+            # alt = 'two-sided'
+            incl_nf = True
+            incl_np = False
+            incl_paf = False
+            print(">>>Statistical Significance<<<")
+            print('nf=no failure times, np=no partial failure times, paf=partial as failure ')
+            print(alt)
+            thresh=0.05
+            print(f'Map: {m}')
+            for i_c in range(len(configurations)):
+                config = configurations[i_c]
+                if config == "4actors" or  config == "2actors"  :
+                    continue
+                print(f'  Config: {config}')
+                # print('  Details:')
+                # for approach in approaches:
+                #     at = data[m][approach]['at'][i_c]
+                #     ns = data[m][approach]['ns'][i_c]
+                #     nsrm = data[m][approach]['nsrm'][i_c]
+                #     print(f'    {approach}(at={at}, ns={ns}, ns-rm={nsrm})')
 
-figure1()
+                print('  Results:')
+                num_att = data[m]['nsga']['at'][i_c]
+                num_suc = data[m]['nsga']['su'][i_c]
+                nsga_times = data[m]['nsga']['rt'][i_c]
+
+                nsga_times_w_fail = nsga_times + [600 for _ in range((num_att-num_suc))]
+                assert len(nsga_times) == num_suc
+                assert len(nsga_times_w_fail) == num_att
+
+                for approach in approaches[:-1]:
+
+                    app_att = data[m][approach]['at'][i_c]
+                    assert app_att == 100
+                    app_suc = data[m][approach]['su'][i_c]
+                    app_suc_w_rm = int(data[m][approach]['srrm'][i_c])
+                    assert app_suc_w_rm <= app_suc
+
+                    # NO FAILURE
+                    if incl_nf:
+                        app_times = data[m][approach]['rt'][i_c]
+                        a12 = get_a12(nsga_times, app_times)
+                        if len(app_times) == 0:
+                            print(f'    nf  = (EMPTY)')
+                        else:
+                            # if config=='3actors' and approach=='sc1':
+                            print(len(nsga_times))
+                            print(statistics.median(app_times))
+                            df = mwu(nsga_times, app_times, alternative=alt)
+                            p=df["p-val"]["MWU"]
+                            # print(df)
+                            print(('~~~~' if p>thresh else '    ') + f'nf  = nsga*{approach}: (pvalue={p}) (u1={df["U-val"]["MWU"]}) (eff={df["CLES"]["MWU"]})')
+
+
+                            # factors = [15,16,17,18,19,20,21,22,23,24,25] # 2actors
+                            factors = [291, 292, 293, 294, 295]
+                            factors= [321, 322, 323, 324, 325]
+                            # factors = [2,3,4,5,6] # 3actors
+                            for factor in factors:
+                                dffac = mwu(nsga_times, [factor*i for i in app_times], alternative=alt)
+                                pfac=dffac["p-val"]["MWU"]
+                                print(('~~~~' if pfac>thresh else '    ') + f'      fact={factor}: (pvalue={pfac}) (u1={dffac["U-val"]["MWU"]}) (eff={dffac["CLES"]["MWU"]})')
+
+                    # ONLY COMPLETE FAILURES AS TIMEOUT
+                    if incl_np:
+                        app_times_w_fail = app_times + [600 for _ in range((app_att-app_suc))]
+                        a12 = get_a12(nsga_times_w_fail, app_times_w_fail)
+                        df = mwu(nsga_times_w_fail, app_times_w_fail, alternative=alt)
+                        p=df["p-val"]["MWU"]
+                        print(('~~~~' if p>thresh else '    ') + f'np  = nsga*{approach}: (pvalue={p}) (u1={df["U-val"]["MWU"]}) (eff={df["CLES"]["MWU"]})')
+
+                    # EVEN PARTIAL FAILURES AS TIMEOUT
+                    if incl_paf:
+                        if approach != 'nsga':
+                            app_times_part_as_fail = app_times + [600 for _ in range((app_att-app_suc_w_rm))]
+                        else:
+                            app_times_part_as_fail = app_times_w_fail
+                        assert len(app_times_part_as_fail) == 100
+                        a12 = get_a12(nsga_times_w_fail, app_times_part_as_fail)
+                        df = mwu(nsga_times_w_fail, app_times_part_as_fail, alternative=alt)
+                        p=df["p-val"]["MWU"]
+                        print(('~~~~' if p>thresh else '    ') + f'paf  = nsga*{approach}: (pvalue={p}) (u1={df["U-val"]["MWU"]}) (eff={df["CLES"]["MWU"]})')
+
+            print(">>>End Statistical Significance<<<")
+
+def get_a12(a, b):
+    rs_m = len(a)
+    rs_n = len(b)
+    out = ranksums(a, b)
+    # print(out)
+    ranksum=out[0]
+    return (ranksum/rs_m - ((rs_m+1)/2))/rs_n
+
+
+##########################
+# FIGURE 6: Scalability
+##########################
+def figure6():
+    fig6_out_dir = f'{out_dir}/fig6'
+    Path(f'{fig6_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    m = 'zalaFullcrop'
+    approach = 'nsga'
+    configurations = ['4actors', '5actors', '6actors', '7actors']
+
+    data = {'rt':[], 'sr':[]}
+    for config in configurations:
+        rt_con_data = []
+        num_attempts = 0 #obs
+        num_successes = 0 #obs
+
+        for i in num_scenes:
+            json_path = f'{src_dir}/{m}/scale/{config}/{i}-0/d-{approach}/_measurementstats.json'
+            if os.path.exists(json_path):
+                with open(json_path) as f:
+                    json_data = json.load(f)
+                
+                json_res = json_data['results']
+                num_attempts += len(json_res)
+
+                for r in json_res:
+                    if r['success']:
+                        # rt_con_data.append(r['time']) # TEMP RMed
+                        num_successes += 1
+                        rt_con_data.append(r['time'])
+
+        succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+
+        data['rt'].append(rt_con_data)
+        data['sr'].append(succ_rate)
+
+
+    #create figs
+    ratio = 0.5
+    def fix_ratio(axS, axT):
+        x_left, x_right = axS.get_xlim()
+        y_low, y_high = axS.get_ylim()
+        axT.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+
+    adjustSize(s=12)
+    n_groups = len(configurations)
+    # _, ax1 = plt.subplot(adjustable='box')
+    # ax1 = fig.add_subplot(111, adjustable='box')
+    from mpl_toolkits.axes_grid1 import host_subplot
+    ax1 = host_subplot(111, adjustable='box')
+    index = np.arange(n_groups)
+    bar_width = 0.4
+    labels=['Success Rate (%)', 'Median Runtime (s)']
+
+    
+    
+
+    color = '#2F9E00'
+    ax1.set_ylabel(labels[0], color=color)
+    # ax1.set_ylim(bottom=0)
+    bar1 = ax1.bar(index, data['sr'], bar_width, 
+        label=labels[0], color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    ax2 = plt.twinx()
+    # ax2.set_ylim(bottom=0)
+    color = '#0020A2'
+    ax2.set_ylabel(labels[1], color=color)
+    bar2 = ax2.bar(index+bar_width, [-1 if len(rt)==0 else statistics.median(rt) for rt in data['rt']], bar_width,
+    label=labels[1], color=color)
+    ax2.tick_params(axis='y', labelcolor=color) 
+    fix_ratio(ax1, ax1)
+    fix_ratio(ax2, ax2)
+    
+    plt.xlabel('Scene size')
+    plt.xticks(index + 0.5*bar_width, tuple(configurations))
+    plt.legend([bar1, bar2], labels, loc=9)
+
+    # plt.tight_layout()
+    # plt.show()
+    save_path = f'{fig6_out_dir}/{m}.pdf'
+    plt.savefig(save_path, bbox_inches='tight')
+
+    print(f'Saved figure at {save_path}')
+
+
+figure1(True, True)
 figure2()
-figure3()
-figure4()
-figure5()
+# figure3() # just for stats (printed)
+# figure4() # irrelevant
+figure5(True)
+figure6()
