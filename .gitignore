@@ -134,4 +134,5 @@ dmypy.json
 
 # file and image output dir
 out-*/
-measurements/results
+.archive
+meas-off
