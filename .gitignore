@@ -136,3 +136,4 @@ dmypy.json
 out-*/
 .archive
 meas-off
+docker/
