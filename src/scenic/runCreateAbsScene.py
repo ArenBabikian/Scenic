@@ -3,14 +3,11 @@ import subprocess
 import sys
 import os
 
-# maps = ['tram05', 'town02']
-# configurations = ['2actors', '3actors', '4actors']
-# num_scenes = 10
-maps = ['zalaFullCrop']
-configurations = ['2actors', '3actors', '4actors']
-num_scenes = 20
+maps = ['zalaFullcrop']
+configurations = ['7actors']
+num_scenes = 15
 verbosity = 0
-timeout = 60
+timeout = 600
 
 for config in configurations:
     for m in maps:

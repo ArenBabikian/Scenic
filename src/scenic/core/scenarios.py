@@ -948,7 +948,7 @@ class Scenario:
 			bounds = [-15, -315, 200, -98]
 		if map_name == "tram05.xodr":
 			bounds = [-155, -101, 103, 80]
-		if map_name == "zalafullcrop.xodr":
+		if map_name == "zalaFullcrop.xodr":
 			bounds = [-59, 1337, 211, 1811] # full smart-city section
 			# bounds = [-59, 211, 1337, 1811] # smaller version
 

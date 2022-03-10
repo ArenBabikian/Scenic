@@ -3,29 +3,33 @@ import subprocess
 import sys
 import json
 
-maps = ['zalafullcrop']
-configurations = ['2actors']
+maps = ['zalaFullcrop']
+# configurations = ['4actors', '5actors', '6actors', '7actors']
+configurations = ['5actors']
 scene_ids = range(10) # TODO 10
 approach = 'nsga'
-iterations = range(1,2)
+iterations = range(1)
 
-global_timeout = 30
+global_timeout = 10800
 verbosity = 0
 save = True
 
 resWS = 'measurements/results'
-restart_times = [90]
+# all_restart_times = [[399.81], [1007.279], [2011.635], [3539.987]]
+all_restart_times = [[-1]]
 
 for m in maps:
-    for config in configurations:
+    for i_config in range(len(configurations)):
+        config = configurations[i_config]
         for iter in iterations:
+            restart_times = all_restart_times[i_config]
             for restart_time in restart_times:
-                global_summary = {'map':m, 'config':config, 'results':[]}
+                global_summary = {'map':m, 'config':config, 'restart-time':restart_time, 'results':[]}
                 cur_timeout = global_timeout
                 prev_total_time = 0
                 for i in scene_ids:
                     pathToSrc = f'{m}/{config}/{i}-0/d-{approach}'
-                    pathToTgtDir = f'{m}/consecutive/{config}/iter{iter}/restart{restart_time}'
+                    pathToTgtDir = f'{m}/consecutive/{config}/iter{iter}/restart{int(restart_time)}'
                     pathToTgt = f'{pathToTgtDir}/{i}'
                     command = ['scenic', '-b']
                     command.extend(['--count', '1'])
@@ -44,9 +48,9 @@ for m in maps:
                     command.append(f'measurements/data/{pathToSrc}.scenic')
                     print(pathToTgt)
 
-                    p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=True)
+                    # p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=True)
                     # Keep below for server
-                    # p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout)
+                    p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout)
                     p.wait()
 
                     # Get timeout info

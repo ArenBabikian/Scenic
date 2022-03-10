@@ -20,6 +20,8 @@ RUN poetry install
 
 # Generate the instances
 # sudo docker run -m 16g --name scenic-off -v /home/cloud/Scenic/docker:/usr/src/app/measurements/results scenic bash runAllMeasurements.sh 
+#      docker run -m 16g -it --rm --name scenic-off -v /home/cloud/Scenic/docker:/usr/src/app/measurements/results scenic bash
+# poetry run python src/scenic/runmeasurements.py
 
 # docker run --name oveslantoun -it abc1 bash
 # # for cmd line
