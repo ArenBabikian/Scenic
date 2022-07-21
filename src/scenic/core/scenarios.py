@@ -946,12 +946,15 @@ class Scenario:
 		bounds = []
 		if map_name == "town02.xodr":
 			bounds = [-15, -315, 200, -98]
-		if map_name == "tram05.xodr":
+		elif map_name == "tram05.xodr":
 			bounds = [-155, -101, 103, 80]
-		if map_name == "zalaFullcrop.xodr":
+		elif map_name == "tram05-mod.xodr":
+			bounds = [-140, -160, 215, 70]
+		elif map_name == "zalaFullcrop.xodr":
 			bounds = [-59, 1337, 211, 1811] # full smart-city section
 			# bounds = [-59, 211, 1337, 1811] # smaller version
-
+		else:
+			raise Exception(f'Map <{map_name}> is unknown to NSGA')
 		loBd, hiBd = [], []
 		for _ in range(len(objects)):
 			# TODO currently hard-coded wrt. the map
