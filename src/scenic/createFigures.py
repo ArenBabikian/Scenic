@@ -49,13 +49,13 @@ def adjustSize(ax=plt, s=14):
 
 
 ##########################
-# FIGURE 1: Success Rate Comparison
+# FIGURE RQ1.1: Success Rate Comparison
 ##########################
-def figure1(stat_sig=True, noPartial=False):
+def figRQ11(stat_sig=True, noPartial=False):
     if noPartial:
-        fig1_out_dir = f'{out_dir}/fig1-noPartial'
+        fig1_out_dir = f'{out_dir}/RQ1.1'
     else:
-        fig1_out_dir = f'{out_dir}/fig1'
+        fig1_out_dir = f'{out_dir}/extra-1'
     Path(f'{fig1_out_dir}/').mkdir(parents=True, exist_ok=True)
 
     data = {}
@@ -214,302 +214,10 @@ def figure1(stat_sig=True, noPartial=False):
 
 
 ##########################
-# FIGURE 2: Success Rate Distribution
+# FIGURE RQ1.2: Runtime Analysis
 ##########################
-def figure2():
-
-    fig2_out_dir = f'{out_dir}/fig2'
-    Path(f'{fig2_out_dir}/').mkdir(parents=True, exist_ok=True)
-
-    data = {}
-    for config in configurations:
-        fig2_data = {}
-        for approach in approaches:
-            approach_data = {}
-            agg_data = []
-            agg_rm_data = []
-            for m in maps:
-                m_data = []
-
-                for i in num_scenes:
-                    json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
-                    if os.path.exists(json_path):
-                        with open(json_path) as f:
-                            json_data = json.load(f)
-                        
-                        json_res = json_data['results']
-                        num_attempts = len(json_res)
-
-                        num_successes = 0
-                        num_rm_successes = 0
-                        for r in json_res:
-                            if r['success']:
-                                num_successes += 1
-                                if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
-                                    num_rm_successes += 1
-
-                        succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
-                        m_data.append(succ_rate)
-                        agg_data.append(succ_rate)
-
-                        succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
-                        agg_rm_data.append(succ_rm_rate)
-
-                # approach_data[m] = m_data
-
-            approach_data['aggregate'] = agg_data
-            if approach != 'nsga':
-                approach_data['aggregate-rm'] = agg_rm_data
-            else:
-                approach_data['aggregate-rm'] = agg_data
-
-
-            fig2_data[approach] = approach_data
-
-        data[config] = fig2_data
-
-    
-    import pprint 
-    pp = pprint.PrettyPrinter(indent=2)
-    pp.pprint(data)
-
-
-    #create figs
-    num_cols = 5
-
-    n_groups = num_cols+1
-    max_val = 100 + (100/num_cols)
-    bar_width = 100/num_cols-1
-    index = np.arange(0, max_val, max_val/n_groups)
-    adjustSize()
-
-    for config in configurations:
-
-        # PLOT - w/o RM
-        # fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
-        # PLOT - w/ RM
-        fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
-
-def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, add):
-    fig, ax = plt.subplots()
-    cur_heights = [0 for _ in range(n_groups)]
-    for i in range(len(approaches)):
-        approach = approaches[i]
-        vals = np.array(data[config][approach][f'aggregate{add}'])
-        
-        hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
-        # OPTION 1
-        # plt.bar(index, hist_vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, bottom=cur_heights, label=f'{approach}{add}')
-        # cur_heights += hist_vals
-
-        # OPTION 2
-        sub_width = bar_width/4
-        pos = index+(i-1.5)*sub_width
-        plt.bar(pos, hist_vals, sub_width, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
-
-
-    plt.xlabel('Success rate (%)')
-    plt.ylabel('Number of  Scenes')
-    # plt.title(f'{config}{add}')
-    if n_groups != 6:
-        plt.xticks(index)
-    else:
-        plt.xticks(index, ['0,10', '20,30', '40,50', '60,70', '80,90', '100'])
-
-    # plt.legend()
-
-    plt.tight_layout()
-    # plt.show()
-    if add:
-        save_path = f'{fig2_out_dir}/{config}.pdf'
-    else:
-        save_path = f'{fig2_out_dir}/obs-{config}.pdf'
-    plt.savefig(save_path)
-
-    print(f'Saved figure at {save_path}')
-
-
-##########################
-# FIGURE 3: Are rm-ed constraints being satisfied
-##########################
-def figure3():
-    fig3_out_dir = f'{out_dir}/fig3'
-    Path(f'{fig3_out_dir}/').mkdir(parents=True, exist_ok=True)
-
-    data = {}
-    for m in maps:
-        fig3_data = {}
-
-        for approach in approaches:
-            if approach == 'nsga':
-                continue
-            perc_sat_rm_data = [] # 2D array
-            num_rm_data = []
-            for config in configurations:
-                
-                gen_base_path = f'{data_dir}/{m}/{config}/'
-                gen_base_path_key = f'measurements/data/{m}/{config}/' # TEMP
-                gen_stats_path = gen_base_path+'_genstats.json'
-                with open(gen_stats_path) as f:
-                    gen_stats_data = json.load(f)
-                
-                num_rm_cons = [] # gnna find the median # TODO LATER
-                perc_sat_rm = [] # will be shown in the stripplot
-
-                for i in num_scenes:
-                    json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
-                    if os.path.exists(json_path):
-
-                        # get number of removed constraints
-                        gen_stats_id = f'{gen_base_path_key}{i}-0'
-                        rmed_cons = gen_stats_data[gen_stats_id][f'deleted-{approach}']
-                        num_rm_cons.append(len(rmed_cons))
-
-                        # get rm sat percentage
-                        with open(json_path) as f:
-                            json_data = json.load(f)
-                        for r in json_data['results']:
-                            if r['success']:
-                                perc_sat = r['CON_sat_%_rm']
-                                if perc_sat != -1:
-                                    perc_sat_rm.append(perc_sat * 100)
-
-                perc_sat_rm_data.append(perc_sat_rm)
-                if len(perc_sat_rm) == 0:
-                    mean = 'NA'
-                    median = 'NA'
-                else:
-                    mean = statistics.mean(perc_sat_rm)
-                    median = statistics.median(perc_sat_rm)
-                print(f'{m}|{approach}|{config} = [mean={mean}, median={median}]')
-
-                num_rm_data.append(num_rm_cons)
-
-            fig3_data[approach] = {'numrm':num_rm_data, 'percsat':perc_sat_rm_data}
-
-        data[m] = fig3_data
-
-    #create figs
-    split = 0.25
-    for m in maps:
-        fig, ax = plt.subplots()
-        df_data = pd.DataFrame(columns=['approach', 'config', 'perc'])
-        for i_a in range(len(approaches)):
-            approach = approaches[i_a]
-            if approach == 'nsga':
-                continue            
-            vals = data[m][approach]['percsat']
-            for i_c in range(len(vals)):
-                c_vals = vals[i_c]
-                config = configurations[i_c]
-                for v in c_vals:
-                    df_data = df_data.append({'approach': approach, 'config': config, 'perc': v}, ignore_index=True)
-
-            
-                vals_rm = data[m][approach]['numrm'][i_c]
-                median_rm = round(statistics.mean(vals_rm))
-                ax.text(i_c-2*split+i_a*split, -12.5, str(median_rm), ha='center', va='center', size='large', bbox=dict(ec='k', fc='w'))
-
-        df_counts = df_data.groupby(['approach', 'config', 'perc']).size().astype(float).reset_index(name='counts')
-        
-        sns.set_palette(sns.color_palette(colors[1:]))
-        sns.stripplot(x=df_counts.config, y=df_counts.perc, hue=df_counts.approach, sizes=df_counts.counts*10, dodge=True, jitter=0)
-
-        plt.xlabel('Configurations')
-        plt.ylabel(f'% of rm-ed constraints that are satisfied')
-        ax.set_ylim(bottom=-20)
-        plt.title(f'{m} - \nAmong successes, what % of rm-ed constraints are satisfied?')
-        plt.legend()
-
-        plt.tight_layout()
-        # plt.show()
-        save_path = f'{fig3_out_dir}/{m}.pdf'
-        plt.savefig(save_path)
-
-        print(f'Saved figure at {save_path}')
-
-
-##########################
-# FIGURE 4: Graceful degradation of NSGA
-##########################
-def figure4():
-
-    fig4_out_dir = f'{out_dir}/fig4'
-    Path(f'{fig4_out_dir}/').mkdir(parents=True, exist_ok=True)
-
-    approach = 'nsga'
-    data = {}
-    agg_data = {}
-    for config in configurations:
-        agg_data[config] = []
-
-    for m in maps:
-        map_data = {}
-        for config in configurations:
-            app_data = []
-            for i in num_scenes:
-                json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
-                if os.path.exists(json_path):
-                    with open(json_path) as f:
-                        json_data = json.load(f)
-                    
-                    json_res = json_data['results']
-                    for r in json_res:
-                        if not r['success']:
-                            # find % of sat 
-
-                            sol = r['solutions']['sol_best_global']
-                            perc_sat = (1-sol['CON_sat_%']) * 100
-
-                            app_data.append(perc_sat)
-                            agg_data[config].append(perc_sat)
-
-            map_data[config] = app_data
-
-        data[m] = map_data
-    
-    data['Aggregate'] = agg_data
-
-    #create figs
-    max_val = 110
-    n_groups = 11
-    index = np.arange(0, max_val, max_val/n_groups)
-    bar_width = 10
-    maps_and_agg = maps.copy()
-    maps_and_agg.append('Aggregate')
-    for m in maps_and_agg:
-
-        fig, ax = plt.subplots()
-        cur_heights = [0 for _ in range(n_groups)]
-        for i in range(len(configurations)):
-            config = configurations[i]
-            vals = np.array(data[m][config])
-            
-            hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
-            # plt.scatter(index, hist_vals, label=approach)
-            plt.bar(index+0.5*bar_width, hist_vals, bar_width, color=colors[i+4], edgecolor='k', bottom=cur_heights, label=config)
-            
-            cur_heights += hist_vals
-
-        plt.xlabel('% of unsatisfied constraints')
-        plt.ylabel('# Scenes')
-        plt.title(f'{m}\nFor failed NSGA runs, what % of cons are not satisfied')
-        plt.xticks(index)
-        plt.legend()
-
-        plt.tight_layout()
-        # plt.show()
-        save_path = f'{fig4_out_dir}/{m}.pdf'
-        plt.savefig(save_path)
-
-        print(f'Saved figure at {save_path}')
-
-
-##########################
-# FIGURE 5: Runtime Analysis
-##########################
-def figure5(stat_sig=False):
-    fig5_out_dir = f'{out_dir}/fig5'
+def figRQ12(stat_sig=False):
+    fig5_out_dir = f'{out_dir}/RQ1.2'
     Path(f'{fig5_out_dir}/').mkdir(parents=True, exist_ok=True)
 
     data = {}
@@ -716,10 +424,278 @@ def get_a12(a, b):
 
 
 ##########################
-# FIGURE 6: Scalability
+# FIGURE RQ1.3: Success Rate Distribution
 ##########################
-def figure6():
-    fig6_out_dir = f'{out_dir}/fig6'
+def figRQ13():
+
+    fig2_out_dir = f'{out_dir}/RQ1.3'
+    Path(f'{fig2_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    data = {}
+    for config in configurations:
+        fig2_data = {}
+        for approach in approaches:
+            approach_data = {}
+            agg_data = []
+            agg_rm_data = []
+            for m in maps:
+                m_data = []
+
+                for i in num_scenes:
+                    json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                    if os.path.exists(json_path):
+                        with open(json_path) as f:
+                            json_data = json.load(f)
+                        
+                        json_res = json_data['results']
+                        num_attempts = len(json_res)
+
+                        num_successes = 0
+                        num_rm_successes = 0
+                        for r in json_res:
+                            if r['success']:
+                                num_successes += 1
+                                if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
+                                    num_rm_successes += 1
+
+                        succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+                        m_data.append(succ_rate)
+                        agg_data.append(succ_rate)
+
+                        succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+                        agg_rm_data.append(succ_rm_rate)
+
+                # approach_data[m] = m_data
+
+            approach_data['aggregate'] = agg_data
+            if approach != 'nsga':
+                approach_data['aggregate-rm'] = agg_rm_data
+            else:
+                approach_data['aggregate-rm'] = agg_data
+
+
+            fig2_data[approach] = approach_data
+
+        data[config] = fig2_data
+
+    
+    import pprint 
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(data)
+
+
+    #create figs
+    num_cols = 5
+
+    n_groups = num_cols+1
+    max_val = 100 + (100/num_cols)
+    bar_width = 100/num_cols-1
+    index = np.arange(0, max_val, max_val/n_groups)
+    adjustSize()
+
+    for config in configurations:
+
+        # PLOT - w/o RM
+        # fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
+        # PLOT - w/ RM
+        fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
+
+def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, add):
+    fig, ax = plt.subplots()
+    cur_heights = [0 for _ in range(n_groups)]
+    for i in range(len(approaches)):
+        approach = approaches[i]
+        vals = np.array(data[config][approach][f'aggregate{add}'])
+        
+        hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
+        # OPTION 1
+        # plt.bar(index, hist_vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, bottom=cur_heights, label=f'{approach}{add}')
+        # cur_heights += hist_vals
+
+        # OPTION 2
+        sub_width = bar_width/4
+        pos = index+(i-1.5)*sub_width
+        plt.bar(pos, hist_vals, sub_width, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
+
+
+    plt.xlabel('Success rate (%)')
+    plt.ylabel('Number of  Scenes')
+    # plt.title(f'{config}{add}')
+    if n_groups != 6:
+        plt.xticks(index)
+    else:
+        plt.xticks(index, ['0,10', '20,30', '40,50', '60,70', '80,90', '100'])
+
+    # plt.legend()
+
+    plt.tight_layout()
+    # plt.show()
+    if add:
+        save_path = f'{fig2_out_dir}/{config}.pdf'
+    else:
+        save_path = f'{fig2_out_dir}/obs-{config}.pdf'
+    plt.savefig(save_path)
+
+    print(f'Saved figure at {save_path}')
+
+
+##########################
+# FIGURE RQ2: Success Rate vs. Number of Constraints DATA
+##########################
+def figRQ2():
+
+    fig8_out_dir = f'{out_dir}/RQ2'
+    Path(f'{fig8_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    
+    m = 'zalaFullcrop'
+    approach = 'nsga'
+    configs = ['none', 'r', 'rc', 'rcv', 'rcvd', 'rcvdp']
+    names = ['\u00F8', 'R', 'RC', 'RCV', 'RCVD', 'RCVDP']
+
+    data = {}
+    # for config in configurations:
+    # config_data = {}
+    # only-considering aggregate-rm
+    num_cons_2_succ_times = {}
+    # agg_data = []
+    # agg_rm_data = []
+
+    for j in range(len(configs)):
+        c = configs[j]
+        config_data = {'num_att':0, 'num_succ':0, 'times_succ':[], }
+
+        for i in range(10):
+            scene_data = {"id":i}
+            # id, numcons, succ rate, median time
+            json_path = f'{src_dir}/{m}/constraints/{c}/{i}/_measurementstats.json'
+
+            if os.path.exists(json_path):
+                with open(json_path) as f:
+                    json_data = json.load(f)
+                
+                json_res = json_data['results']
+                config_data['num_att'] += len(json_res)
+                scene_num_successes = 0
+
+
+                scene_succ_times = []
+                # num_rm_successes = 0
+                # num_constraints = 0
+                for r in json_res:
+
+                    # if not in map, add it to mapand add runtime
+
+                    # else (if in map) add to corresponding map entry
+                    if r['success']:
+                        config_data['num_succ'] += 1
+                        config_data['times_succ'].append(r['time'])
+
+            config_data["median_time"] = -1 if not config_data['times_succ'] else statistics.median(config_data['times_succ'])
+        data[names[j]] = config_data
+
+        # for i in num_scenes:
+        #     scene_data = {"id":i}
+        #     # id, numcons, succ rate, median time
+        #     json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+
+        #     if os.path.exists(json_path):
+        #         with open(json_path) as f:
+        #             json_data = json.load(f)
+                
+        #         json_res = json_data['results']
+        #         scene_num_attempts = len(json_res)
+        #         scene_num_successes = 0
+
+
+        #         scene_succ_times = []
+        #         # num_rm_successes = 0
+        #         # num_constraints = 0
+        #         for r in json_res:
+
+
+        #             # if not in map, add it to mapand add runtime
+
+        #             # else (if in map) add to corresponding map entry
+        #             if r['success']:
+        #                 if approach == 'nsga' or (approach != 'nsga' and  r['CON_sat_%_rm'] == 1):
+        #                     scene_num_successes += 1
+        #                     scene_succ_times.append(r['time'])
+
+        #         scene_data["num_succ"] = scene_num_successes
+        #         scene_data["times_succ"] = scene_succ_times
+        #         scene_data["median_time"] = -1 if not scene_succ_times else statistics.median(scene_succ_times)
+
+        # # data.append(scene_data)
+
+    import pprint 
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(data)
+
+    plot_data = {'nm':[], 'sr':[], 'rt':[]}
+    for x in data:
+        plot_data['nm'].append(x)
+        plot_data['sr'].append(100* data[x]['num_succ'] / data[x]['num_att'])
+        plot_data['rt'].append(data[x]['median_time'])
+
+    pp.pprint(plot_data)
+    #create figs
+    ratio = 0.5
+    def fix_ratio(axS, axT):
+        x_left, x_right = axS.get_xlim()
+        y_low, y_high = axS.get_ylim()
+        axT.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+
+    adjustSize(s=12)
+    n_groups = len(configs)
+    # _, ax1 = plt.subplot(adjustable='box')
+    # ax1 = fig.add_subplot(111, adjustable='box')
+    from mpl_toolkits.axes_grid1 import host_subplot
+    ax1 = host_subplot(111, adjustable='box')
+    index = np.arange(n_groups)
+    bar_width = 0.4
+    labels=['Success Rate (%)', 'Median Runtime (s)']
+
+    
+    
+
+    color = '#2F9E00'
+    ax1.set_ylabel(labels[0], color=color)
+    # ax1.set_ylim(bottom=0)
+    bar1 = ax1.bar(index, plot_data['sr'], bar_width, 
+        label=labels[0], color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
+    
+    ax2 = plt.twinx()
+    # ax2.set_ylim(bottom=0)
+    color = '#0020A2'
+    ax2.set_ylabel(labels[1], color=color)
+    # bar2 = ax2.bar(index+bar_width, [-1 if len(rt)==0 else statistics.median(rt) for rt in plot_data['rt']], bar_width,label=labels[1], color=color)
+    
+    bar2 = ax2.bar(index+bar_width, plot_data['rt'], bar_width, label=labels[1], color=color)
+    ax2.tick_params(axis='y', labelcolor=color) 
+    fix_ratio(ax1, ax1)
+    fix_ratio(ax2, ax2)
+    
+    plt.xlabel('Included constraints')
+    plt.xticks(index + 0.5*bar_width, tuple(names))
+    plt.legend([bar1, bar2], labels, loc=9)
+
+    # plt.tight_layout()
+    # plt.show()
+    save_path = f'{fig8_out_dir}/{m}.pdf'
+    plt.savefig(save_path, bbox_inches='tight')
+
+    print(f'Saved figure at {save_path}')
+    
+    exit()
+
+
+##########################
+# FIGURE RQ3: Scalability wrt. number of actors
+##########################
+def figRQ3():
+    fig6_out_dir = f'{out_dir}/RQ3'
     Path(f'{fig6_out_dir}/').mkdir(parents=True, exist_ok=True)
 
     m = 'zalaFullcrop'
@@ -802,9 +778,346 @@ def figure6():
     print(f'Saved figure at {save_path}')
 
 
-figure1(True, True)
-figure2()
-# figure3() # just for stats (printed)
-# figure4() # irrelevant
-figure5(True)
-figure6()
+##########################
+# FIGURE extra-2: Are rm-ed constraints being satisfied
+##########################
+def figExtra2():
+    fig3_out_dir = f'{out_dir}/extra-2'
+    Path(f'{fig3_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    data = {}
+    for m in maps:
+        fig3_data = {}
+
+        for approach in approaches:
+            if approach == 'nsga':
+                continue
+            perc_sat_rm_data = [] # 2D array
+            num_rm_data = []
+            for config in configurations:
+                
+                gen_base_path = f'{data_dir}/{m}/{config}/'
+                gen_base_path_key = f'measurements/data/{m}/{config}/' # TEMP
+                gen_stats_path = gen_base_path+'_genstats.json'
+                with open(gen_stats_path) as f:
+                    gen_stats_data = json.load(f)
+                
+                num_rm_cons = [] # gnna find the median # TODO LATER
+                perc_sat_rm = [] # will be shown in the stripplot
+
+                for i in num_scenes:
+                    json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                    if os.path.exists(json_path):
+
+                        # get number of removed constraints
+                        gen_stats_id = f'{gen_base_path_key}{i}-0'
+                        rmed_cons = gen_stats_data[gen_stats_id][f'deleted-{approach}']
+                        num_rm_cons.append(len(rmed_cons))
+
+                        # get rm sat percentage
+                        with open(json_path) as f:
+                            json_data = json.load(f)
+                        for r in json_data['results']:
+                            if r['success']:
+                                perc_sat = r['CON_sat_%_rm']
+                                if perc_sat != -1:
+                                    perc_sat_rm.append(perc_sat * 100)
+
+                perc_sat_rm_data.append(perc_sat_rm)
+                if len(perc_sat_rm) == 0:
+                    mean = 'NA'
+                    median = 'NA'
+                else:
+                    mean = statistics.mean(perc_sat_rm)
+                    median = statistics.median(perc_sat_rm)
+                print(f'{m}|{approach}|{config} = [mean={mean}, median={median}]')
+
+                num_rm_data.append(num_rm_cons)
+
+            fig3_data[approach] = {'numrm':num_rm_data, 'percsat':perc_sat_rm_data}
+
+        data[m] = fig3_data
+
+    #create figs
+    split = 0.25
+    for m in maps:
+        fig, ax = plt.subplots()
+        df_data = pd.DataFrame(columns=['approach', 'config', 'perc'])
+        for i_a in range(len(approaches)):
+            approach = approaches[i_a]
+            if approach == 'nsga':
+                continue            
+            vals = data[m][approach]['percsat']
+            for i_c in range(len(vals)):
+                c_vals = vals[i_c]
+                config = configurations[i_c]
+                for v in c_vals:
+                    df_data = df_data.append({'approach': approach, 'config': config, 'perc': v}, ignore_index=True)
+
+            
+                vals_rm = data[m][approach]['numrm'][i_c]
+                median_rm = round(statistics.mean(vals_rm))
+                ax.text(i_c-2*split+i_a*split, -12.5, str(median_rm), ha='center', va='center', size='large', bbox=dict(ec='k', fc='w'))
+
+        df_counts = df_data.groupby(['approach', 'config', 'perc']).size().astype(float).reset_index(name='counts')
+        
+        sns.set_palette(sns.color_palette(colors[1:]))
+        sns.stripplot(x=df_counts.config, y=df_counts.perc, hue=df_counts.approach, sizes=df_counts.counts*10, dodge=True, jitter=0)
+
+        plt.xlabel('Configurations')
+        plt.ylabel(f'% of rm-ed constraints that are satisfied')
+        ax.set_ylim(bottom=-20)
+        plt.title(f'{m} - \nAmong successes, what % of rm-ed constraints are satisfied?')
+        plt.legend()
+
+        plt.tight_layout()
+        # plt.show()
+        save_path = f'{fig3_out_dir}/{m}.pdf'
+        plt.savefig(save_path)
+
+        print(f'Saved figure at {save_path}')
+
+
+##########################
+# FIGURE extra-3: Graceful degradation of NSGA
+##########################
+def figExtra3():
+
+    fig4_out_dir = f'{out_dir}/extra-3'
+    Path(f'{fig4_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    approach = 'nsga'
+    data = {}
+    agg_data = {}
+    for config in configurations:
+        agg_data[config] = []
+
+    for m in maps:
+        map_data = {}
+        for config in configurations:
+            app_data = []
+            for i in num_scenes:
+                json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                if os.path.exists(json_path):
+                    with open(json_path) as f:
+                        json_data = json.load(f)
+                    
+                    json_res = json_data['results']
+                    for r in json_res:
+                        if not r['success']:
+                            # find % of sat 
+
+                            sol = r['solutions']['sol_best_global']
+                            perc_sat = (1-sol['CON_sat_%']) * 100
+
+                            app_data.append(perc_sat)
+                            agg_data[config].append(perc_sat)
+
+            map_data[config] = app_data
+
+        data[m] = map_data
+    
+    data['Aggregate'] = agg_data
+
+    #create figs
+    max_val = 110
+    n_groups = 11
+    index = np.arange(0, max_val, max_val/n_groups)
+    bar_width = 10
+    maps_and_agg = maps.copy()
+    maps_and_agg.append('Aggregate')
+    for m in maps_and_agg:
+
+        fig, ax = plt.subplots()
+        cur_heights = [0 for _ in range(n_groups)]
+        for i in range(len(configurations)):
+            config = configurations[i]
+            vals = np.array(data[m][config])
+            
+            hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
+            # plt.scatter(index, hist_vals, label=approach)
+            plt.bar(index+0.5*bar_width, hist_vals, bar_width, color=colors[i+4], edgecolor='k', bottom=cur_heights, label=config)
+            
+            cur_heights += hist_vals
+
+        plt.xlabel('% of unsatisfied constraints')
+        plt.ylabel('# Scenes')
+        plt.title(f'{m}\nFor failed NSGA runs, what % of cons are not satisfied')
+        plt.xticks(index)
+        plt.legend()
+
+        plt.tight_layout()
+        # plt.show()
+        save_path = f'{fig4_out_dir}/{m}.pdf'
+        plt.savefig(save_path)
+
+        print(f'Saved figure at {save_path}')
+
+
+##########################
+# FIGURE extra-4: Success Rate vs. Number of Constraints
+##########################
+def figExtra4():
+
+    fig7_out_dir = f'{out_dir}/extra-4'
+    Path(f'{fig7_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    maps = ['zalaFullcrop']
+    approaches = ['nsga']
+    configurations = ['2actors', '3actors', '4actors', '5actors', '6actors', '7actors']
+
+    data = {}
+    for config in configurations:
+        config_data = {}
+        for approach in approaches:
+            # only-considering aggregate-rm
+            num_cons_2_succ_times = {}
+            # agg_data = []
+            # agg_rm_data = []
+            for m in maps:
+
+                for i in num_scenes:
+                    if config in ['2actors', '3actors', '4actors']:
+                        json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                        nsga_path = f'{src_dir}/{m}/{config}/{i}-0/d-nsga/_measurementstats.json'
+                    else:
+                        json_path = f'{src_dir}/{m}/scale/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                        nsga_path = f'{src_dir}/{m}/scale/{config}/{i}-0/d-nsga/_measurementstats.json'
+                    if os.path.exists(json_path):
+                        with open(json_path) as f:
+                            json_data = json.load(f)
+                        
+                        json_res = json_data['results']
+                        scene_num_attempts = len(json_res)
+                        scene_num_successes = 0
+
+                        # Get number of constraints
+                        with open(nsga_path) as f:
+                            nsga_data = json.load(f)
+                            num_cons = nsga_data['results'][0]['CON_num']
+
+                        scene_succ_times = []
+                        # num_rm_successes = 0
+                        # num_constraints = 0
+                        for r in json_res:
+
+
+                            # if not in map, add it to mapand add runtime
+
+                            # else (if in map) add to corresponding map entry
+                            if r['success']:
+                                if approach == 'nsga' or (approach != 'nsga' and  r['CON_sat_%_rm'] == 1):
+                                    scene_num_successes += 1
+                                    scene_succ_times.append(r['time'])
+
+                        if num_cons not in num_cons_2_succ_times:
+                            num_cons_2_succ_times[num_cons] = {'num_att':scene_num_attempts,
+                            'num_succ':scene_num_successes,
+                            'succ_ts':scene_succ_times}
+                        else:
+                            num_cons_2_succ_times[num_cons]['num_att'] += scene_num_attempts
+                            num_cons_2_succ_times[num_cons]['num_succ'] += scene_num_successes
+                            num_cons_2_succ_times[num_cons]['succ_ts'].extend(scene_succ_times)
+
+                        # succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+                        # agg_data.append(succ_rate)
+
+                        # succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+                        # agg_rm_data.append(succ_rm_rate)
+
+                # approach_data[m] = m_data
+
+            # approach_data['aggregate'] = agg_data
+            # if approach != 'nsga':
+            #     approach_data['aggregate-rm'] = agg_rm_data
+            # else:
+            #     approach_data['aggregate-rm'] = agg_data
+
+
+            config_data[approach] = num_cons_2_succ_times
+
+
+        data[config] = config_data
+
+    
+    import pprint 
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(data)
+
+
+    #create figs
+    num_cols = 5
+
+    n_groups = num_cols+1
+    max_val = 100 + (100/num_cols)
+    bar_width = 100/num_cols-1
+    index = np.arange(0, max_val, max_val/n_groups)
+    adjustSize()
+
+    for config in configurations:
+
+        # PLOT - w/o RM
+        # fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '')
+        # PLOT - w/ RM
+        fig, ax = plt.subplots()
+        cur_heights = [0 for _ in range(n_groups)]
+        for i in range(len(approaches)):
+            approach = approaches[i]
+            # m = np.array(data[config][approach])
+            m = data[config][approach]
+            # print(m.tolist())
+
+            data_cons = []
+            data_att = []
+            data_succ = []
+            data_time = []
+
+            ordered_list_of_cons = sorted(m.keys())
+            for k in ordered_list_of_cons:
+                data_cons.append(k)
+                data_att.append(m[k]['num_att'])
+                data_succ.append(m[k]['num_succ'])
+
+            # if approach == 'sc1':
+            plt.bar(data_cons, data_att, alpha=0.5)
+
+            plt.plot(data_cons, data_succ, color=colors[i], label=f'{approach}')
+
+            # hist_vals,_=np.histogram(vals,bins=np.linspace(0,max_val,n_groups+1))
+            # # OPTION 1
+            # # plt.bar(index, hist_vals, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, bottom=cur_heights, label=f'{approach}{add}')
+            # # cur_heights += hist_vals
+
+            # # OPTION 2
+            # sub_width = bar_width/4
+            # pos = index+(i-1.5)*sub_width
+            # # plt.bar(pos, hist_vals, sub_width, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
+            # plt.plot(pos, hist_vals, color=colors[i], alpha=1 if approach == 'nsga' or add == '-rm' else opacity, label=f'{approach}{add}')
+
+
+        plt.xlabel(' Number of Constraints')
+        plt.ylabel('Number of  Scenes')
+        # # plt.title(f'{config}{add}')
+        # if n_groups != 6:
+        #     plt.xticks(index)
+        # else:
+        #     plt.xticks(index, ['0,10', '20,30', '40,50', '60,70', '80,90', '100'])
+
+        # plt.legend()
+
+        plt.tight_layout()
+        # plt.show()
+        save_path = f'{fig7_out_dir}/{config}.pdf'
+        plt.savefig(save_path)
+
+        print(f'Saved figure at {save_path}')
+
+
+# figRQ11(True, False)
+# figRQ13()
+# figRQ12(True)
+figRQ2()
+# figRQ3()
+# figExtra2() # also prints some statistcs
+# figExtra3()
+# figExtra4()
