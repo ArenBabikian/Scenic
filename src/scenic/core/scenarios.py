@@ -788,7 +788,7 @@ class Scenario:
 		self.params = dict(params)
 		self.nsga = params.get('nsga') == "True"
 		self.noValidation = self.nsga or params.get('no-validation') == "True"
-		self.timeout = None if not params.get('timeout') else float(self.params.get('timeout'))
+		self.timeout = 10 if not params.get('timeout') else float(self.params.get('timeout'))
 		self.externalParams = tuple(externalParams)
 		self.externalSampler = ExternalSampler.forParameters(self.externalParams, self.params)
 		self.monitors = tuple(monitors)
