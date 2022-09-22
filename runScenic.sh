@@ -28,7 +28,7 @@ ${IMGDIR} \
 -p viewImgs True \
 -p saveImgs True \
 -p saveFiles True \
--p saveStats False
+-p saveStats True
 -p map maps/${MAPNAME}.xodr
 ${PATHTOCONFIGFILE}"
 echo $cmd

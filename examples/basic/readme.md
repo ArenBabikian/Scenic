@@ -10,6 +10,26 @@ Use the scene specification files in this folder to get started with this repo.
   * __NOTE 2:__ when `USENSGA` is enabled, the program considers the constraints specified within the `param constraints` variable of the scene specification file. Otherwise, the variable value is ignored, and the remainder of the document is considered. This is not entirely true, but it is true enough to get started.
   * You can also play around with some of the other command line arguments, but this may not be very relevant.
 
+## A note about certain command-line arguments
+* `--count N`: this specifies the total number of concrete scenes (solutions) we will end up with. So we will run the program in a loop until we generate `N` solutions.
+* `-p nsga-Numsols M`: this specifies the maximum number of solutions that can be saved when running a single NSGA process.
+
+### Example 1
+Let's say the NSGA process yield a set `S` of `X` solutions. Solutions are either all approximate, or all non-approximate.
+
+As such, for a given NSGA process, the program will save `min(M, X)` solutions, since
+1. We don't want to save more than `M` solutions, and
+2. More than `X` solutions are not available.
+
+The general trend is as follows:
+* If `S` contains non-approximate solutions, then usually `X<M` (`X` is often either 1 or 2).
+* If `S` contains approximate solutions (i.e. if no full solution is found), then usually `X>M` (`X` is closer to the population size).
+
+Note that if `M=-1`, then all solutions in `S` will be saved.
+
+### Example 2
+For instance, in the case where `N=10` and `M=3`, we will continuously run NSGA processes (and store at most 3 solutions after each run) until we have stored a total of 10 solutions.
+
 ## About the scene specifications
 * For a given directory `N-actor-scenes`, all included files represent the same scene (although there are certain limitations, as discussed in our paper).
 * For `N=3|N=4`, the scenes are designed for the _town02_ map, where it is expected to be mostly successful (but it might require more than 30 second timeout). For other maps, it is hard to tell if this scene will be successful.

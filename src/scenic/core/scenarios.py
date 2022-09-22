@@ -1247,7 +1247,7 @@ class Scenario:
 			if not self.nsga:
 				#at this stage we should have exactly one solution
 				if len(allSamples) != 1 :
-					 raise Error('something went wrong')
+					raise Error('something went wrong')
 				stats['CON_num_rm'] = len(parsed_cons)
 				stats['CON_sat_num_rm'] = len(parsed_cons) - sum(numVioMap[allSamples[0]])
 				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
@@ -1267,20 +1267,22 @@ class Scenario:
 
 					allSamples = [bestGlobal, bestHardPrio]
 					names = ['sol_best_global', 'sol_best_Hard_Prio']
+				else:
+					names = [f'sol-{i}' for i in range(len(allSamples))]
 					
-					for i in range(len(allSamples)):
-						sol = allSamples[i]						
-						solStats = {}
-						solNumVioHard, solNumVioSoft = numVioMap[sol]
-						solStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
-						solStats['CON_sat_%'] = solStats['CON_sat_num'] / num_cons
-						solStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
-						solStats['CON_sat_%_hard'] = solStats['CON_sat_num_hard'] / num_hard_cons
-						solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
-						solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
-						solStats['CON_vals'] = allVals[sol]
+				for i in range(len(allSamples)):
+					sol = allSamples[i]						
+					solStats = {}
+					solNumVioHard, solNumVioSoft = numVioMap[sol]
+					solStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
+					solStats['CON_sat_%'] = -1 if num_cons == 0 else solStats['CON_sat_num'] / num_cons
+					solStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
+					solStats['CON_sat_%_hard'] = -1 if num_hard_cons == 0 else solStats['CON_sat_num_hard'] / num_hard_cons
+					solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
+					solStats['CON_sat_%_soft'] = -1 if num_soft_cons == 0 else solStats['CON_sat_num_soft'] / num_soft_cons
+					solStats['CON_vals'] = allVals[sol]
 
-						allSolStats[names[i]] = solStats					
+					allSolStats[names[i]] = solStats					
 
 				stats['solutions'] = allSolStats
 
