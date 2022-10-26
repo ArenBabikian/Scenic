@@ -22,7 +22,7 @@ from scenic.core.regions import EmptyRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent, DefaultIdentityDict
-from scenic.core.errors import InvalidScenarioError
+from scenic.core.errors import InvalidScenarioError, InconsistentScenarioError
 from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
@@ -903,6 +903,10 @@ class Scenario:
 				### How far is the farthest corner of vi from a valid region that can contain it?
 				container = self.containerOfObject(vi)
 				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONSIDEWALK:
+				### How far is the farthest corner of vi from a valid region that can contain it?
+				container = self.containerOfObject(vi)
+				totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
 				if vi.intersects(vj):
@@ -1051,6 +1055,15 @@ class Scenario:
 
 			#We assume that ego is obect[0]
 			parsed_cons = self.parseConfigConstraints()
+
+			for i in range(len(parsed_cons)):
+				c = parsed_cons[i]
+				if c.type == Cstr_type.ONROAD and type(objects[c.src]).__name__ == "Pedestrian":
+					error_message = ("error for object " + str(c.src) + " - ONROAD constraint cannot be set for a Pedetrian, please used ONSIDEWALK")
+					raise InconsistentScenarioError(line=i+1, message=error_message)
+				elif c.type == Cstr_type.ONSIDEWALK and type(objects[c.src]).__name__ == "Car":
+					error_message = ("error for object " + str(c.src) + " - ONSIDEWALK constraint cannot be set for a Car, please used ONROAD")
+					raise InconsistentScenarioError(line=i+1, message=error_message)
 			
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
@@ -1461,6 +1474,8 @@ class Cstr_type(Enum):
 	DISTCLOSE = 8
 	DISTMED = 9
 	DISTFAR = 10
+
+	ONSIDEWALK = 11
 
 class Cstr():
 	def __init__(self, t, src, tgt):
