@@ -903,10 +903,6 @@ class Scenario:
 				### How far is the farthest corner of vi from a valid region that can contain it?
 				container = self.containerOfObject(vi)
 				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.ONSIDEWALK:
-				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = self.containerOfObject(vi)
-				totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
 				if vi.intersects(vj):
@@ -1475,8 +1471,6 @@ class Cstr_type(Enum):
 	DISTCLOSE = 9
 	DISTMED = 10
 	DISTFAR = 11
-
-	ONSIDEWALK = 11
 
 class Cstr():
 	def __init__(self, t, src, tgt):
