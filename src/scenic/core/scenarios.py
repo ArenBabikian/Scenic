@@ -899,7 +899,7 @@ class Scenario:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
-			if c.type == Cstr_type.ONROAD:
+			if c.type == Cstr_type.ONROAD or c.type == Cstr_type.ONSIDEWALK:
 				### How far is the farthest corner of vi from a valid region that can contain it?
 				container = self.containerOfObject(vi)
 				totCont += vi.containedHeuristic(container)
@@ -1462,18 +1462,19 @@ class Scenario:
 
 class Cstr_type(Enum):
 	ONROAD = 1
-	NOCOLLISION = 2
-	CANSEE = 3
+	ONSIDEWALK = 2
+	NOCOLLISION = 3
+	CANSEE = 4
 	# TODO Add CANNOTSEE
 
-	HASTOLEFT = 4
-	HASTORIGHT = 5
-	HASBEHIND = 6
-	HASINFRONT = 7
+	HASTOLEFT = 5
+	HASTORIGHT = 6
+	HASBEHIND = 7
+	HASINFRONT = 8
 
-	DISTCLOSE = 8
-	DISTMED = 9
-	DISTFAR = 10
+	DISTCLOSE = 9
+	DISTMED = 10
+	DISTFAR = 11
 
 	ONSIDEWALK = 11
 
