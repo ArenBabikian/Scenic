@@ -796,6 +796,20 @@ class Scenario:
 		self.dynamicScenario = dynamicScenario
 		self.network = Network.fromFile(self.params['map'])
 
+		# Define global regions
+		global road 
+		road = self.network.drivableRegion
+		global curb
+		curb = self. network.curbRegion
+		global sidewalk
+		sidewalk = self.network.sidewalkRegion
+		global shoulder
+		shoulder = self.network.shoulderRegion
+		global roadOrShoulder
+		roadOrShoulder  = road.union(shoulder)
+		global intersection
+		intersection  = self.network.intersectionRegion
+
 		staticReqs, alwaysReqs, terminationConds = [], [], []
 		self.requirements = tuple(dynamicScenario._requirements)	# TODO clean up
 		self.alwaysRequirements = tuple(dynamicScenario._alwaysRequirements)
@@ -899,9 +913,12 @@ class Scenario:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
-			if c.type == Cstr_type.ONROAD or c.type == Cstr_type.ONSIDEWALK:
+			if c.type == Cstr_type.ONROAD:
 				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = self.containerOfObject(vi)
+				container = roadOrShoulder
+				totCont += vi.containedHeuristic(container)				
+			if c.type == Cstr_type.ONSIDEWALK:
+				container = sidewalk
 				totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
@@ -1054,12 +1071,6 @@ class Scenario:
 
 			for i in range(len(parsed_cons)):
 				c = parsed_cons[i]
-				if c.type == Cstr_type.ONROAD and type(objects[c.src]).__name__ == "Pedestrian":
-					error_message = ("error for object " + str(c.src) + " - ONROAD constraint cannot be set for a Pedetrian, please used ONSIDEWALK")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
-				elif c.type == Cstr_type.ONSIDEWALK and type(objects[c.src]).__name__ == "Car":
-					error_message = ("error for object " + str(c.src) + " - ONSIDEWALK constraint cannot be set for a Car, please used ONROAD")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
 			
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
@@ -1342,7 +1353,7 @@ class Scenario:
 
 				stats['history'] = historyStats
 
-				# print(stats)
+				print(stats)
 			
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
