@@ -797,17 +797,22 @@ class Scenario:
 		self.network = Network.fromFile(self.params['map'])
 
 		# Define global regions
-		global road 
+		global road # all drivable roads, including intersections but not shoulders or parking lanes
 		road = self.network.drivableRegion
-		global curb
-		curb = self. network.curbRegion
-		global sidewalk
+
+		global sidewalk # all sidewalks
 		sidewalk = self.network.sidewalkRegion
-		global shoulder
+
+		global curb # all curbs
+		curb = self. network.curbRegion
+		
+		global shoulder # all shoulders, including parking lanes
 		shoulder = self.network.shoulderRegion
-		global roadOrShoulder
+
+		global roadOrShoulder # all drivable areas, including both ordinary roads and shoulders
 		roadOrShoulder  = road.union(shoulder)
-		global intersection
+
+		global intersection # all intersections
 		intersection  = self.network.intersectionRegion
 
 		staticReqs, alwaysReqs, terminationConds = [], [], []
@@ -905,7 +910,7 @@ class Scenario:
 		totPosRel, totDistRel = 0, 0
 
 		## GET HEURISTIC VALUES
-		## Assuming that ego position in actor llist does not change
+		## Assuming that ego position in actor list does not change
 		for c in constraints:
 			vi = objects[c.src]
 			vj = None
@@ -915,10 +920,22 @@ class Scenario:
 			# Constraints Switch
 			if c.type == Cstr_type.ONROAD:
 				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = roadOrShoulder
+				container = road
 				totCont += vi.containedHeuristic(container)				
 			if c.type == Cstr_type.ONSIDEWALK:
 				container = sidewalk
+				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONCURB:
+				container = curb
+				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONSHOULDER:
+				container = shoulder
+				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONDRIVEABLEAREA:
+				container = roadOrShoulder
+				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONINTERSECTION:
+				container = intersection
 				totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
@@ -1470,18 +1487,23 @@ class Scenario:
 class Cstr_type(Enum):
 	ONROAD = 1
 	ONSIDEWALK = 2
-	NOCOLLISION = 3
-	CANSEE = 4
+	ONCURB = 3
+	ONSHOULDER = 4
+	ONDRIVEABLEAREA = 5 # all driveable regions, inc shoulder and parking lanes
+	ONINTERSECTION = 6
+
+	NOCOLLISION = 7
+	CANSEE = 8
 	# TODO Add CANNOTSEE
 
-	HASTOLEFT = 5
-	HASTORIGHT = 6
-	HASBEHIND = 7
-	HASINFRONT = 8
+	HASTOLEFT = 9
+	HASTORIGHT = 10
+	HASBEHIND = 11
+	HASINFRONT = 12
 
-	DISTCLOSE = 9
-	DISTMED = 10
-	DISTFAR = 11
+	DISTCLOSE = 13
+	DISTMED = 14
+	DISTFAR = 15
 
 class Cstr():
 	def __init__(self, t, src, tgt):
