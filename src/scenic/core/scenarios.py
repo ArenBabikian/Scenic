@@ -898,6 +898,34 @@ class Scenario:
 
 			vi.position = v
 			vi.heading = self.network._defaultRoadDirection(v)
+
+	def regionByType(self, regionType):
+		if regionType == 1:
+			#: All lanes union all intersections.
+			return self.network.drivableRegion
+		elif regionType == 2:
+			#: All sidewalks union all crossings.
+			return self.network.walkableRegion
+		elif regionType == 3:
+			#: All roads (ordinary roads that are not part of an intersection).
+			return self.network.roadRegion
+		elif regionType == 4:
+			#: All lanes.
+			return self.network.laneRegion
+		elif regionType == 5:
+			#: All intersections.
+			return self.network.intersectionRegion		
+		elif regionType == 6:
+			#: All pedestrian crossings.
+			return self.network.crossingRegion	
+		elif regionType == 7:
+			#: All curbs of ordinary roads.
+			return self.network.curbRegion
+		elif regionType == 8:
+			#: All shoulders (by default, includes parking lanes).
+			return self.network.shoulderRegion
+		else: 
+			return None
 	
 	def heuristic(self, x, constraints, fun):
 
@@ -914,45 +942,20 @@ class Scenario:
 		for c in constraints:
 			vi = objects[c.src]
 			vj = None
-			if c.tgt != -1:
+			if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
 			if c.type == Cstr_type.ONREGIONTYPE:
-				rtype = vj 
-				if rtype == 1:
-					#: All lanes union all intersections.
-					container = self.network.drivableRegion
-				elif rtype == 2:
-					#: All sidewalks union all crossings.
-					container = self.network.walkableRegion
-				elif rtype == 3:
-					#: All roads (ordinary roads that are not part of an intersection).
-					container = self.network.roadRegion
-				elif rtype == 4:
-					#: All lanes.
-					container = self.network.laneRegion
-				elif rtype == 5:
-					#: All intersections.
-					container = self.network.intersectionRegion		
-				elif rtype == 6:
-					#: All pedestrian crossings.
-					container = self.network.crossingRegion	
-				elif rtype == 7:
-					#: All curbs of ordinary roads.
-					container = self.network.curbRegion
-				elif rtype == 8:
-					#: All shoulders (by default, includes parking lanes).
-					container = self.network.shoulderRegion
-				else:
-					pass #TODO error
-				
+				container = self.regionByType(c.tgt)
+				if container == None:
+					raise Error("Container is null")
 				totCont += vi.containedHeuristic(container)	
 				
-			# if c.type == Cstr_type.ONROAD:
-			# 	### How far is the farthest corner of vi from a valid region that can contain it?
-			# 	container = road
-			# 	totCont += vi.containedHeuristic(container)				
+			if c.type == Cstr_type.ONROAD:
+				### How far is the farthest corner of vi from a valid region that can contain it?
+				container = self.network.drivableRegion
+				totCont += vi.containedHeuristic(container)				
 			# if c.type == Cstr_type.ONSIDEWALK:
 			# 	container = sidewalk
 			# 	totCont += vi.containedHeuristic(container)
@@ -1453,10 +1456,15 @@ class Scenario:
 			for c in parsed_cons:
 				vi = sample[self.objects[c.src]]
 				vj = None
-				if c.tgt != -1:
+				if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
 					vj = sample[self.objects[c.tgt]]
+				if c.type == Cstr_type.ONREGIONTYPE:
+					container = self.regionByType(c.tgt)
+					vals[str(c)] = vi.containedHeuristic(container)
+					if vals[str(c)] != 0 : numVioHard += 1
+					# num_hard_cons += 1
 				if c.type == Cstr_type.ONROAD:
-					vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+					vals[str(c)] = vi.containedHeuristic(self.network.drivableRegion)
 					if vals[str(c)] != 0 : numVioHard += 1
 					# num_hard_cons += 1
 				if c.type == Cstr_type.NOCOLLISION:
@@ -1517,7 +1525,7 @@ class Scenario:
 
 class Cstr_type(Enum):
 	ONREGIONTYPE = 1
-	# ONROAD = 1
+	ONROAD = 2
 	# ONSIDEWALK = 2
 	# ONCURB = 3
 	# ONSHOULDER = 4

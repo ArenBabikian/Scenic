@@ -1,5 +1,5 @@
-param constraints = "ONINTERSECTION : [0, -1]; \
-                   ONINTERSECTION : [1, -1]; \
+param constraints = "ONREGIONTYPE : [0, 5]; \
+                   ONREGIONTYPE : [1, 2]; \
                    NOCOLLISION : [0, 1];"
 model scenic.simulators.carla.model
 
