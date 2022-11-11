@@ -797,23 +797,23 @@ class Scenario:
 		self.network = Network.fromFile(self.params['map'])
 
 		# Define global regions
-		global road # all drivable roads, including intersections but not shoulders or parking lanes
-		road = self.network.drivableRegion
+		# global road # all drivable roads, including intersections but not shoulders or parking lanes
+		# road = self.network.drivableRegion
 
-		global sidewalk # all sidewalks
-		sidewalk = self.network.sidewalkRegion
+		# global sidewalk # all sidewalks
+		# sidewalk = self.network.sidewalkRegion
 
-		global curb # all curbs
-		curb = self. network.curbRegion
+		# global curb # all curbs
+		# curb = self. network.curbRegion
 		
-		global shoulder # all shoulders, including parking lanes
-		shoulder = self.network.shoulderRegion
+		# global shoulder # all shoulders, including parking lanes
+		# shoulder = self.network.shoulderRegion
 
-		global roadOrShoulder # all drivable areas, including both ordinary roads and shoulders
-		roadOrShoulder  = road.union(shoulder)
+		# global roadOrShoulder # all drivable areas, including both ordinary roads and shoulders
+		# roadOrShoulder  = road.union(shoulder)
 
-		global intersection # all intersections
-		intersection  = self.network.intersectionRegion
+		# global intersection # all intersections
+		# intersection  = self.network.intersectionRegion
 
 		staticReqs, alwaysReqs, terminationConds = [], [], []
 		self.requirements = tuple(dynamicScenario._requirements)	# TODO clean up
@@ -918,25 +918,56 @@ class Scenario:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
-			if c.type == Cstr_type.ONROAD:
-				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = road
-				totCont += vi.containedHeuristic(container)				
-			if c.type == Cstr_type.ONSIDEWALK:
-				container = sidewalk
-				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.ONCURB:
-				container = curb
-				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.ONSHOULDER:
-				container = shoulder
-				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.ONDRIVEABLEAREA:
-				container = roadOrShoulder
-				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.ONINTERSECTION:
-				container = intersection
-				totCont += vi.containedHeuristic(container)
+			if c.type == Cstr_type.ONREGIONTYPE:
+				rtype = vj 
+				if rtype == 1:
+					#: All lanes union all intersections.
+					container = self.network.drivableRegion
+				elif rtype == 2:
+					#: All sidewalks union all crossings.
+					container = self.network.walkableRegion
+				elif rtype == 3:
+					#: All roads (ordinary roads that are not part of an intersection).
+					container = self.network.roadRegion
+				elif rtype == 4:
+					#: All lanes.
+					container = self.network.laneRegion
+				elif rtype == 5:
+					#: All intersections.
+					container = self.network.intersectionRegion		
+				elif rtype == 6:
+					#: All pedestrian crossings.
+					container = self.network.crossingRegion	
+				elif rtype == 7:
+					#: All curbs of ordinary roads.
+					container = self.network.curbRegion
+				elif rtype == 8:
+					#: All shoulders (by default, includes parking lanes).
+					container = self.network.shoulderRegion
+				else:
+					pass #TODO error
+				
+				totCont += vi.containedHeuristic(container)	
+				
+			# if c.type == Cstr_type.ONROAD:
+			# 	### How far is the farthest corner of vi from a valid region that can contain it?
+			# 	container = road
+			# 	totCont += vi.containedHeuristic(container)				
+			# if c.type == Cstr_type.ONSIDEWALK:
+			# 	container = sidewalk
+			# 	totCont += vi.containedHeuristic(container)
+			# if c.type == Cstr_type.ONCURB:
+			# 	container = curb
+			# 	totCont += vi.containedHeuristic(container)
+			# if c.type == Cstr_type.ONSHOULDER:
+			# 	container = shoulder
+			# 	totCont += vi.containedHeuristic(container)
+			# if c.type == Cstr_type.ONDRIVEABLEAREA:
+			# 	container = roadOrShoulder
+			# 	totCont += vi.containedHeuristic(container)
+			# if c.type == Cstr_type.ONINTERSECTION:
+			# 	container = intersection
+			# 	totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
 				if vi.intersects(vj):
@@ -1485,12 +1516,13 @@ class Scenario:
 		return veneer.instantiateSimulator(self.simulator, self.params)
 
 class Cstr_type(Enum):
-	ONROAD = 1
-	ONSIDEWALK = 2
-	ONCURB = 3
-	ONSHOULDER = 4
-	ONDRIVEABLEAREA = 5 # all driveable regions, inc shoulder and parking lanes
-	ONINTERSECTION = 6
+	ONREGIONTYPE = 1
+	# ONROAD = 1
+	# ONSIDEWALK = 2
+	# ONCURB = 3
+	# ONSHOULDER = 4
+	# ONDRIVEABLEAREA = 5 # all driveable regions, inc shoulder and parking lanes
+	# ONINTERSECTION = 6
 
 	NOCOLLISION = 7
 	CANSEE = 8
