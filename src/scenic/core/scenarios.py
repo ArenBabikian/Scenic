@@ -900,9 +900,12 @@ class Scenario:
 			#: All pedestrian crossings.
 			return self.network.crossingRegion	
 		elif regionType == 7:
+			#: All sidewalks
+			return self.network.sidewalkRegion
+		elif regionType == 8:
 			#: All curbs of ordinary roads.
 			return self.network.curbRegion
-		elif regionType == 8:
+		elif regionType == 9:
 			#: All shoulders (by default, includes parking lanes).
 			return self.network.shoulderRegion
 		else: 
