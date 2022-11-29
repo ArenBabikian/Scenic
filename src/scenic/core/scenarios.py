@@ -796,25 +796,6 @@ class Scenario:
 		self.dynamicScenario = dynamicScenario
 		self.network = Network.fromFile(self.params['map'])
 
-		# Define global regions
-		# global road # all drivable roads, including intersections but not shoulders or parking lanes
-		# road = self.network.drivableRegion
-
-		# global sidewalk # all sidewalks
-		# sidewalk = self.network.sidewalkRegion
-
-		# global curb # all curbs
-		# curb = self. network.curbRegion
-		
-		# global shoulder # all shoulders, including parking lanes
-		# shoulder = self.network.shoulderRegion
-
-		# global roadOrShoulder # all drivable areas, including both ordinary roads and shoulders
-		# roadOrShoulder  = road.union(shoulder)
-
-		# global intersection # all intersections
-		# intersection  = self.network.intersectionRegion
-
 		staticReqs, alwaysReqs, terminationConds = [], [], []
 		self.requirements = tuple(dynamicScenario._requirements)	# TODO clean up
 		self.alwaysRequirements = tuple(dynamicScenario._alwaysRequirements)
@@ -951,26 +932,10 @@ class Scenario:
 				if container == None:
 					raise Error("Container is null")
 				totCont += vi.containedHeuristic(container)	
-				
 			if c.type == Cstr_type.ONROAD:
 				### How far is the farthest corner of vi from a valid region that can contain it?
 				container = self.network.drivableRegion
 				totCont += vi.containedHeuristic(container)				
-			# if c.type == Cstr_type.ONSIDEWALK:
-			# 	container = sidewalk
-			# 	totCont += vi.containedHeuristic(container)
-			# if c.type == Cstr_type.ONCURB:
-			# 	container = curb
-			# 	totCont += vi.containedHeuristic(container)
-			# if c.type == Cstr_type.ONSHOULDER:
-			# 	container = shoulder
-			# 	totCont += vi.containedHeuristic(container)
-			# if c.type == Cstr_type.ONDRIVEABLEAREA:
-			# 	container = roadOrShoulder
-			# 	totCont += vi.containedHeuristic(container)
-			# if c.type == Cstr_type.ONINTERSECTION:
-			# 	container = intersection
-			# 	totCont += vi.containedHeuristic(container)
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
 				if vi.intersects(vj):
@@ -1526,24 +1491,19 @@ class Scenario:
 class Cstr_type(Enum):
 	ONREGIONTYPE = 1
 	ONROAD = 2
-	# ONSIDEWALK = 2
-	# ONCURB = 3
-	# ONSHOULDER = 4
-	# ONDRIVEABLEAREA = 5 # all driveable regions, inc shoulder and parking lanes
-	# ONINTERSECTION = 6
 
-	NOCOLLISION = 7
-	CANSEE = 8
+	NOCOLLISION = 3
+	CANSEE = 4
 	# TODO Add CANNOTSEE
 
-	HASTOLEFT = 9
-	HASTORIGHT = 10
-	HASBEHIND = 11
-	HASINFRONT = 12
+	HASTOLEFT = 5
+	HASTORIGHT = 6
+	HASBEHIND = 7
+	HASINFRONT = 8
 
-	DISTCLOSE = 13
-	DISTMED = 14
-	DISTFAR = 15
+	DISTCLOSE = 9
+	DISTMED = 10
+	DISTFAR = 11
 
 class Cstr():
 	def __init__(self, t, src, tgt):
