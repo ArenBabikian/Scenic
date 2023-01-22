@@ -22,7 +22,7 @@ from scenic.core.regions import EmptyRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent, DefaultIdentityDict
-from scenic.core.errors import InvalidScenarioError, InconsistentScenarioError
+from scenic.core.errors import InvalidScenarioError
 from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
@@ -899,7 +899,7 @@ class Scenario:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
-			if c.type == Cstr_type.ONROAD or c.type == Cstr_type.ONSIDEWALK:
+			if c.type == Cstr_type.ONROAD:
 				### How far is the farthest corner of vi from a valid region that can contain it?
 				container = self.containerOfObject(vi)
 				totCont += vi.containedHeuristic(container)
@@ -1051,15 +1051,6 @@ class Scenario:
 
 			#We assume that ego is obect[0]
 			parsed_cons = self.parseConfigConstraints()
-
-			for i in range(len(parsed_cons)):
-				c = parsed_cons[i]
-				if c.type == Cstr_type.ONROAD and type(objects[c.src]).__name__ == "Pedestrian":
-					error_message = ("error for object " + str(c.src) + " - ONROAD constraint cannot be set for a Pedetrian, please used ONSIDEWALK")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
-				elif c.type == Cstr_type.ONSIDEWALK and type(objects[c.src]).__name__ == "Car":
-					error_message = ("error for object " + str(c.src) + " - ONSIDEWALK constraint cannot be set for a Car, please used ONROAD")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
 			
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
@@ -1458,19 +1449,18 @@ class Scenario:
 
 class Cstr_type(Enum):
 	ONROAD = 1
-	ONSIDEWALK = 2
-	NOCOLLISION = 3
-	CANSEE = 4
+	NOCOLLISION = 2
+	CANSEE = 3
 	# TODO Add CANNOTSEE
 
-	HASTOLEFT = 5
-	HASTORIGHT = 6
-	HASBEHIND = 7
-	HASINFRONT = 8
+	HASTOLEFT = 4
+	HASTORIGHT = 5
+	HASBEHIND = 6
+	HASINFRONT = 7
 
-	DISTCLOSE = 9
-	DISTMED = 10
-	DISTFAR = 11
+	DISTCLOSE = 8
+	DISTMED = 9
+	DISTFAR = 10
 
 class Cstr():
 	def __init__(self, t, src, tgt):
@@ -1486,3 +1476,4 @@ class Cstr():
 	
 	def __repr__(self):
 		return self.pretty()
+>>>>>>> Stashed changes
