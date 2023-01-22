@@ -1071,3 +1071,8 @@ class DifferenceRegion(Region):
 
 	def __repr__(self):
 		return f'DifferenceRegion({self.regionA}, {self.regionB})'
+
+	def distanceTo(self, point: tuple) -> float:
+		print("Region A: ", type(self.regionA))
+		print("Region B: ", type(self.regionB))
+		return min(self.regionA.distanceTo(point), self.regionB.distanceTo(point))

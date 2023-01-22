@@ -8,11 +8,12 @@ from scenic.core.distributions import Samplable, needsSampling
 from scenic.core.specifiers import Specifier, PropertyDefault
 from scenic.core.vectors import Vector
 from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, viewAngleToPoint, distanceToSegment, radialToCartesian)
-from scenic.core.regions import CircularRegion, SectorRegion
+from scenic.core.regions import CircularRegion, SectorRegion, PolylineRegion, EmptyRegion
 from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.utils import DefaultIdentityDict, areEquivalent, cached_property
 from scenic.core.errors import RuntimeParseError
+from scenic.core import utils
 
 ## Abstract base class
 
@@ -283,6 +284,25 @@ class Point(_Constructible):
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
 
+	def blockedVisibilityRegions(self, objects):
+		blockedVisibilityRegions = []
+		for i in range(len(objects)):
+			if objects[i] == self:
+				blockedVisibilityRegions.append(EmptyRegion("Empty Region"))
+			else:
+				blockedVisibilityRegions.append(self.blockedVisibilityRegion(objects[i]))
+		return blockedVisibilityRegions
+	
+	def blockedVisibilityRegion(self, other):
+		corner1 = other.corners[0]
+		corner2 = other.corners[1]
+		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance,self.heading, utils.angle_between_3points(self.position.x, self.position.y, corner1.x, corner1.y, corner2.x, corner2.y), name="Blocked visibility cone")
+		print("Blocked Visibility Cone: ", blockedVisibilityCone)
+		regionBeforeTheBlockingObject = PolylineRegion(points=[self.position, corner1, corner2], name="Region before the blocking object")
+		print("Region before the blocking object: ", regionBeforeTheBlockingObject)
+		blockedVisibilityRegions = [blockedVisibilityCone.difference(regionBeforeTheBlockingObject)]
+		print("Blocked Visibility Region", blockedVisibilityRegions[0])
+
 	# @cached_property
 	@property 
 	def corners(self):
@@ -306,6 +326,19 @@ class Point(_Constructible):
 			if dist < minDist:
 				minDist = dist
 		return minDist
+
+	def canSeeBlockHeuristic(self, other, objects):
+		blockedVisibilityRegions = self.blockedVisibilityRegions(objects)
+		visibleRegion = self.visibleRegion
+		for i in range(len(objects)):
+			if (objects[i] != other):
+				visibleRegion = visibleRegion.difference(blockedVisibilityRegions[i])
+		minDist = float('inf')
+		for corner in other.corners:
+			dist = visibleRegion.distanceTo(corner)
+			if (dist < minDist):
+				minDist = dist		
+		return 0
 
 	def containedHeuristic(self, container):
 		maxDist = 0
