@@ -32,5 +32,4 @@ ${IMGDIR} \
 -p map maps/${MAPNAME}.xodr
 ${PATHTOCONFIGFILE}"
 echo $cmd
->>>>>>> Stashed changes
 eval $cmd
