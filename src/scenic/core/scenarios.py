@@ -1476,4 +1476,3 @@ class Cstr():
 	
 	def __repr__(self):
 		return self.pretty()
->>>>>>> Stashed changes
