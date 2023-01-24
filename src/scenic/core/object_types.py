@@ -286,22 +286,23 @@ class Point(_Constructible):
 
 	def blockedVisibilityRegions(self, objects):
 		blockedVisibilityRegions = []
-		for i in range(len(objects)):
-			if objects[i] == self:
+		for i, actor in enumerate(objects):
+			if actor == self:
 				blockedVisibilityRegions.append(EmptyRegion("Empty Region"))
 			else:
-				blockedVisibilityRegions.append(self.blockedVisibilityRegion(objects[i]))
+				blockedVisibilityRegions.append(self.blockedVisibilityRegion(actor))
 		return blockedVisibilityRegions
 	
 	def blockedVisibilityRegion(self, other):
 		corner1 = other.corners[0]
 		corner2 = other.corners[1]
+		#if (self.visibleRegion.contains(other)):
 		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance,self.heading, utils.angle_between_3points(self.position.x, self.position.y, corner1.x, corner1.y, corner2.x, corner2.y), name="Blocked visibility cone")
-		print("Blocked Visibility Cone: ", blockedVisibilityCone)
 		regionBeforeTheBlockingObject = PolylineRegion(points=[self.position, corner1, corner2], name="Region before the blocking object")
-		print("Region before the blocking object: ", regionBeforeTheBlockingObject)
-		blockedVisibilityRegions = [blockedVisibilityCone.difference(regionBeforeTheBlockingObject)]
-		print("Blocked Visibility Region", blockedVisibilityRegions[0])
+		blockedVisibilityRegion = blockedVisibilityCone.difference(regionBeforeTheBlockingObject)
+		return blockedVisibilityRegion
+		#else:
+		#	return EmptyRegion()
 
 	# @cached_property
 	@property 
@@ -330,12 +331,15 @@ class Point(_Constructible):
 	def canSeeBlockHeuristic(self, other, objects):
 		blockedVisibilityRegions = self.blockedVisibilityRegions(objects)
 		visibleRegion = self.visibleRegion
-		for i in range(len(objects)):
-			if (objects[i] != other):
+		for i, actor in enumerate(objects):
+			#print("Blocked Visibility Regions[",i,"]: ", blockedVisibilityRegions[i])
+			print("Blocked Visibility[",i,"]: ", blockedVisibilityRegions[i])
+			if (actor != other):
 				visibleRegion = visibleRegion.difference(blockedVisibilityRegions[i])
 		minDist = float('inf')
 		for corner in other.corners:
-			dist = visibleRegion.distanceTo(corner)
+			#print("Visible Region type: ", type(visibleRegion))
+			dist = visibleRegion.shortestDistanceTo(corner)
 			if (dist < minDist):
 				minDist = dist		
 		return 0

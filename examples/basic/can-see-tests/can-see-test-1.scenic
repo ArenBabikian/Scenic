@@ -5,7 +5,8 @@ param constraints = "ONROAD : [0, -1]; \
                    ONROAD : [2, -1]; \
                    DISTMED : [0, 1]; \
                    HASINFRONT : [0, 1]; \
-                   CANSEEBLOCK : [0, 2]; "
+                   CANSEEBLOCK : [0, 2]; \
+                   DISTFAR : [0, 2]; "
 model scenic.simulators.carla.model
 
 ego = Car with color[188/256, 185/256, 183/256] # Silver
