@@ -550,8 +550,8 @@ def figRQ2():
     
     m = 'zalaFullcrop'
     approach = 'nsga'
-    configs = ['none', 'r', 'rc', 'rcv', 'rcvd', 'rcvdp']
-    names = ['\u00F8', 'R', 'RC', 'RCV', 'RCVD', 'RCVDP']
+    configs = ['none', 'r', 'rc', 'rcp', 'rcpd', 'rcpdv']
+    names = ['\u00F8\n[0..0]', 'R\n[4..4]', 'RC\n[10..10]', 'RCP\n[16..22]', 'RCPD\n[22..28]', 'RCPDV\n[24..33]']
 
     data = {}
     # for config in configurations:
@@ -677,9 +677,9 @@ def figRQ2():
     fix_ratio(ax1, ax1)
     fix_ratio(ax2, ax2)
     
-    plt.xlabel('Included constraints')
+    plt.xlabel('Included constraint types and number')
     plt.xticks(index + 0.5*bar_width, tuple(names))
-    plt.legend([bar1, bar2], labels, loc=9)
+    plt.legend([bar1, bar2], labels, loc=6)
 
     # plt.tight_layout()
     # plt.show()
