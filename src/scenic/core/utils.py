@@ -134,3 +134,7 @@ def get_type_args(tp):
             res = (list(res[:-1]), res[-1])
         return res
     return ()
+
+def angle_between_3points(origin, point2, point3):
+    angle = math.atan2(point2.y-origin.y, point2.x-origin.x) - math.atan2(point3.y-origin.y, point3.x-origin.x)
+    return angle

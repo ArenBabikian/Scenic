@@ -345,6 +345,25 @@ class SectorRegion(Region):
 			# print("negAngle")
 			return distanceToSegment(p, c, leftPoint)
 
+	#TODO: I am not convinced I understand this code properly, 
+	# I copy-pasted in from shortestDistanceTo and I believe 
+	# I understand it. Since it uses the same code as 
+	# shortestDistanceTo, I want to refactor it however I will
+	# wait for confirmation
+	def shortestDistanceToSideEdge(self, point):
+		p = tuple(point)
+		c = tuple(self.center)
+		self.radius = 50 ##
+		angleToPoint = viewAngleToPoint(p, c, self.heading)
+		# print(f'angle = {self.angle}')
+		leftPoint = tuple(radialToCartesian(c, self.radius, self.heading+(self.angle/2)))
+		rightPoint = tuple(radialToCartesian(c, self.radius, self.heading-(self.angle/2)))
+
+		if angleToPoint > 0:
+			return distanceToSegment(p, c, rightPoint)
+		else:
+			return distanceToSegment(p, c, leftPoint)
+
 	def uniformPointInner(self):
 		x, y = self.center
 		heading, angle, maxDist = self.heading, self.angle, self.radius
@@ -1071,3 +1090,22 @@ class DifferenceRegion(Region):
 
 	def __repr__(self):
 		return f'DifferenceRegion({self.regionA}, {self.regionB})'
+
+	#TODO Modify for multiple cars
+	#TODO Error handling if necessary if the difference region does not conform to the limitations of my implementation
+	def shortestDistanceTo(self, point: tuple) -> float:
+		if(self.containsPoint(point)):
+			return 0
+
+		#If in the blocked region
+		elif (self.regionA.containsPoint(point) and self.regionB.containsPoint(point)):
+			#This would not work when region B is partially in (see notes). 
+			# To solve this, reconstruct visible region of the car by creating a 
+			# new sector region by removing the part of B
+			return self.regionB.shortestDistanceToEdge(point)
+		
+		#If not in visible region
+		else:
+			#TODO: this does not work if region B extends to the start of region A. Correct it in a similar way then above.
+			return self.regionA.shortestDistanceTo(point)
+
