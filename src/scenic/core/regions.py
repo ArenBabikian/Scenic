@@ -1071,3 +1071,10 @@ class DifferenceRegion(Region):
 
 	def __repr__(self):
 		return f'DifferenceRegion({self.regionA}, {self.regionB})'
+
+	def shortestDistanceTo(self, point: tuple) -> float:
+		if (self.containsPoint(point)):
+			return 0
+		else:
+			return self.regionA.shortestDistanceTo(point)
+		
