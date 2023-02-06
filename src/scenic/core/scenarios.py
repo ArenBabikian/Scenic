@@ -1261,7 +1261,6 @@ class Scenario:
 		stats['num_iterations'] = iterations # TODO adapt to nsga
 
 		if self.params.get('saveStats') == "True":
-
 			# get list of included constraints
 			# These are removed constraints for scenic
 			# these are all constraints for NSGA
@@ -1270,6 +1269,8 @@ class Scenario:
 			
 			# Analyse the allSamples (final set of samples)
 			allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, allSamples)
+
+			pbMapVals = self.analyseSolSetPBMap(parsed_cons, allSamples)
 
 			# no stats if failed and not nsga
 			if failed and not self.nsga:
@@ -1291,6 +1292,7 @@ class Scenario:
 				stats['CON_sat_num_rm'] = len(parsed_cons) - sum(numVioMap[allSamples[0]])
 				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
 				stats['CON_rm_vals'] = allVals[allSamples[0]]
+				stats['PB_Map_vals'] = pbMapVals[allSamples[0]]
 			else:
 				stats['restarts'] = restarts
 				num_cons = len(parsed_cons)
@@ -1320,6 +1322,7 @@ class Scenario:
 					solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
 					solStats['CON_sat_%_soft'] = -1 if num_soft_cons == 0 else solStats['CON_sat_num_soft'] / num_soft_cons
 					solStats['CON_vals'] = allVals[sol]
+					solStats['PB_Map_vals'] = pbMapVals[sol]
 
 					allSolStats[names[i]] = solStats					
 
@@ -1327,7 +1330,6 @@ class Scenario:
 
 			# Analyse HISTORIC sample sets
 			if self.nsga:
-
 				historyStats = {}
 				for historicSolSet in reversed(historicSolSets):
 					# get historic solutions as samples:
@@ -1365,6 +1367,7 @@ class Scenario:
 							solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
 							solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
 							solStats['CON_vals'] = allVals[sol]
+							solStats['PB_Map_vals'] = pbMapVals[sol]
 
 							allSolStats[names[i]] = solStats
 
@@ -1407,6 +1410,47 @@ class Scenario:
 		if not allScenes:
 			return [None], stats
 		return allScenes, stats
+
+	def analyseSolSetPBMap(self, parsed_cons, allSamples):
+		"""
+		Function that analyses the output samples
+		Analyse "Visibility" constraint
+		TODO: Other constraints
+		"""
+		allVals = {}
+
+		for i in range(len(allSamples)):
+			sample = allSamples[i]
+			
+			vals = {}
+			for c in parsed_cons:
+				vi = sample[self.objects[c.src]]	# source
+				vj = None		
+				if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
+					vj = sample[self.objects[c.tgt]]					# target
+
+				if c.type == Cstr_type.CANSEE:
+					vals[str(c)] = self.canSeePBHeurCorners(vi, vj)
+
+			allVals[sample] = vals
+
+		return allVals
+
+	def canSeePBHeurCorners(self, src, tgt):
+		"""
+		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's visibility region
+		0 corners 		-> 0.0
+		1 corner  		-> 0.25
+		2 corners 		-> 0.5
+		3 corners 		-> 0.75
+		4 corners (all) -> 1.0
+		"""
+		cornerCount = 0
+		visibleRegion = src.visibleRegion
+		for corner in tgt.corners:
+			if(visibleRegion.containsPoint(corner)):
+				cornerCount += 1
+		return cornerCount*(1/4)
 
 	def analyseSolSet(self, parsed_cons, allSamples):
 		allVals = {}
