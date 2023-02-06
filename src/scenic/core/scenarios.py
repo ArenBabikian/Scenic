@@ -879,6 +879,37 @@ class Scenario:
 
 			vi.position = v
 			vi.heading = self.network._defaultRoadDirection(v)
+
+	def regionByType(self, regionType):
+		if regionType == 1:
+			#: All lanes union all intersections.
+			return self.network.drivableRegion
+		elif regionType == 2:
+			#: All sidewalks union all crossings.
+			return self.network.walkableRegion
+		elif regionType == 3:
+			#: All roads (ordinary roads that are not part of an intersection).
+			return self.network.roadRegion
+		elif regionType == 4:
+			#: All lanes.
+			return self.network.laneRegion
+		elif regionType == 5:
+			#: All intersections.
+			return self.network.intersectionRegion		
+		elif regionType == 6:
+			#: All pedestrian crossings.
+			return self.network.crossingRegion	
+		elif regionType == 7:
+			#: All sidewalks
+			return self.network.sidewalkRegion
+		elif regionType == 8:
+			#: All curbs of ordinary roads.
+			return self.network.curbRegion
+		elif regionType == 9:
+			#: All shoulders (by default, includes parking lanes).
+			return self.network.shoulderRegion
+		else: 
+			return None
 	
 	def heuristic(self, x, constraints, fun):
 
@@ -891,18 +922,23 @@ class Scenario:
 		totPosRel, totDistRel = 0, 0
 
 		## GET HEURISTIC VALUES
-		## Assuming that ego position in actor llist does not change
+		## Assuming that ego position in actor list does not change
 		for c in constraints:
 			vi = objects[c.src]
 			vj = None
-			if c.tgt != -1:
+			if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
 				vj = objects[c.tgt]
 			
 			# Constraints Switch
-			if c.type == Cstr_type.ONROAD or c.type == Cstr_type.ONSIDEWALK:
+			if c.type == Cstr_type.ONREGIONTYPE:
+				container = self.regionByType(c.tgt)
+				if container == None:
+					raise Error("Container is null")
+				totCont += vi.containedHeuristic(container)	
+			if c.type == Cstr_type.ONROAD:
 				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = self.containerOfObject(vi)
-				totCont += vi.containedHeuristic(container)
+				container = self.network.drivableRegion
+				totCont += vi.containedHeuristic(container)				
 			if c.type == Cstr_type.NOCOLLISION:
 				### Are vi and vj intersecting?
 				if vi.intersects(vj):
@@ -1054,12 +1090,6 @@ class Scenario:
 
 			for i in range(len(parsed_cons)):
 				c = parsed_cons[i]
-				if c.type == Cstr_type.ONROAD and type(objects[c.src]).__name__ == "Pedestrian":
-					error_message = ("error for object " + str(c.src) + " - ONROAD constraint cannot be set for a Pedetrian, please used ONSIDEWALK")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
-				elif c.type == Cstr_type.ONSIDEWALK and type(objects[c.src]).__name__ == "Car":
-					error_message = ("error for object " + str(c.src) + " - ONSIDEWALK constraint cannot be set for a Car, please used ONROAD")
-					raise InconsistentScenarioError(line=i+1, message=error_message)
 			
 			# [totCont, totColl, totVis, totPosRel, totDistRel]
 			functions = [(lambda x:x**3),
@@ -1342,7 +1372,7 @@ class Scenario:
 
 				stats['history'] = historyStats
 
-				# print(stats)
+				print(stats)
 			
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
@@ -1394,10 +1424,15 @@ class Scenario:
 			for c in parsed_cons:
 				vi = sample[self.objects[c.src]]
 				vj = None
-				if c.tgt != -1:
+				if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
 					vj = sample[self.objects[c.tgt]]
+				if c.type == Cstr_type.ONREGIONTYPE:
+					container = self.regionByType(c.tgt)
+					vals[str(c)] = vi.containedHeuristic(container)
+					if vals[str(c)] != 0 : numVioHard += 1
+					# num_hard_cons += 1
 				if c.type == Cstr_type.ONROAD:
-					vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+					vals[str(c)] = vi.containedHeuristic(self.network.drivableRegion)
 					if vals[str(c)] != 0 : numVioHard += 1
 					# num_hard_cons += 1
 				if c.type == Cstr_type.NOCOLLISION:
@@ -1457,8 +1492,9 @@ class Scenario:
 		return veneer.instantiateSimulator(self.simulator, self.params)
 
 class Cstr_type(Enum):
-	ONROAD = 1
-	ONSIDEWALK = 2
+	ONREGIONTYPE = 1
+	ONROAD = 2
+
 	NOCOLLISION = 3
 	CANSEE = 4
 	# TODO Add CANNOTSEE
