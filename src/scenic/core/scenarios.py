@@ -12,13 +12,14 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
+from scenic.core.geometry import polygonUnion
 from scenic.core.nsga2mod import NSGA2M
 from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
-from scenic.core.regions import EmptyRegion
+from scenic.core.regions import EmptyRegion, RectangularRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent, DefaultIdentityDict
@@ -31,6 +32,9 @@ from scenic.simulators.utils.colors import Color
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
+
+import shapely.geometry
+import shapely.ops
 
 class Scene:
 	"""Scene()
@@ -1430,7 +1434,8 @@ class Scenario:
 					vj = sample[self.objects[c.tgt]]					# target
 
 				if c.type == Cstr_type.CANSEE:
-					vals[str(c)] = self.canSeePBHeurCorners(vi, vj)
+					# vals[str(c)] = self.canSeePBHeurCorners(vi, vj) # heur val based on corners
+					vals[str(c)] = self.canSeePBHeurPercent(vi, vj)   # heur val based on fraction of tgt in visible region
 
 			allVals[sample] = vals
 
@@ -1451,6 +1456,25 @@ class Scenario:
 			if(visibleRegion.containsPoint(corner)):
 				cornerCount += 1
 		return cornerCount*(1/4)
+
+	def canSeePBHeurPercent(self, src, tgt):
+		"""
+		Heuristic [0, 1] equivalent to percentage of tgt vehicle in src's visibility region
+		"""
+		# Generate polygon object for tgt Car object
+		tgtRectRegion = RectangularRegion(tgt.position, tgt.heading, tgt.width, tgt.length)
+		tgtPolygon = shapely.geometry.Polygon(tgtRectRegion.corners)
+		# print("Area of car: ", tgtPolygon.area)
+
+		# Generate polygon object for visibility SectorRegion object
+		visibleRegion = src.visibleRegion
+		visiblePolygon = visibleRegion.polygon
+
+		# Get intersection polygon
+		intersectPolygon = visiblePolygon.intersection(tgtPolygon)
+		# print("Intersect area: ", intersectPolygon.area)
+
+		return (intersectPolygon.area)/(tgtPolygon.area)	# return fractor of tgt car in visibility region
 
 	def analyseSolSet(self, parsed_cons, allSamples):
 		allVals = {}
