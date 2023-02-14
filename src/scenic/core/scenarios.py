@@ -7,6 +7,7 @@ import random
 import re
 import copy
 import time
+import math
 from numpy.core.numeric import full
 from pymoo.util.termination.collection import TerminationCollection
 
@@ -1436,10 +1437,32 @@ class Scenario:
 				if c.type == Cstr_type.CANSEE:
 					# vals[str(c)] = self.canSeePBHeurCorners(vi, vj) # heur val based on corners
 					vals[str(c)] = self.canSeePBHeurPercent(vi, vj)   # heur val based on fraction of tgt in visible region
-
+				elif c.type == Cstr_type.DISTCLOSE:
+					vals[str(c)] = self.distClostPBHeur(vi, vj)
+				elif c.type == Cstr_type.DISTFAR:
+					vals[str(c)] = self.distFarPBHeur(vi, vj)
+			
 			allVals[sample] = vals
 
 		return allVals
+
+	def distClostPBHeur(self, src, tgt):
+		"""
+		Heuristic [0, 1] equivalent to how close tgt is to src 
+		heur = e^(-dist/100)
+		"""
+		dist = tgt.position.distanceTo(src.position)
+		heur = math.exp(-dist/100)
+		return heur
+
+	def distFarPBHeur(self, src, tgt):
+		"""
+		Heuristic [0, 1] equivalent to how far tgt is to src 
+		heur = -e^(-dist/100) + 1
+		"""
+		dist = tgt.position.distanceTo(src.position)
+		heur = -math.exp(-dist/100)+1
+		return heur
 
 	def canSeePBHeurCorners(self, src, tgt):
 		"""
