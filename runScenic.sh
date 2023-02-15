@@ -13,7 +13,7 @@ USENSGA='True'
 # IMGDIR='--image-dir examples/basic/_output/ego-images'
 
 cmd="poetry run scenic \
--b --count 5 -v 3 \
+-b --count 100 -v 3 \
 ${SIMULATE} \
 ${CARLAMAP} \
 ${IMGDIR} \

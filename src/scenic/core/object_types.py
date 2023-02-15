@@ -8,14 +8,13 @@ from scenic.core.distributions import Samplable, needsSampling
 from scenic.core.specifiers import Specifier, PropertyDefault
 from scenic.core.vectors import Vector
 from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, viewAngleToPoint, distanceToSegment, radialToCartesian)
-from scenic.core.regions import CircularRegion, SectorRegion, EmptyRegion
+from scenic.core.regions import CircularRegion, SectorRegion, IntersectionRegion
 from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.utils import DefaultIdentityDict, areEquivalent, cached_property
 from scenic.core.errors import RuntimeParseError
 from scenic.core import utils
 
-## Abstract base class
 
 class _Constructible(Samplable):
 	"""Abstract base class for Scenic objects.
@@ -286,21 +285,39 @@ class Point(_Constructible):
 
 	def getModifiedVisibilityRegion(self, other, actors):
 		modifiedVisibilityRegion = self.visibleRegion
+		blockedVisibilityRegions = []
 		for actor in actors:
 			if actor != self and actor != other:
 				#TODO: If blocked visibility cone is not fully contained by visible region, 
-				# reduce visible region instead.
-				modifiedVisibilityRegion.difference(self.blockedVisibilityRegion(actor))
+				# need to reduce size of blocked visibility cone
+				blockedVisibilityRegions.append(self.blockedVisibilityRegion(actor))
+		
+		# Merge overlapping blockedVisibilityRegions together 
+		i = 0
+		while i < len(blockedVisibilityRegions):
+			j = i + 1
+			while j < len(blockedVisibilityRegions):
+				if (blockedVisibilityRegions[i].intersects(blockedVisibilityRegions[j])):
+					blockedVisibilityRegions[i] = blockedVisibilityRegions[i].intersect(blockedVisibilityRegions[j])
+					blockedVisibilityRegions.pop(j)
+				else:
+					j += 1
+			i += 1
+
+		# Remove the blocked visibility region from the visible region
+		for blockedVisibilityRegion in blockedVisibilityRegions:
+			modifiedVisibilityRegion = modifiedVisibilityRegion.difference(blockedVisibilityRegion)
+
 		return modifiedVisibilityRegion
 
 	def blockedVisibilityRegion(self, other):
 		#TODO: Select appropriate corners rather then random ones. 
 		corner1 = other.corners[0]
 		corner2 = other.corners[1]
-		angle = utils.angle_between_3points(self.position, corner1, corner2)
+		blockedVisibilityConeAngle = utils.angle_between_3points(self.position, corner1, corner2)
 		#TODO: Again here, need to select the correct corner
-		blockedVisibilityConeHeading = angle/2 + math.atan2(corner1.y - self.position.y, corner1.x - self.position.x)
-		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance, blockedVisibilityConeHeading, angle, name="Blocked visibility cone")
+		blockedVisibilityConeHeading = blockedVisibilityConeAngle/2 + math.atan2(corner1.y - self.position.y, corner1.x - self.position.x)
+		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance, blockedVisibilityConeHeading, blockedVisibilityConeAngle, name="Blocked visibility cone")
 		#TODO: Remove region before the blocking car
 		return blockedVisibilityCone
 

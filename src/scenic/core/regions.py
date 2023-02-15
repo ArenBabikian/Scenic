@@ -13,7 +13,7 @@ from scenic.core.distributions import (Samplable, RejectionException, needsSampl
                                        distributionMethod)
 from scenic.core.lazy_eval import valueInContext
 from scenic.core.vectors import Vector, OrientedVector, VectorDistribution, VectorField
-from scenic.core.geometry import _RotatedRectangle
+from scenic.core.geometry import _RotatedRectangle, normalizeAngle
 from scenic.core.geometry import sin, cos, hypot, findMinMax, pointIsInCone, averageVectors, viewAngleToPoint, radialToCartesian, distanceToSegment
 from scenic.core.geometry import headingOfSegment, triangulatePolygon, plotPolygon, polygonUnion
 from scenic.core.type_support import toVector
@@ -372,6 +372,23 @@ class SectorRegion(Region):
 		t = random.uniform(-ha, ha) + (heading + (math.pi / 2))
 		pt = Vector(x + (r * cos(t)), y + (r * sin(t)))
 		return self.orient(pt)
+
+	def intersects(self, other):
+		if type(other) == SectorRegion and self.center == other.center and self.radius == other.radius:
+			h1 = self.heading
+			a1 = self.angle
+			h2 = other.heading
+			a2 = other.angle
+
+    		# Compute the difference between the two headings
+			heading_diff = abs(normalizeAngle(h1 - h2))
+
+			# Check if the region intersects:
+			if a1/2 + a2/2 >= heading_diff:
+				return True
+			else:
+				return False
+		return super().intersects(other)
 
 	def isEquivalentTo(self, other):
 		if type(other) is not SectorRegion:
@@ -1091,7 +1108,6 @@ class DifferenceRegion(Region):
 	def __repr__(self):
 		return f'DifferenceRegion({self.regionA}, {self.regionB})'
 
-	#TODO Modify for multiple cars
 	#TODO Error handling if necessary if the difference region does not conform to the limitations of my implementation
 	def shortestDistanceTo(self, point: tuple) -> float:
 		if(self.containsPoint(point)):
@@ -1099,10 +1115,10 @@ class DifferenceRegion(Region):
 
 		#If in the blocked region
 		elif (self.regionA.containsPoint(point) and self.regionB.containsPoint(point)):
-			#This would not work when region B is partially in (see notes). 
-			# To solve this, reconstruct visible region of the car by creating a 
-			# new sector region by removing the part of B
-			return self.regionB.shortestDistanceToEdge(point)
+			# This would not work when region B is partially in (see notes). 
+			# To solve this we make sure this never happens when we create the block region
+			# therefore, need to error handle here.
+			return self.regionB.shortestDistanceToSideEdge(point)
 		
 		#If not in visible region
 		else:
