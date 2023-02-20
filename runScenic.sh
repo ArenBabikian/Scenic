@@ -3,7 +3,7 @@
 # General variable definitions
 ##############################
 MAPNAME='town02' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='examples/basic/test/1-nsga-onregion.scenic'
+PATHTOCONFIGFILE='examples/basic/pb-maps-tests/3-pb-map-test.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions

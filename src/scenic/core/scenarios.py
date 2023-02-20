@@ -29,6 +29,7 @@ from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
 from scenic.simulators.utils.colors import Color
+from scenic.core.regions import CircularRegion, SectorRegion
 
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -1435,16 +1436,42 @@ class Scenario:
 					vj = sample[self.objects[c.tgt]]					# target
 
 				if c.type == Cstr_type.CANSEE:
-					# vals[str(c)] = self.canSeePBHeurCorners(vi, vj) # heur val based on corners
-					vals[str(c)] = self.canSeePBHeurPercent(vi, vj)   # heur val based on fraction of tgt in visible region
+					vals[str(c)] = self.pbHeurPercent(vi.visibleRegion, vj)   # heur val based on fraction of tgt in visible region
 				elif c.type == Cstr_type.DISTCLOSE:
 					vals[str(c)] = self.distClostPBHeur(vi, vj)
 				elif c.type == Cstr_type.DISTFAR:
 					vals[str(c)] = self.distFarPBHeur(vi, vj)
-			
+				elif c.type == Cstr_type.HASTORIGHT:
+					sectorRegion = SectorRegion(vi, 20, vi.heading-(math.pi/2), math.atan(2.5/2))
+					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+				elif c.type == Cstr_type.HASTOLEFT:
+					sectorRegion = SectorRegion(vi, 20, vi.heading+(math.pi/2), math.atan(2.5/2))
+					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+				elif c.type == Cstr_type.HASINFRONT:
+					sectorRegion = SectorRegion(vi, 50, vi.heading, math.atan(2/5))
+					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+				elif c.type == Cstr_type.HASBEHIND:
+					sectorRegion = SectorRegion(vi, 50, vi.heading+math.pi, math.atan(2/5))
+					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+
 			allVals[sample] = vals
 
 		return allVals
+
+	def pbHeur(self, sectorRegion, tgt):
+		"""
+		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's right region
+		0 corners 		-> 0.0
+		1 corner  		-> 0.25
+		2 corners 		-> 0.5
+		3 corners 		-> 0.75
+		4 corners (all) -> 1.0
+		"""
+		cornerCount = 0
+		for corner in tgt.corners:
+			if(sectorRegion.containsPoint(corner)):
+				cornerCount += 1
+		return cornerCount*(1/4)
 
 	def distClostPBHeur(self, src, tgt):
 		"""
@@ -1464,23 +1491,7 @@ class Scenario:
 		heur = -math.exp(-dist/100)+1
 		return heur
 
-	def canSeePBHeurCorners(self, src, tgt):
-		"""
-		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's visibility region
-		0 corners 		-> 0.0
-		1 corner  		-> 0.25
-		2 corners 		-> 0.5
-		3 corners 		-> 0.75
-		4 corners (all) -> 1.0
-		"""
-		cornerCount = 0
-		visibleRegion = src.visibleRegion
-		for corner in tgt.corners:
-			if(visibleRegion.containsPoint(corner)):
-				cornerCount += 1
-		return cornerCount*(1/4)
-
-	def canSeePBHeurPercent(self, src, tgt):
+	def pbHeurPercent(self, srcRegion, tgt):
 		"""
 		Heuristic [0, 1] equivalent to percentage of tgt vehicle in src's visibility region
 		"""
@@ -1490,8 +1501,7 @@ class Scenario:
 		# print("Area of car: ", tgtPolygon.area)
 
 		# Generate polygon object for visibility SectorRegion object
-		visibleRegion = src.visibleRegion
-		visiblePolygon = visibleRegion.polygon
+		visiblePolygon = srcRegion.polygon
 
 		# Get intersection polygon
 		intersectPolygon = visiblePolygon.intersection(tgtPolygon)
