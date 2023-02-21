@@ -1438,9 +1438,11 @@ class Scenario:
 				if c.type == Cstr_type.CANSEE:
 					vals[str(c)] = self.pbHeurPercent(vi.visibleRegion, vj)   # heur val based on fraction of tgt in visible region
 				elif c.type == Cstr_type.DISTCLOSE:
-					vals[str(c)] = self.distClostPBHeur(vi, vj)
+					vals[str(c)] = self.distPBHeur(vi, vj, 0, 10)
+				elif c.type == Cstr_type.DISTMED:
+					vals[str(c)] = self.distPBHeur(vi, vj, 10, 20)
 				elif c.type == Cstr_type.DISTFAR:
-					vals[str(c)] = self.distFarPBHeur(vi, vj)
+					vals[str(c)] = self.distPBHeur(vi, vj, 20)
 				elif c.type == Cstr_type.HASTORIGHT:
 					sectorRegion = SectorRegion(vi, 20, vi.heading-(math.pi/2), math.atan(2.5/2))
 					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
@@ -1458,37 +1460,37 @@ class Scenario:
 
 		return allVals
 
-	def pbHeur(self, sectorRegion, tgt):
+	def distPBHeur(self, src, tgt, rangeLow, rangeHigh=None):
 		"""
-		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's right region
-		0 corners 		-> 0.0
-		1 corner  		-> 0.25
-		2 corners 		-> 0.5
-		3 corners 		-> 0.75
-		4 corners (all) -> 1.0
-		"""
-		cornerCount = 0
-		for corner in tgt.corners:
-			if(sectorRegion.containsPoint(corner)):
-				cornerCount += 1
-		return cornerCount*(1/4)
-
-	def distClostPBHeur(self, src, tgt):
-		"""
-		Heuristic [0, 1] equivalent to how close tgt is to src 
-		heur = e^(-dist/100)
+		Heuristic [0, 1] equivalent to how close to the low range tgt is
+		If no upper limit is specified for the range, assume infinity (far distance)
 		"""
 		dist = tgt.position.distanceTo(src.position)
-		heur = math.exp(-dist/100)
-		return heur
+		#print("Distance: ", dist)
 
-	def distFarPBHeur(self, src, tgt):
-		"""
-		Heuristic [0, 1] equivalent to how far tgt is to src 
-		heur = -e^(-dist/100) + 1
-		"""
-		dist = tgt.position.distanceTo(src.position)
-		heur = -math.exp(-dist/100)+1
+		# Distance Far
+		# If below range, heur = 0
+		# If above range, heur = 1 - 1/(ln(dist - rangeLow + e))
+		if rangeHigh is None:
+			if (dist < rangeLow):
+				heur = 0
+			else:		
+				heur = 1 - 1/(math.log(dist-rangeLow + math.exp(1)))
+
+		# Distance close or med
+		# If below range, heur = 0
+		# If above range, heur = 1
+		# If within range, heur = ln(((dist-rangeLow)(e-1))/range + 1)
+		else:
+			range = rangeHigh - rangeLow
+			if(dist < rangeLow):
+				heur = 0
+			elif(dist > rangeHigh):
+				heur = 1
+			else:
+				distFromLow = dist-rangeLow
+				heur = math.log((distFromLow * (math.exp(1) - 1))/range + 1)
+
 		return heur
 
 	def pbHeurPercent(self, srcRegion, tgt):
@@ -1508,6 +1510,21 @@ class Scenario:
 		# print("Intersect area: ", intersectPolygon.area)
 
 		return (intersectPolygon.area)/(tgtPolygon.area)	# return fractor of tgt car in visibility region
+	
+	def pbHeurCorners(self, sectorRegion, tgt):
+		"""
+		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's right region
+		0 corners 		-> 0.0
+		1 corner  		-> 0.25
+		2 corners 		-> 0.5
+		3 corners 		-> 0.75
+		4 corners (all) -> 1.0
+		"""
+		cornerCount = 0
+		for corner in tgt.corners:
+			if(sectorRegion.containsPoint(corner)):
+				cornerCount += 1
+		return cornerCount*(1/4)
 
 	def analyseSolSet(self, parsed_cons, allSamples):
 		allVals = {}
