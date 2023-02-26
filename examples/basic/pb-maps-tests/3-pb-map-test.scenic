@@ -2,7 +2,7 @@ param constraints = "ONREGIONTYPE : [0, 1]; \
                    ONREGIONTYPE : [1, 2]; \
                    NOCOLLISION : [0, 1]; \
                    DISTCLOSE : [0, 1]; \
-                   HASBEHIND : [0, 1]; "
+                   HASTOLEFT : [0, 1]; "
 model scenic.simulators.carla.model
 
 ego = Car with color[188/256, 185/256, 183/256] # Silver
