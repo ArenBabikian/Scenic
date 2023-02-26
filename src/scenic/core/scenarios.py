@@ -13,7 +13,7 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
-from scenic.core.geometry import polygonUnion
+from scenic.core.geometry import polygonUnion, viewAngleToPoint
 from scenic.core.nsga2mod import NSGA2M
 from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
@@ -1444,22 +1444,26 @@ class Scenario:
 				elif c.type == Cstr_type.DISTFAR:
 					vals[str(c)] = self.distPBHeur(vi, vj, 20)
 				elif c.type == Cstr_type.HASTORIGHT:
-					sectorRegion = SectorRegion(vi, 20, vi.heading-(math.pi/2), math.atan(2.5/2))
-					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+					vals[str(c)] = self.posPBHeur(vi, vj, (-math.pi / 2))
 				elif c.type == Cstr_type.HASTOLEFT:
-					sectorRegion = SectorRegion(vi, 20, vi.heading+(math.pi/2), math.atan(2.5/2))
-					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+					vals[str(c)] = self.posPBHeur(vi, vj, (math.pi / 2))
 				elif c.type == Cstr_type.HASINFRONT:
-					sectorRegion = SectorRegion(vi, 50, vi.heading, math.atan(2/5))
-					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+					vals[str(c)] = self.posPBHeur(vi, vj, 0)
 				elif c.type == Cstr_type.HASBEHIND:
-					sectorRegion = SectorRegion(vi, 50, vi.heading+math.pi, math.atan(2/5))
-					vals[str(c)] = self.pbHeurPercent(sectorRegion, vj)
+					vals[str(c)] = self.posPBHeur(vi, vj, -math.pi)
 
 			allVals[sample] = vals
 
 		return allVals
 
+	def posPBHeur(self, src, tgt, pos):
+		a = abs(pos - viewAngleToPoint(tgt.position, src.position, src.heading))
+		if a > math.pi/2: return 0 #90 degree
+		if a >= math.pi/3 and a <= math.pi/2: return 0.25
+		if a >= math.pi/4 and a <= math.pi/3: return 0.5
+		if a >= math.pi/6 and a <= math.pi/4: return 0.75
+		if a >= 0 and a <= math.pi/6: return 1 
+		
 	def distPBHeur(self, src, tgt, rangeLow, rangeHigh=None):
 		"""
 		Heuristic [0, 1] equivalent to how close to the low range tgt is
