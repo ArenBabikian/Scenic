@@ -1444,25 +1444,24 @@ class Scenario:
 				elif c.type == Cstr_type.DISTFAR:
 					vals[str(c)] = self.distPBHeur(vi, vj, 20)
 				elif c.type == Cstr_type.HASTORIGHT:
-					vals[str(c)] = self.posPBHeur(vi, vj, (-math.pi / 2))
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-(math.pi / 2))
 				elif c.type == Cstr_type.HASTOLEFT:
-					vals[str(c)] = self.posPBHeur(vi, vj, (math.pi / 2))
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading+(math.pi / 2))
 				elif c.type == Cstr_type.HASINFRONT:
-					vals[str(c)] = self.posPBHeur(vi, vj, 0)
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading)
 				elif c.type == Cstr_type.HASBEHIND:
-					vals[str(c)] = self.posPBHeur(vi, vj, -math.pi)
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-math.pi)
 
 			allVals[sample] = vals
 
 		return allVals
 
-	def posPBHeur(self, src, tgt, pos):
-		a = abs(pos - viewAngleToPoint(tgt.position, src.position, src.heading))
-		if a > math.pi/2: return 0 #90 degree
-		if a >= math.pi/3 and a <= math.pi/2: return 0.25
-		if a >= math.pi/4 and a <= math.pi/3: return 0.5
-		if a >= math.pi/6 and a <= math.pi/4: return 0.75
-		if a >= 0 and a <= math.pi/6: return 1 
+	def posPBHeur(self, src, tgt, heading):
+		a = abs(viewAngleToPoint(tgt.position, src.position, heading))
+		if a > math.pi/4: return 0 
+		if a >= math.pi/6 and a <= math.pi/4: return 0.33
+		if a >= math.pi/12 and a <= math.pi/6: return 0.66
+		if a >= 0 and a <= math.pi/12: return 1 
 		
 	def distPBHeur(self, src, tgt, rangeLow, rangeHigh=None):
 		"""
