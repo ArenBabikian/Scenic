@@ -283,29 +283,35 @@ class Point(_Constructible):
 	@property 
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
-	
-	def getblockedVisibilityRegionOfOneActor(self, other):
-		blockedVisibilityRegion = Polygon()
-		if (self.visibleRegion.containsObject(other)):
-			corners = self.getCornersDefiningBlockedVisibilityCone(other) 
-			corner1 = corners[0]
-			corner2 = corners[1]
-			visibleDistance = 50
-			v1 = (corner1.x - self.position.x, corner1.y- self.position.y)
-			v2 = (corner2.x - self.position.x, corner2.y- self.position.y)
 
-		# normalize the vectors
-			v1Length = math.sqrt(v1[0]**2 + v1[1]**2)
-			v2Length = math.sqrt(v2[0]**2 + v2[1]**2)
-			v1_norm = (v1[0] / v1Length, v1[1] / v1Length)
-			v2_norm = (v2[0] / v2Length, v2[1] / v2Length)
-
-			corner3 = (self.position.x + visibleDistance*v1_norm[0], self.position.y + visibleDistance*v1_norm[1])
-			corner4 = (self.position.x + visibleDistance*v2_norm[0], self.position.y + visibleDistance*v2_norm[1])
-			
-			blockedVisibilityRegion = Polygon((corner1,corner2,corner4,corner3))
+	#Only supports one actor for the moment
+	def getBlockedVisibilityRegions(self, other, actors):
+		blockedVisibilityRegion = []
+		for actor in actors:
+			if actor !=self and actor !=other:
+				if (self.visibleRegion.containsObject(actor)):
+					blockedVisibilityRegion.append(self.getBlockedVisibilityRegion(actor))
 
 		return blockedVisibilityRegion
+	
+	def getBlockedVisibilityRegion(self, other):
+		corners = self.getCornersDefiningBlockedVisibilityCone(other) 
+		corner1 = corners[0]
+		corner2 = corners[1]
+		visibleDistance = 50
+		v1 = (corner1.x - self.position.x, corner1.y- self.position.y)
+		v2 = (corner2.x - self.position.x, corner2.y- self.position.y)
+
+		# normalize the vectors
+		v1Length = math.sqrt(v1[0]**2 + v1[1]**2)
+		v2Length = math.sqrt(v2[0]**2 + v2[1]**2)
+		v1_norm = (v1[0] / v1Length, v1[1] / v1Length)
+		v2_norm = (v2[0] / v2Length, v2[1] / v2Length)
+
+		corner3 = (self.position.x + visibleDistance*v1_norm[0], self.position.y + visibleDistance*v1_norm[1])
+		corner4 = (self.position.x + visibleDistance*v2_norm[0], self.position.y + visibleDistance*v2_norm[1])
+
+		return Polygon((corner1,corner2,corner4,corner3))
 	
 	def getCornersDefiningBlockedVisibilityCone(self, other):
 		maxAngle = 0
@@ -342,18 +348,20 @@ class Point(_Constructible):
 		return minDist
 	
 	def hiddenHeuristic(self, other, actors):
-		#Only supports one blocking actor for the moment
-		for actor in actors:
-			if (actor != self and actor != other):
-				blockedRegion = self.getblockedVisibilityRegionOfOneActor(actor)
-		if blockedRegion.is_empty:
+		blockedRegions = self.getBlockedVisibilityRegions(other, actors)
+		if not bool(blockedRegions):
 			return float('inf')
-		maxDist = 0
+		maxDistFromClosestBlockedRegion = 0
 		for corner in other.corners:
-			dist = blockedRegion.distance(ShapelyPoint(corner.x, corner.y))
-			if (dist > maxDist):
-				maxDist = dist
-		return maxDist
+			minDistToABlockedRegion = float('inf')
+			for blockedRegion in blockedRegions:
+				if not blockedRegion.is_empty:
+					dist = blockedRegion.distance(ShapelyPoint(corner.x, corner.y))
+					if dist < minDistToABlockedRegion:
+						minDistToABlockedRegion = dist
+			if (minDistToABlockedRegion > maxDistFromClosestBlockedRegion):
+				maxDistFromClosestBlockedRegion = minDistToABlockedRegion
+		return maxDistFromClosestBlockedRegion
 
 	def containedHeuristic(self, container):
 		maxDist = 0

@@ -3,7 +3,7 @@
 # General variable definitions
 ##############################
 MAPNAME='town02' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='examples/basic/test/can-see-tests/hidden-test-3.scenic'
+PATHTOCONFIGFILE='examples/basic/test/can-see-tests/hidden-test-4.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions
