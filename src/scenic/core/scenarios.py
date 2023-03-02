@@ -912,6 +912,8 @@ class Scenario:
 				totVis += vi.canSeeHeuristic(vj)
 			if c.type == Cstr_type.CANSEEBLOCK:
 				totVis += vi.canSeeBlockHeuristic(vj, objects)
+			if c.type == Cstr_type.HIDDEN:
+				totVis += vi.hiddenHeuristic(vj, objects)
 
 			if c.type == Cstr_type.HASTOLEFT:
 				totPosRel += vi.toLeftHeuristic(vj)
@@ -1455,14 +1457,15 @@ class Cstr_type(Enum):
 	CANSEE = 3
 	# TODO Add CANNOTSEE
 	CANSEEBLOCK = 4
-	HASTOLEFT = 5
-	HASTORIGHT = 6
-	HASBEHIND = 7
-	HASINFRONT = 8
+	HIDDEN = 5
+	HASTOLEFT = 6
+	HASTORIGHT = 7
+	HASBEHIND = 8
+	HASINFRONT = 9
 
-	DISTCLOSE = 9
-	DISTMED = 10
-	DISTFAR = 11
+	DISTCLOSE = 10
+	DISTMED = 11
+	DISTFAR = 12
 
 class Cstr():
 	def __init__(self, t, src, tgt):

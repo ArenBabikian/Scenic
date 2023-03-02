@@ -13,7 +13,7 @@ from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.utils import DefaultIdentityDict, areEquivalent, cached_property
 from scenic.core.errors import RuntimeParseError
-from scenic.core import utils
+from scenic.core import utils, geometry
 
 ## Abstract base class
 
@@ -284,26 +284,56 @@ class Point(_Constructible):
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
 
+	def getBlockedVisibilityRegion(self, other, actors):
+		blockedVisibilityRegion = EmptyRegion("Empty Region")
+		for actor in actors:
+			if actor !=self and actor != other:
+				if (self.visibleRegion.containsObject(actor)):
+					blockedVisibilityRegion = blockedVisibilityRegion.union(self.blockedVisibilityRegion(actor))
+		return blockedVisibilityRegion
+
 	def getModifiedVisibilityRegion(self, other, actors):
 		modifiedVisibilityRegion = self.visibleRegion
 		for actor in actors:
 			if actor != self and actor != other:
 				#TODO: If blocked visibility cone is not fully contained by visible region, 
 				# reduce visible region instead.
-				modifiedVisibilityRegion.difference(self.blockedVisibilityRegion(actor))
+				modifiedVisibilityRegion = modifiedVisibilityRegion.difference(self.blockedVisibilityRegion(actor))
 		return modifiedVisibilityRegion
 
 	def blockedVisibilityRegion(self, other):
-		#TODO: Select appropriate corners rather then random ones. 
-		corner1 = other.corners[0]
-		corner2 = other.corners[1]
-		angle = utils.angle_between_3points(self.position, corner1, corner2)
-		#TODO: Again here, need to select the correct corner
-		blockedVisibilityConeHeading = angle/2 + math.atan2(corner1.y - self.position.y, corner1.x - self.position.x)
-		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance, blockedVisibilityConeHeading, angle, name="Blocked visibility cone")
+		corners = self.getCornersDefiningBlockedVisibilityCone(other) 
+		corner1 = corners[0]
+		corner2 = corners[1]
+		blockedVisibilityConeAngle = geometry.angle_between_3points(self.position, corner1, corner2)
+
+		corner1heading = max(viewAngleToPoint(corner1, self.position, 0), viewAngleToPoint(corner2, self.position, 0))
+		corner2heading = min(viewAngleToPoint(corner1, self.position, 0), viewAngleToPoint(corner2, self.position, 0))
+
+		#Makes sure the average heading is around pi (and not around 0) when heading1 is close to pi and heading 2 is close to -pi
+		if (corner1heading > math.pi/2 and corner2heading < -math.pi/2):
+			corner2heading += 2*math.pi
+			blockedVisibilityConeHeading = (corner1heading + corner2heading) / 2
+			if (blockedVisibilityConeHeading > math.pi):
+				blockedVisibilityConeHeading -= 2*math.pi
+		#Other scenarios: 
+		else: 
+			blockedVisibilityConeHeading = (corner1heading + corner2heading) / 2
+
+		blockedVisibilityCone = SectorRegion(self.position, self.visibleDistance, blockedVisibilityConeHeading, blockedVisibilityConeAngle, name="Blocked visibility cone")
 		#TODO: Remove region before the blocking car
 		return blockedVisibilityCone
 
+	def getCornersDefiningBlockedVisibilityCone(self, other):
+		maxAngle = 0
+		for corner1 in other.corners:
+			for corner2 in other.corners:
+				angle = geometry.angle_between_3points(self.position, corner1, corner2)
+				if angle > maxAngle:
+					maxAngle = angle
+					selectedCorners = (corner1, corner2)		
+		return selectedCorners
+		
 	# @cached_property
 	@property 
 	def corners(self):
@@ -336,6 +366,18 @@ class Point(_Constructible):
 			if (dist < minDist):
 				minDist = dist
 		return minDist
+
+	def hiddenHeuristic(self, other, actors):
+		blockedRegion = self.getBlockedVisibilityRegion(other,actors)
+		if isinstance(blockedRegion, EmptyRegion):
+			#Huge bias towards putting the actor in visible region
+			return float('inf')
+		maxDist = 0
+		for corner in other.cornerss:
+			dist = blockedRegion.shortestDistanceTo(corner)
+			if (dist > maxDist):
+				maxDist = dist
+		return maxDist
 
 	def containedHeuristic(self, container):
 		maxDist = 0

@@ -386,6 +386,10 @@ def plotPolygon(polygon, plt, style='r-', **kwargs):
 			plotCoords(polygon)
 		else:
 			raise RuntimeError(f'unknown kind of shapely geometry {polygon}')
+	
+def angle_between_3points(origin, point2, point3):
+    angle = math.atan2(point2.y-origin.y, point2.x-origin.x) - math.atan2(point3.y-origin.y, point3.x-origin.x)
+    return abs(angle)
 
 class _RotatedRectangle:
 	"""mixin providing collision detection for rectangular objects and regions"""

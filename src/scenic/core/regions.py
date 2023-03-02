@@ -1102,7 +1102,7 @@ class DifferenceRegion(Region):
 			#This would not work when region B is partially in (see notes). 
 			# To solve this, reconstruct visible region of the car by creating a 
 			# new sector region by removing the part of B
-			return self.regionB.shortestDistanceToEdge(point)
+			return self.regionB.shortestDistanceToSideEdge(point)
 		
 		#If not in visible region
 		else:
