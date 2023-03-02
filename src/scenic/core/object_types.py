@@ -373,7 +373,7 @@ class Point(_Constructible):
 			#Huge bias towards putting the actor in visible region
 			return float('inf')
 		maxDist = 0
-		for corner in other.cornerss:
+		for corner in other.corners:
 			dist = blockedRegion.shortestDistanceTo(corner)
 			if (dist > maxDist):
 				maxDist = dist
