@@ -946,6 +946,8 @@ class Scenario:
 			if c.type == Cstr_type.CANSEE:
 				### How far is vj from being visible wrt. to vi?
 				totVis += vi.canSeeHeuristic(vj)
+			if c.type == Cstr_type.HIDDEN:
+				totVis += vi.hiddenHeuristic(vj, objects)
 
 			if c.type == Cstr_type.HASTOLEFT:
 				totPosRel += vi.toLeftHeuristic(vj)
@@ -1497,16 +1499,17 @@ class Cstr_type(Enum):
 
 	NOCOLLISION = 3
 	CANSEE = 4
+	HIDDEN = 5
 	# TODO Add CANNOTSEE
+	
+	HASTOLEFT = 6
+	HASTORIGHT = 7
+	HASBEHIND = 8
+	HASINFRONT = 9
 
-	HASTOLEFT = 5
-	HASTORIGHT = 6
-	HASBEHIND = 7
-	HASINFRONT = 8
-
-	DISTCLOSE = 9
-	DISTMED = 10
-	DISTFAR = 11
+	DISTCLOSE = 10
+	DISTMED = 11
+	DISTFAR = 12
 
 class Cstr():
 	def __init__(self, t, src, tgt):

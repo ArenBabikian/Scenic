@@ -7,12 +7,13 @@ import random
 from scenic.core.distributions import Samplable, needsSampling
 from scenic.core.specifiers import Specifier, PropertyDefault
 from scenic.core.vectors import Vector
-from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, viewAngleToPoint, distanceToSegment, radialToCartesian)
+from scenic.core.geometry import (_RotatedRectangle, averageVectors, hypot, min, viewAngleToPoint, distanceToSegment, radialToCartesian, angle_between_3points)
 from scenic.core.regions import CircularRegion, SectorRegion
 from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.utils import DefaultIdentityDict, areEquivalent, cached_property
 from scenic.core.errors import RuntimeParseError
+from shapely.geometry import Point as ShapelyPoint, Polygon
 
 ## Abstract base class
 
@@ -282,6 +283,39 @@ class Point(_Constructible):
 	@property 
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
+	
+	def getblockedVisibilityRegionOfOneActor(self, other):
+		blockedVisibilityRegion = Polygon()
+		if (self.visibleRegion.containsObject(other)):
+			corners = self.getCornersDefiningBlockedVisibilityCone(other) 
+			corner1 = corners[0]
+			corner2 = corners[1]
+			visibleDistance = 50
+			v1 = (corner1.x - self.position.x, corner1.y- self.position.y)
+			v2 = (corner2.x - self.position.x, corner2.y- self.position.y)
+
+		# normalize the vectors
+			v1Length = math.sqrt(v1[0]**2 + v1[1]**2)
+			v2Length = math.sqrt(v2[0]**2 + v2[1]**2)
+			v1_norm = (v1[0] / v1Length, v1[1] / v1Length)
+			v2_norm = (v2[0] / v2Length, v2[1] / v2Length)
+
+			corner3 = (self.position.x + visibleDistance*v1_norm[0], self.position.y + visibleDistance*v1_norm[1])
+			corner4 = (self.position.x + visibleDistance*v2_norm[0], self.position.y + visibleDistance*v2_norm[1])
+			
+			blockedVisibilityRegion = Polygon((corner1,corner2,corner4,corner3))
+
+		return blockedVisibilityRegion
+	
+	def getCornersDefiningBlockedVisibilityCone(self, other):
+		maxAngle = 0
+		for corner1 in other.corners:
+			for corner2 in other.corners:
+				angle = angle_between_3points(self.position, corner1, corner2)
+				if angle > maxAngle:
+					maxAngle = angle
+					selectedCorners = (corner1, corner2)		
+		return selectedCorners
 
 	# @cached_property
 	@property 
@@ -306,6 +340,20 @@ class Point(_Constructible):
 			if dist < minDist:
 				minDist = dist
 		return minDist
+	
+	def hiddenHeuristic(self, other, actors):
+		#Only supports one blocking actor for the moment
+		for actor in actors:
+			if (actor != self and actor != other):
+				blockedRegion = self.getblockedVisibilityRegionOfOneActor(actor)
+		if blockedRegion.is_empty:
+			return float('inf')
+		maxDist = 0
+		for corner in other.corners:
+			dist = blockedRegion.distance(ShapelyPoint(corner.x, corner.y))
+			if (dist > maxDist):
+				maxDist = dist
+		return maxDist
 
 	def containedHeuristic(self, container):
 		maxDist = 0
