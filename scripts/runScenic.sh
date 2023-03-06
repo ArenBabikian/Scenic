@@ -2,9 +2,9 @@
 
 # General variable definitions
 ##############################
-MAPNAME='town02' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='examples/basic/0-scenic-simple.scenic'
-USENSGA='False' 
+MAPNAME='zalaFullcrop' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
+PATHTOCONFIGFILE='measurements/data/zalaFullcrop/2actors/0-0/d-nsga.scenic'
+USENSGA='True' 
 
 # Simultor variable definitions
 ###############################
@@ -18,12 +18,13 @@ ${SIMULATE} \
 ${CARLAMAP} \
 ${IMGDIR} \
 -p timeout 30 \
--p nsga ${USENSGA} \
+-p evol ${USENSGA} \
+-p evol-algo nsga \
 -p nsga-Iters 500 \
 -p nsga-NumSols 1 \
 -p restart-time -1
 -p no-validation False \
--p outputWS examples/basic \
+-p outputWS meas-temp \
 -p outputDir _output \
 -p viewImgs True \
 -p saveImgs True \

@@ -11,10 +11,10 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
-from scenic.core.nsga2mod import NSGA2M
-from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
+from scenic.core.evol.nsga2mod import NSGA2M
+from scenic.core.evol.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
-from scenic.core.constraints import Cstr, Cstr_type
+from scenic.core.evol.constraints import Cstr, Cstr_type
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
@@ -786,8 +786,8 @@ class Scenario:
 		self.objects = (egoObject,) + tuple(ordered) if egoObject else tuple(ordered)
 		self.egoObject = egoObject
 		self.params = dict(params)
-		self.nsga = params.get('nsga') == "True"
-		self.noValidation = self.nsga or params.get('no-validation') == "True"
+		self.evol = params.get('evol') == "True"
+		self.noValidation = self.evol or params.get('no-validation') == "True"
 		self.timeout = 10 if not params.get('timeout') else float(self.params.get('timeout'))
 		self.externalParams = tuple(externalParams)
 		self.externalSampler = ExternalSampler.forParameters(self.externalParams, self.params)
@@ -938,10 +938,12 @@ class Scenario:
 			return False
 		return True
 
-	def getNsgaNDSs(self, constraints, funcs, verbosity):
+	def getNsgaNDSs(self, constraints, verbosity):
 		scenario = self
 		objects = self.objects
 		tot_var = len(objects)*2
+
+		# MAP
 		map_name = os.path.basename(self.params.get('map'))
 		bounds = []
 		if map_name == "town02.xodr":
@@ -960,6 +962,21 @@ class Scenario:
 			# TODO currently hard-coded wrt. the map
 			loBd.extend(bounds[:2])
 			hiBd.extend(bounds[2:])
+
+		# EVOL ALGO
+		algo_name = self.params.get('evol-algo')
+		if algo_name == 'nsga':
+			# [totCont, totColl, totVis, totPosRel, totDistRel]
+			funcs = [(lambda x:x**3),
+						(lambda x:x**3),
+						(lambda x:x**2),
+						(lambda x:x**2),
+						(lambda x:x**2)]
+
+			
+		else:
+			raise Exception(f'Evol algo <{algo_name}> is unknown.')
+
 		
 		class MyProblem(ElementwiseProblem):
 			def __init__(self):
@@ -1045,20 +1062,14 @@ class Scenario:
 		iterations = 0
 		restarts = None
 		failed = False
-		if self.nsga:
+		if self.evol:
 			# If using NSGA, replace object positions in the sample
 			# Custom constraints coming from parameters
 
 			#We assume that ego is obect[0]
 			parsed_cons = self.parseConfigConstraints()
 			
-			# [totCont, totColl, totVis, totPosRel, totDistRel]
-			functions = [(lambda x:x**3),
-						(lambda x:x**3),
-						(lambda x:x**2),
-						(lambda x:x**2),
-						(lambda x:x**2)]
-			nsgaRes = self.getNsgaNDSs(parsed_cons, functions, verbosity)
+			nsgaRes = self.getNsgaNDSs(parsed_cons, verbosity)
 			totalTime = nsgaRes.exec_time
 
 			# Get number of required nsga solutions
@@ -1233,18 +1244,18 @@ class Scenario:
 			allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, allSamples)
 
 			# no stats if failed and not nsga
-			if failed and not self.nsga:
+			if failed and not self.evol:
 				print('  Could not generate scene.')
 				return [None], stats
 
 			# nsga succeeds if best solution satisfies all constraints 
-			if self.nsga and measurement_outputs:
+			if self.evol and measurement_outputs:
 				failed = sortedGlobal[0][0] > 0
 			
 			# Gather statistics
 			stats['success'] = not failed # DONE
 
-			if not self.nsga:
+			if not self.evol:
 				#at this stage we should have exactly one solution
 				if len(allSamples) != 1 :
 					raise Error('something went wrong')
@@ -1287,7 +1298,7 @@ class Scenario:
 				stats['solutions'] = allSolStats
 
 			# Analyse HISTORIC sample sets
-			if self.nsga:
+			if self.evol:
 
 				historyStats = {}
 				for historicSolSet in reversed(historicSolSets):

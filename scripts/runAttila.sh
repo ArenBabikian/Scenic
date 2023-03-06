@@ -7,7 +7,7 @@ cmd="poetry run scenic \
 -b --count 10 -v 1 \
 ${SIMULATE} \
 ${IMGDIR} \
--p nsga True \
+-p evol True \
 -p nsga-NumSols 1 \
 -p restart-time -1 \
 -p timeout 300 \
