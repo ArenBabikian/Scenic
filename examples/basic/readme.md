@@ -12,7 +12,7 @@ Use the scene specification files in this folder to get started with this repo.
 
 ## A note about certain command-line arguments
 * `--count N`: this specifies the total number of concrete scenes (solutions) we will end up with. So we will run the program in a loop until we generate `N` solutions.
-* `-p nsga-Numsols M`: this specifies the maximum number of solutions that can be saved when running a single NSGA process.
+* `-p evol-NumSols M`: this specifies the maximum number of solutions that can be saved when running a single NSGA process.
 
 ### Example 1
 Let's say the NSGA process yield a set `S` of `X` solutions. Solutions are either all approximate, or all non-approximate.

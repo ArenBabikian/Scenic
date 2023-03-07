@@ -19,10 +19,10 @@ ${CARLAMAP} \
 ${IMGDIR} \
 -p timeout 30 \
 -p evol ${USENSGA} \
--p evol-algo nsga \
--p nsga-Iters 500 \
--p nsga-NumSols 1 \
--p restart-time -1
+-p evol-algo nsga2 \
+-p evol-obj categories \
+-p evol-NumSols 1 \
+-p evol-restart-time -1
 -p no-validation False \
 -p outputWS meas-temp \
 -p outputDir _output \

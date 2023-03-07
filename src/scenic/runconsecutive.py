@@ -24,7 +24,7 @@ for m in maps:
         for iter in iterations:
             restart_times = all_restart_times[i_config]
             for restart_time in restart_times:
-                global_summary = {'map':m, 'config':config, 'restart-time':restart_time, 'results':[]}
+                global_summary = {'map':m, 'config':config, 'evol-restart-time':restart_time, 'results':[]}
                 cur_timeout = global_timeout
                 prev_total_time = 0
                 for i in scene_ids:
@@ -36,7 +36,7 @@ for m in maps:
                     command.extend(['-v', str(verbosity)])
                     if approach == 'nsga':
                         command.extend(['-p', 'nsga', 'True'])
-                        command.extend(['-p', 'nsga-NumSols', 'measurement'])
+                        command.extend(['-p', 'evol-NumSols', 'measurement'])
                     command.extend(['-p', 'timeout', str(cur_timeout)])
                     command.extend(['-p', 'outputWS', resWS])
                     command.extend(['-p', 'outputDir', pathToTgt])
@@ -44,7 +44,7 @@ for m in maps:
                     command.extend(['-p', 'saveFiles', str(save)])
                     command.extend(['-p', 'saveStats', str(save)])
                     command.extend(['-p', 'map', f'maps/{m}.xodr'])
-                    command.extend(['-p', 'restart-time', str(restart_time)])
+                    command.extend(['-p', 'evol-restart-time', str(restart_time)])
                     command.append(f'measurements/data/{pathToSrc}.scenic')
                     print(pathToTgt)
 

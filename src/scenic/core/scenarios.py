@@ -6,13 +6,7 @@ import random
 import re
 import copy
 import time
-from numpy.core.numeric import full
-from pymoo.util.termination.collection import TerminationCollection
-
-from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
-from pymoo.util.termination.max_time import TimeBasedTermination
-from scenic.core.evol.nsga2mod import NSGA2M
-from scenic.core.evol.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
+import scenic.core.evol.evol_utils as utils
 
 from scenic.core.evol.constraints import Cstr, Cstr_type
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
@@ -21,16 +15,12 @@ from scenic.core.external_params import ExternalSampler
 from scenic.core.regions import EmptyRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
-from scenic.core.utils import areEquivalent, DefaultIdentityDict
+from scenic.core.utils import areEquivalent
 from scenic.core.errors import InvalidScenarioError
 from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
 from scenic.simulators.utils.colors import Color
-
-from pymoo.core.problem import ElementwiseProblem
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.optimize import minimize
 
 class Scene:
 	"""Scene()
@@ -879,57 +869,6 @@ class Scenario:
 
 			vi.position = v
 			vi.heading = self.network._defaultRoadDirection(v)
-	
-	def heuristic(self, x, constraints, fun):
-
-		# return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
-		objects = self.objects
-		# x = [  97.64237302, -236.70268295,  -14.74759737,  -98.51499928,   -5.88366596, -109.51614019,   -7.30336197,  -99.24476481]
-		self.fillSample(x)
-
-		totCont, totVis, totColl = 0, 0, 0
-		totPosRel, totDistRel = 0, 0
-
-		## GET HEURISTIC VALUES
-		## Assuming that ego position in actor llist does not change
-		for c in constraints:
-			vi = objects[c.src]
-			vj = None
-			if c.tgt != -1:
-				vj = objects[c.tgt]
-			
-			# Constraints Switch
-			if c.type == Cstr_type.ONROAD:
-				### How far is the farthest corner of vi from a valid region that can contain it?
-				container = self.containerOfObject(vi)
-				totCont += vi.containedHeuristic(container)
-			if c.type == Cstr_type.NOCOLLISION:
-				### Are vi and vj intersecting?
-				if vi.intersects(vj):
-					totColl += 10
-			if c.type == Cstr_type.CANSEE:
-				### How far is vj from being visible wrt. to vi?
-				totVis += vi.canSeeHeuristic(vj)
-
-			if c.type == Cstr_type.HASTOLEFT:
-				totPosRel += vi.toLeftHeuristic(vj)
-			if c.type == Cstr_type.HASTORIGHT:
-				totPosRel += vi.toRightHeuristic(vj)
-			if c.type == Cstr_type.HASBEHIND:
-				totPosRel += vi.behindHeuristic(vj)
-			if c.type == Cstr_type.HASINFRONT:
-				totPosRel += vi.inFrontHeuristic(vj)
-
-			if c.type == Cstr_type.DISTCLOSE:
-				totDistRel += vi.distCloseHeuristic(vj)
-			if c.type == Cstr_type.DISTMED:
-				totDistRel += vi.distMedHeuristic(vj)
-			if c.type == Cstr_type.DISTFAR:
-				totDistRel += vi.distFarHeuristic(vj)
-
-		# print([totVis, totCont, totColl, totPosRel, totDistRel])
-		# exit()
-		return [fun[0](totCont), fun[1](totColl), fun[2](totVis), fun[3](totPosRel), fun[4](totDistRel)]
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -938,85 +877,6 @@ class Scenario:
 			return False
 		return True
 
-	def getNsgaNDSs(self, constraints, verbosity):
-		scenario = self
-		objects = self.objects
-		tot_var = len(objects)*2
-
-		# MAP
-		map_name = os.path.basename(self.params.get('map'))
-		bounds = []
-		if map_name == "town02.xodr":
-			bounds = [-15, -315, 200, -98]
-		elif map_name == "tram05.xodr":
-			bounds = [-155, -101, 103, 80]
-		elif map_name == "tram05-mod.xodr":
-			bounds = [-140, -160, 215, 70]
-		elif map_name == "zalaFullcrop.xodr":
-			bounds = [-59, 1337, 211, 1811] # full smart-city section
-			# bounds = [-59, 211, 1337, 1811] # smaller version
-		else:
-			raise Exception(f'Map <{map_name}> is unknown to NSGA')
-		loBd, hiBd = [], []
-		for _ in range(len(objects)):
-			# TODO currently hard-coded wrt. the map
-			loBd.extend(bounds[:2])
-			hiBd.extend(bounds[2:])
-
-		# EVOL ALGO
-		algo_name = self.params.get('evol-algo')
-		if algo_name == 'nsga':
-			# [totCont, totColl, totVis, totPosRel, totDistRel]
-			funcs = [(lambda x:x**3),
-						(lambda x:x**3),
-						(lambda x:x**2),
-						(lambda x:x**2),
-						(lambda x:x**2)]
-
-			
-		else:
-			raise Exception(f'Evol algo <{algo_name}> is unknown.')
-
-		
-		class MyProblem(ElementwiseProblem):
-			def __init__(self):
-				super().__init__(n_var=tot_var, n_obj=5, n_constr=0,
-								xl=loBd, xu=hiBd)
-
-			# Notes: x = [x_a0, y_a0, x_a1, y_a1, ...]
-			def _evaluate(self, x, out, *args, **kwargs):
-				heuristics = scenario.heuristic(x, constraints, funcs)
-				# out["G"] = heuristics[:2]
-				# out["F"] = heuristics[2:]
-				out["F"] = heuristics
-		
-		
-		if verbosity >= 2:
-			print("--Running NSGA--")   
-		problem = MyProblem()
-		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
-		restart = float(self.params.get('restart-time'))
-		algorithm = NSGA2M(pop_size=20, n_offsprings=10, restart_time=restart, eliminate_duplicates=True)
-		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
-
-		# n_par = self.params.get('nsga-Iters')
-		# n = n_par if n_par is not None else 100
-		# termination = get_termination("n_gen", n)
-		# termination = MultiObjectiveSpaceToleranceTermination(tol=0.0025,
-		# 														n_last=10,
-		# 														n_max_gen=n)
-		# TEMP
-		# t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025, n_last=30)	
-		# t1 = ConstraintViolationToleranceTermination(n_last=20, tol=1e-6,)	
-		# t1 = IGDTermination	
-		t1 = OneSolutionHeuristicTermination(heu_vals=[0, 0, 0, 0, 0])
-		t2 = TimeBasedTermination(max_time=self.timeout)
-		termination = TerminationCollection(t1, t2)
-
-		# FOR REPEATABILITY: use seed=1 option
-		res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1))
-		return res
-	
 	def parseConfigConstraints(self):
 		# Parse constraints from config file
 		str_cons = self.params.get('constraints')
@@ -1063,25 +923,25 @@ class Scenario:
 		restarts = None
 		failed = False
 		if self.evol:
-			# If using NSGA, replace object positions in the sample
+			# If using EVOL-ALGO, replace object positions in the sample
 			# Custom constraints coming from parameters
 
 			#We assume that ego is obect[0]
 			parsed_cons = self.parseConfigConstraints()
 			
-			nsgaRes = self.getNsgaNDSs(parsed_cons, verbosity)
+			nsgaRes = utils.getEvolNDSs(self, parsed_cons, verbosity)
 			totalTime = nsgaRes.exec_time
 
 			# Get number of required nsga solutions
 			measurement_outputs = False
-			if not 'nsga-NumSols' in self.params:
+			if not 'evol-NumSols' in self.params:
 				# Default
 				numSols = 5
 			else:
-				if self.params.get('nsga-NumSols') == 'measurement':
+				if self.params.get('evol-NumSols') == 'measurement':
 					measurement_outputs = True
 				else:
-					val = int(self.params.get('nsga-NumSols'))
+					val = int(self.params.get('evol-NumSols'))
 					if  val == -1:
 						numSols = len(nsgaRes.F)
 					else:
@@ -1091,12 +951,16 @@ class Scenario:
 				print("--Results--")
 				print("f = [Cont, Coll, Vis, PosRel, DistRel]")
 
+			# ########### 
+			# SOLUTION HANDLING
+			# ###########
 			if not measurement_outputs :
 				# Rank the solutions by prioritising containment and collision objectives
 				aggregateFitness = []
 				for i in range(len(nsgaRes.F)):
 					f = nsgaRes.F[i]
 					aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
+					############## TODO RETHINK THIS
 					# ALTERNATE RANKING, just takes the total
 					#aggregateFitness.append((sum(f), i))
 				sortedFitness = sorted(aggregateFitness)

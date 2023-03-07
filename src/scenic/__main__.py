@@ -219,7 +219,7 @@ try:
 
         absSceneStatsMap = {}
         count = args.count
-        if params.get('nsga-NumSols') == 'measurement' and get_meas_stats :
+        if params.get('evol-NumSols') == 'measurement' and get_meas_stats :
             count *= 2
         while (count == 0 or successCount < count):
             scenes, stats = generateScene()
