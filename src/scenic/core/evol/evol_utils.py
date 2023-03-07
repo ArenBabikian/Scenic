@@ -65,105 +65,87 @@ def getAlgo(params):
 
     return algorithm
 
-
-# def getFunctions(params):
-#     obj_def = params.get('evol-obj')
-
-#     if obj_def == 'one':
-#         funcs = None
-#     if obj_def == 'categories':
-#         # [totCont, totColl, totVis, totPosRel, totDistRel]
-#         funcs = [(lambda x:x**3),
-#             (lambda x:x**3),
-#             (lambda x:x**2),
-#             (lambda x:x**2),
-#             (lambda x:x**2)]
-#     if obj_def == 'actors':
-#         # TODO
-#         exit()
-#     if obj_def == 'importance':
-#         # [Cont+Coll, Vis+Pos+Dist]
-#         funcs = [(lambda x:x**3),
-#             (lambda x:x**2)]
-#     if obj_def == 'none':
-#         funcs = None
-    
-#     return funcs
-
-	
 def getHeuristic(scenario, x, constraints):
+    objects = scenario.objects
     obj_def = scenario.params.get('evol-obj')
 
-    # GET FUNCTIONS
+    # GET Constraint2ObjectiveFunctionId    
+    # obj_funcs is currently hardcoded
+    con2id = []
     if obj_def == 'one':
-        fun = None
-    if obj_def == 'categories':
-        # [totCont, totColl, totVis, totPosRel, totDistRel]
-        fun = [(lambda x:x**3),
-            (lambda x:x**3),
-            (lambda x:x**2),
-            (lambda x:x**2),
-            (lambda x:x**2)]
-    if obj_def == 'actors':
-        # TODO
-        exit()
-    if obj_def == 'importance':
-        # [Cont+Coll, Vis+Pos+Dist]
-        fun = [(lambda x:x**3),
-            (lambda x:x**2)]
-    if obj_def == 'none':
-        fun = None
+        con2id = [0 for _ in constraints]
+        obj_funcs = [0]
+        exp = [1]
+    elif obj_def == 'categories':
+        con2id = [int(c.type.value/10) for c in constraints]
+        obj_funcs = [0, 0, 0, 0, 0]
+        exp = [3, 3, 2, 2, 2]
+    elif obj_def == 'actors':
+        con2id = [c.src for c in constraints]
+        obj_funcs = [0 for _ in range(len(objects))]
+        exp = [1 for _ in range(len(objects))]
+    elif obj_def == 'importance':
+        con2id = [int(c.type.value >= 20) for c in constraints]
+        obj_funcs = [0, 0]
+        exp = [1, 1]
+    elif obj_def == 'none':
+        con2id = [i for i in range(len(constraints))]
+        obj_funcs = [0 for _ in range(len(constraints))]
+        exp = [1 for _ in range(len(constraints))]
 
-        
+    #     fun = [(lambda x:x**3),
+    #         (lambda x:x**3),
+    #         (lambda x:x**2),
+    #         (lambda x:x**2),
+    #         (lambda x:x**2)]
 
     # return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
-    objects = scenario.objects
     # x = [  97.64237302, -236.70268295,  -14.74759737,  -98.51499928,   -5.88366596, -109.51614019,   -7.30336197,  -99.24476481]
     scenario.fillSample(x)
 
-    totCont, totVis, totColl = 0, 0, 0
-    totPosRel, totDistRel = 0, 0
-
     ## GET HEURISTIC VALUES
     ## Assuming that ego position in actor llist does not change
-    for c in constraints:
+    for c_id, c in enumerate(constraints):
         vi = objects[c.src]
         vj = None
         if c.tgt != -1:
             vj = objects[c.tgt]
+        heu_val = 0
         
         # Constraints Switch
         if c.type == Cstr_type.ONROAD:
             ### How far is the farthest corner of vi from a valid region that can contain it?
             container = scenario.containerOfObject(vi)
-            totCont += vi.containedHeuristic(container)
+            heu_val = vi.containedHeuristic(container)
         if c.type == Cstr_type.NOCOLLISION:
             ### Are vi and vj intersecting?
             if vi.intersects(vj):
-                totColl += 10
+                heu_val = 10
         if c.type == Cstr_type.CANSEE:
             ### How far is vj from being visible wrt. to vi?
-            totVis += vi.canSeeHeuristic(vj)
+            heu_val = vi.canSeeHeuristic(vj)
 
         if c.type == Cstr_type.HASTOLEFT:
-            totPosRel += vi.toLeftHeuristic(vj)
+            heu_val = vi.toLeftHeuristic(vj)
         if c.type == Cstr_type.HASTORIGHT:
-            totPosRel += vi.toRightHeuristic(vj)
+            heu_val = vi.toRightHeuristic(vj)
         if c.type == Cstr_type.HASBEHIND:
-            totPosRel += vi.behindHeuristic(vj)
+            heu_val = vi.behindHeuristic(vj)
         if c.type == Cstr_type.HASINFRONT:
-            totPosRel += vi.inFrontHeuristic(vj)
+            heu_val = vi.inFrontHeuristic(vj)
 
         if c.type == Cstr_type.DISTCLOSE:
-            totDistRel += vi.distCloseHeuristic(vj)
+            heu_val = vi.distCloseHeuristic(vj)
         if c.type == Cstr_type.DISTMED:
-            totDistRel += vi.distMedHeuristic(vj)
+            heu_val = vi.distMedHeuristic(vj)
         if c.type == Cstr_type.DISTFAR:
-            totDistRel += vi.distFarHeuristic(vj)
+            heu_val = vi.distFarHeuristic(vj)
 
-    # print([totVis, totCont, totColl, totPosRel, totDistRel])
-    # exit()
-    return [fun[0](totCont), fun[1](totColl), fun[2](totVis), fun[3](totPosRel), fun[4](totDistRel)]
+        obj_funcs[con2id[c_id]] += heu_val
+
+    out = [of**exp[i] for i, of in enumerate(obj_funcs)]
+    # out = [exp[i](of) for i, of in enumerate(obj_funcs)]
+    return out
 
 
 def getProblem(scenario, constraints):

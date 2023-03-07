@@ -2,19 +2,20 @@
 from enum import Enum
 
 class Cstr_type(Enum):
-	ONROAD = 1
-	NOCOLLISION = 2
-	CANSEE = 3
-	# TODO Add CANNOTSEE
+	ONROAD = 0
 
-	HASTOLEFT = 4
-	HASTORIGHT = 5
-	HASBEHIND = 6
-	HASINFRONT = 7
+	NOCOLLISION = 10
 
-	DISTCLOSE = 8
-	DISTMED = 9
-	DISTFAR = 10
+	CANSEE = 20
+
+	HASTOLEFT = 30
+	HASTORIGHT = 31
+	HASBEHIND = 32
+	HASINFRONT = 33
+
+	DISTCLOSE = 40
+	DISTMED = 41
+	DISTFAR = 42
 
 class Cstr():
 	def __init__(self, t, src, tgt):
