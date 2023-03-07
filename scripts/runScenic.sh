@@ -3,7 +3,7 @@
 # General variable definitions
 ##############################
 MAPNAME='zalaFullcrop' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='measurements/data/zalaFullcrop/2actors/0-0/d-nsga.scenic'
+PATHTOCONFIGFILE='measurements/data/zalaFullcrop/3actors/1-0/d-nsga.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions

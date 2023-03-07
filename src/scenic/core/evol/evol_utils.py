@@ -41,7 +41,7 @@ ALGO2OBJ = {'ga':['one'],
             'nsga2': ['categories', 'actors', 'importance'],
             'nsga3': ['categories', 'actors', 'none']}
 
-def getAlgo(params):
+def getAlgo(params, n_objectives):
     algo_name = params.get('evol-algo')
     restart = float(params.get('evol-restart-time'))
     if algo_name == 'nsga2':        
@@ -51,7 +51,11 @@ def getAlgo(params):
         algorithm = GA(pop_size=20, n_offsprings=10, restart_time=restart,
                        eliminate_duplicates=True)
     elif algo_name == 'nsga3':
-        algorithm = NSGA3(pop_size=20, n_offsprings=10, restart_time=restart,
+        
+        from pymoo.factory import get_reference_directions
+        # TODO analyse n_partitions
+        ref_dirs = get_reference_directions("das-dennis", n_dim=n_objectives, n_partitions=1)
+        algorithm = NSGA3(ref_dirs=ref_dirs, pop_size=None, n_offsprings=None, restart_time=restart,
                           eliminate_duplicates=True)
         
         # algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
@@ -65,42 +69,38 @@ def getAlgo(params):
 
     return algorithm
 
-def getHeuristic(scenario, x, constraints):
+
+def handleConstraints(scenario, constraints):
     objects = scenario.objects
     obj_def = scenario.params.get('evol-obj')
 
     # GET Constraint2ObjectiveFunctionId    
     # obj_funcs is currently hardcoded
-    con2id = []
+    # exp may be generalised to any function
+    # fun = [(lambda x:x**3), (lambda x:x**3), (lambda x:x**2), (lambda x:x**2), (lambda x:x**2)]
     if obj_def == 'one':
         con2id = [0 for _ in constraints]
-        obj_funcs = [0]
         exp = [1]
     elif obj_def == 'categories':
         con2id = [int(c.type.value/10) for c in constraints]
-        obj_funcs = [0, 0, 0, 0, 0]
-        exp = [3, 3, 2, 2, 2]
+        exp = [1, 1, 1, 1, 1]
     elif obj_def == 'actors':
         con2id = [c.src for c in constraints]
-        obj_funcs = [0 for _ in range(len(objects))]
         exp = [1 for _ in range(len(objects))]
     elif obj_def == 'importance':
         con2id = [int(c.type.value >= 20) for c in constraints]
-        obj_funcs = [0, 0]
         exp = [1, 1]
     elif obj_def == 'none':
         con2id = [i for i in range(len(constraints))]
-        obj_funcs = [0 for _ in range(len(constraints))]
         exp = [1 for _ in range(len(constraints))]
 
-    #     fun = [(lambda x:x**3),
-    #         (lambda x:x**3),
-    #         (lambda x:x**2),
-    #         (lambda x:x**2),
-    #         (lambda x:x**2)]
+    return con2id, exp
+    
+	
+def getHeuristic(scenario, x, constraints, con2id, exp):
+    objects = scenario.objects
 
-    # return a 3-item list [distance from visibility, travel distance to avoid intersection, distance from contained region]
-    # x = [  97.64237302, -236.70268295,  -14.74759737,  -98.51499928,   -5.88366596, -109.51614019,   -7.30336197,  -99.24476481]
+    obj_funcs = [0 for _ in range(len(exp))]
     scenario.fillSample(x)
 
     ## GET HEURISTIC VALUES
@@ -156,25 +156,28 @@ def getProblem(scenario, constraints):
     # MAP BOUNDARIES
     loBd, hiBd = getMapBoundaries(scenario.params, len(objects))
 
+    # HANDLE CONSTRAINT CATEGORIZATION
+    con2id, exp = handleConstraints(scenario, constraints)
+
     # PROBLEM
     class MyProblem(ElementwiseProblem):
         def __init__(self):
-            super().__init__(n_var=tot_var, n_obj=5, n_constr=0,
+            super().__init__(n_var=tot_var, n_obj=len(exp), n_constr=0,
                             xl=loBd, xu=hiBd)
 
         # Notes: x = [x_a0, y_a0, x_a1, y_a1, ...]
         def _evaluate(self, x, out, *args, **kwargs):
             # TODO
-            heuristics = getHeuristic(scenario, x, constraints)
+            heuristics = getHeuristic(scenario, x, constraints, con2id, exp)
             # out["G"] = heuristics[:2]
             # out["F"] = heuristics[2:]
             out["F"] = heuristics
-    return MyProblem()
+    return MyProblem(), len(exp)
 
 
-def getTermination(timeout):
+def getTermination(num_objectives, timeout):
     # TODO
-    t1 = OneSolutionHeuristicTermination(heu_vals=[0, 0, 0, 0, 0])
+    t1 = OneSolutionHeuristicTermination(heu_vals=[0 for _ in range(num_objectives)])
     # TEMP
     # t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025, n_last=30)	
     # t1 = ConstraintViolationToleranceTermination(n_last=20, tol=1e-6,)	
@@ -186,14 +189,14 @@ def getTermination(timeout):
 
 def getEvolNDSs(scenario, constraints, verbosity):
 
-    # GET ALGORITHM
-    algorithm = getAlgo(scenario.params)
-
     # GET PROBLEM
-    problem = getProblem(scenario, constraints)
+    problem, num_objectives = getProblem(scenario, constraints)
+
+    # GET ALGORITHM
+    algorithm = getAlgo(scenario.params, num_objectives)
 
     # GET TERMINATION
-    termination = getTermination(scenario.timeout)
+    termination = getTermination(num_objectives, scenario.timeout)
 
     # RUN PROBLEM
     res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1), seed=1)

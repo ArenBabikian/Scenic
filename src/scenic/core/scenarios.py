@@ -949,7 +949,7 @@ class Scenario:
 
 			if verbosity >= 2:
 				print("--Results--")
-				print("f = [Cont, Coll, Vis, PosRel, DistRel]")
+				# print("f = [Cont, Coll, Vis, PosRel, DistRel]")
 
 			# ########### 
 			# SOLUTION HANDLING
@@ -959,10 +959,10 @@ class Scenario:
 				aggregateFitness = []
 				for i in range(len(nsgaRes.F)):
 					f = nsgaRes.F[i]
-					aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
+					# aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
 					############## TODO RETHINK THIS
 					# ALTERNATE RANKING, just takes the total
-					#aggregateFitness.append((sum(f), i))
+					aggregateFitness.append((sum(f), i))
 				sortedFitness = sorted(aggregateFitness)
 				
 				# save the selected number of sols
