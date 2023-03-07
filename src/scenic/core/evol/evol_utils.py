@@ -61,11 +61,6 @@ def getAlgo(params, n_objectives):
         # algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
     else:
         raise Exception(f'Evol algo <{algo_name}> is unknown.')
-    
-    # validate objective approach
-    obj_def = params.get('evol-obj')
-    if obj_def not in ALGO2OBJ[algo_name]:
-        raise Exception(f'Invalid objective functions <{obj_def}> for algo <{algo_name}>.')
 
     return algorithm
 
@@ -73,6 +68,11 @@ def getAlgo(params, n_objectives):
 def handleConstraints(scenario, constraints):
     objects = scenario.objects
     obj_def = scenario.params.get('evol-obj')
+    
+    # validate objective approach
+    algo_name = scenario.params.get('evol-algo')
+    if obj_def not in ALGO2OBJ[algo_name]:
+        raise Exception(f'Invalid objective functions <{obj_def}> for algo <{algo_name}>.')
 
     # GET Constraint2ObjectiveFunctionId    
     # obj_funcs is currently hardcoded

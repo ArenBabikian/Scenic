@@ -13,14 +13,14 @@ RUN poetry install
 # ssh cloud@vm.fured.cloud.bme.hu -p 1627
 
 # Build image
-# sudo docker build -t scenic .
+# sudo docker build -t scenic-ab-official .
 
 # Generate the abstract scenes
 
 
 # Generate the instances
-# sudo docker run -m 16g --name scenic-off -v /home/cloud/Scenic/docker:/usr/src/app/measurements/results scenic bash runAllMeasurements.sh 
-#      docker run -m 16g -it --rm --name scenic-off -v /home/cloud/Scenic/docker:/usr/src/app/measurements/results scenic bash
+# sudo docker run -m 16g --name sc-off-ab  -v /home/cloud/catrionam/docker:/usr/src/app/measurements/results scenic bash runAllMeasurements.sh 
+# sudo docker run -m 16g -it --rm --name sc-off-ab -v /home/cloud/arenb/Scenic/docker:/usr/src/app/measurements/results scenic-ab-official bash
 # poetry run python src/scenic/runmeasurements.py
 
 # docker run --name oveslantoun -it abc1 bash

@@ -135,6 +135,7 @@ dmypy.json
 # file and image output dir
 out-*/
 .archive
-meas-off
+meas-*/
+measurements
 docker/
 examples/basic/_output

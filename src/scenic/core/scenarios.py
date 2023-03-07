@@ -22,6 +22,8 @@ from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
 from scenic.simulators.utils.colors import Color
 
+from collections.abc import Iterable
+
 class Scene:
 	"""Scene()
 
@@ -947,6 +949,10 @@ class Scenario:
 					else:
 						numSols = min(len(nsgaRes.F), val)
 
+					if numSols > 1 and self.params.get('evol-algo') == 'ga':
+						print("GA can output at most 1 solution.")
+						exit(1)
+
 			if verbosity >= 2:
 				print("--Results--")
 				# print("f = [Cont, Coll, Vis, PosRel, DistRel]")
@@ -962,14 +968,24 @@ class Scenario:
 					# aggregateFitness.append((f[0]+f[1], f[2]+f[3]+f[4], i))
 					############## TODO RETHINK THIS
 					# ALTERNATE RANKING, just takes the total
-					aggregateFitness.append((sum(f), i))
+					if isinstance(f, Iterable):
+						fitness = sum(f)
+					else:
+						fitness = f
+					aggregateFitness.append((fitness, i))
 				sortedFitness = sorted(aggregateFitness)
 				
 				# save the selected number of sols
 				for i in range(numSols):
+					all_res = nsgaRes.X
+					all_fit = nsgaRes.F
+					if len(nsgaRes.X.shape) == 1:
+						all_res = [all_res]
+						all_fit = [all_fit]
 					aggFit = sortedFitness[i]
 					j = aggFit[-1]
-					self.fillSample(nsgaRes.X[j])
+						
+					self.fillSample(all_res[j])
 					found = False
 					while not found:
 						try:
@@ -980,17 +996,22 @@ class Scenario:
 
 					if verbosity >= 2:
 						print(f'--Solution {i}--')
-						print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[j]])}')
-						print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[j]])}')
+						print(f'x = {tuple([round(e, 1) for e in all_res[j]])}')
+						print(f'f = {tuple([round(e, 1) for e in all_fit[j]])}')
 
 			else :
 				# keep all solutions, and we will do selection of the required 2 later on
-				for i in range(len(nsgaRes.F)):
+				all_res = nsgaRes.X
+				all_fit = nsgaRes.F
+				if len(nsgaRes.X.shape) == 1:
+					all_res = [all_res]
+					all_fit = [all_fit]
+				for i in range(len(all_fit)):
 					if verbosity >= 2:
 							print(f'--Solution {i}--')
-							print(f'x = {tuple([round(e, 1) for e in nsgaRes.X[i]])}')
-							print(f'f = {tuple([round(e, 1) for e in nsgaRes.F[i]])}')
-					self.fillSample(nsgaRes.X[i])
+							print(f'x = {tuple([round(e, 1) for e in all_res[i]])}')
+							print(f'f = {tuple([round(e, 1) for e in all_fit[i]])}')
+					self.fillSample(all_res[i])
 					found = False
 					while not found:
 						try:
@@ -999,25 +1020,28 @@ class Scenario:
 						except:
 							print('failed to sample - all')
 
-				# Restart stats
-				restarts = nsgaRes.history[-1].all_restarts
+				# HANDLE HISTORY
+				if self.params.get('evol-algo') == "nsga2":
 
-				#only keep the intersting historic results
-				# Must be in ascending order
-				timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
-				# timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
-				# timesToKeep = [5, 10, 20, 30, 45]
-				timeIndex = 0
+					# Restart stats
+					restarts = nsgaRes.history[-1].all_restarts
 
-				for i in range(len(nsgaRes.history)):
-					solAtI = nsgaRes.history[i]
-					r = solAtI.result()
-					ex_t = solAtI.exec_time
-					# print(f'{i}. exec={ex_t}, termin={nsgaRes.history[i].has_terminated}, tgt={timesToKeep[timeIndex]}, sol[0]={r.X[0][0]}')
-					if ex_t != None and timeIndex < len(timesToKeep) and ex_t > timesToKeep[timeIndex]:
-						# create a list of samples
-						historicSolSets.append((ex_t, list(r.X)))
-						timeIndex += 1
+					#only keep the intersting historic results
+					# Must be in ascending order
+					timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
+					# timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
+					# timesToKeep = [5, 10, 20, 30, 45]
+					timeIndex = 0
+
+					for i in range(len(nsgaRes.history)):
+						solAtI = nsgaRes.history[i]
+						r = solAtI.result()
+						ex_t = solAtI.exec_time
+						# print(f'{i}. exec={ex_t}, termin={nsgaRes.history[i].has_terminated}, tgt={timesToKeep[timeIndex]}, sol[0]={r.X[0][0]}')
+						if ex_t != None and timeIndex < len(timesToKeep) and ex_t > timesToKeep[timeIndex]:
+							# create a list of samples
+							historicSolSets.append((ex_t, list(r.X)))
+							timeIndex += 1
 
 		else:
 			# do rejection sampling until requirements are satisfied

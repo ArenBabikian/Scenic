@@ -12,6 +12,11 @@ ENV PATH "/root/.local/bin:$PATH"
 # sudo docker build -t scenic-test -f ./Dockerfile-test .
 
 # run bash on container
-# sudo docker run --name scenic-mount -it --rm -v /home/cloud/Scenic:/usr/src/app scenic-test bash
+# sudo docker run --name scenic-mount -it --rm -v /home/cloud/arenb/Scenic:/usr/src/app scenic-test bash
+# sudo docker run --name sc-dev-arenb -it -v /home/cloud/arenb/Scenic:/usr/src/app scenic-catriona bash
+
+# poetry install
 
 # bash runAllMeasurements.sh
+
+# sudo docker start sc-dev-arenb ; sudo docker attach sc-dev-arenb
