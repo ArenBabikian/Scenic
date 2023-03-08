@@ -6,6 +6,8 @@ from pathlib import Path
 import seaborn as sns
 import pandas as pd
 
+from scenic.figures.util import adjustSize
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -34,18 +36,6 @@ data_dir = f'{base_dir}/data'
 src_dir = f'{base_dir}/results'
 out_dir = f'{base_dir}/aggregate-temp'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
-
-
-def adjustSize(ax=plt, s=14):
-    # ax.tick_params(axis='both', labelsize=MED_SIZE)
-    
-    ax.rc('font', size=s)         
-    ax.rc('axes', titlesize=s)    
-    ax.rc('axes', labelsize=s)
-    ax.rc('xtick', labelsize=s)
-    ax.rc('ytick', labelsize=s)
-    ax.rc('legend', fontsize=s)
-    ax.rc('figure', titlesize=s)
 
 
 ##########################
