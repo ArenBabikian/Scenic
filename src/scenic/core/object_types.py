@@ -13,7 +13,7 @@ from scenic.core.type_support import toVector, toHeading, toType
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.utils import DefaultIdentityDict, areEquivalent, cached_property
 from scenic.core.errors import RuntimeParseError
-from shapely.geometry import Point as ShapelyPoint, Polygon
+from shapely.geometry import Point as ShapelyPoint, Polygon, LineString
 
 ## Abstract base class
 
@@ -284,12 +284,15 @@ class Point(_Constructible):
 	def visibleRegion(self):
 		return CircularRegion(self.position, self.visibleDistance)
 
-	#Only supports one actor for the moment
 	def getBlockedVisibilityRegions(self, other, actors):
 		blockedVisibilityRegion = []
 		for actor in actors:
 			if actor !=self and actor !=other:
-				if (self.visibleRegion.containsObject(actor)):
+				isContained = False
+				for corner in actor.corners:
+					if self.visibleRegion.containsPoint(corner):
+						isContained = True
+				if (isContained):
 					blockedVisibilityRegion.append(self.getBlockedVisibilityRegion(actor))
 
 		return blockedVisibilityRegion
@@ -314,13 +317,47 @@ class Point(_Constructible):
 		return Polygon((corner1,corner2,corner4,corner3))
 	
 	def getCornersDefiningBlockedVisibilityCone(self, other):
+		
+		# Get the outer edge of the visibilityPolygon
+		visibilityPolygon = self.visibleRegion.polygon
+		outerEdgeVisibilityPolygon = LineString(visibilityPolygon.exterior.coords)
+		
+		# Get the edges of the other car
+		otherCarPolygon = Polygon(other.corners)
+		otherCarVertices = otherCarPolygon.exterior.coords[:-1]
+		otherCarEdges = [LineString((otherCarVertices[i], otherCarVertices[i+1])) for i in range(len(otherCarVertices)-1)]
+
+		# Get intersection polygon of the two region
+		intersection = otherCarPolygon.intersection(visibilityPolygon)
+
+		# Get the points were the car and visibility region intersect
+		intersectionPoints = []
+		for edge in otherCarEdges:
+			if outerEdgeVisibilityPolygon.intersects(edge):
+				intersection = outerEdgeVisibilityPolygon.intersection(edge)
+				if isinstance(intersection, ShapelyPoint):
+					intersectionPoints.append(intersection)
+
+		if intersectionPoints:
+			listOfCorners1 = intersectionPoints
+			listOfCorners2 = []
+			for corner in other.corners:
+				if (self.visibleRegion.containsPoint(corner)):
+					listOfCorners2.append(corner)
+		
+		# If no intersection points, just use corners of the car
+		else: 
+			listOfCorners1 = other.corners
+			listOfCorners2 = other.corners
+
 		maxAngle = 0
-		for corner1 in other.corners:
-			for corner2 in other.corners:
+		for corner1 in listOfCorners1:
+			for corner2 in listOfCorners2:
 				angle = angle_between_3points(self.position, corner1, corner2)
 				if angle > maxAngle:
 					maxAngle = angle
-					selectedCorners = (corner1, corner2)		
+					selectedCorners = (corner1, corner2)
+
 		return selectedCorners
 
 	# @cached_property
