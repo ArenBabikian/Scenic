@@ -13,7 +13,7 @@ from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
-from scenic.core.geometry import polygonUnion, viewAngleToPoint
+from scenic.core.geometry import normalizeAngle, polygonUnion, viewAngleToPoint
 from scenic.core.nsga2mod import NSGA2M
 from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
@@ -1444,24 +1444,25 @@ class Scenario:
 				elif c.type == Cstr_type.DISTFAR:
 					vals[str(c)] = self.distPBHeur(vi, vj, 20)
 				elif c.type == Cstr_type.HASTORIGHT:
-					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-(math.pi / 2))
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-(math.pi / 2), math.atan(2.5/2))
 				elif c.type == Cstr_type.HASTOLEFT:
-					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading+(math.pi / 2))
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading+(math.pi / 2), math.atan(2.5/2))
 				elif c.type == Cstr_type.HASINFRONT:
-					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading)
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading,  math.atan(2/5))
 				elif c.type == Cstr_type.HASBEHIND:
-					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-math.pi)
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-math.pi,  math.atan(2/5))
 
 			allVals[sample] = vals
 
 		return allVals
 
-	def posPBHeur(self, src, tgt, heading):
+	def posPBHeur(self, src, tgt, heading, widestAngle):
 		a = abs(viewAngleToPoint(tgt.position, src.position, heading))
-		if a > math.pi/4: return 0 
-		if a >= math.pi/6 and a <= math.pi/4: return 0.33
-		if a >= math.pi/12 and a <= math.pi/6: return 0.66
-		if a >= 0 and a <= math.pi/12: return 1 
+		# Angle is outside range
+		if a > widestAngle: 
+			return 1
+		else:
+			return math.log((a * (math.exp(1) - 1))/widestAngle + 1)
 		
 	def distPBHeur(self, src, tgt, rangeLow, rangeHigh=None):
 		"""
