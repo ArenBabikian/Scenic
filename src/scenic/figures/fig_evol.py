@@ -9,16 +9,16 @@ from util import adjustSize
 import numpy as np
 import matplotlib.pyplot as plt
 
-from scipy.stats import fisher_exact
-from scipy.stats import ranksums
-from pingouin import mwu
+# from scipy.stats import fisher_exact
+# from scipy.stats import ranksums
+# from pingouin import mwu
 
-maps = ['zalaFullcrop']
+maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
 
 num_scenes = range(10) #range(10)
-evol_approaches = ['ga-one', 'nsga3-categories', 'nsga3-actors', 'nsga3-none', 'nsga2-importance', 'nsga2-actors', 'nsga2-categories']
-names_app = ['ga-1', 'n3-c', 'n3-a', 'n3-0', 'n2-i', 'n2-a', 'n2-c']
+evol_approaches = ['nsga3-categImpo', 'nsga2-importance', 'nsga3-categories', 'nsga2-actors', 'nsga3-none', 'ga-one']
+names_app = ['n3-ci', 'n2-i', 'n3-c', 'n2-a', 'n3-n', 'ga-1']
 
 
 default = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -28,7 +28,7 @@ opacity = 0.25
 
 base_dir = 'measurements'
 data_dir = f'{base_dir}/data'
-src_dir = f'{base_dir}/results'
+src_dir = f'docker' # f'{base_dir}/results'
 out_dir = f'{base_dir}/figures'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
@@ -281,4 +281,4 @@ def figRQ11(stat_sig=True, noPartial=False):
             print(">>>End Statistical Significance<<<")
 
 
-figRQ11(True, False)
+figRQ11(False, False)

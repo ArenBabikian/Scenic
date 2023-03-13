@@ -31,19 +31,20 @@ elif setting == "constraints":
     timeout = [600] # 10min
     evol_approaches = [('nsga2', 'categories')]
 elif setting == "evol":
-    maps = ['zalaFullcrop']
+    maps = ['tram05']
     configurations = ['2actors', '3actors', '4actors']
-    scene_ids = range(5)
+    scene_ids = range(10)
     approaches = ['nsga']
-    num_iterations = 5
-    timeout = [420] # 10min
-    evol_approaches = [('ga', 'one'),
-                       ('nsga3', 'categories'),
-                       ('nsga3', 'actors'),
-                       ('nsga3', 'none'),
+    num_iterations = 10
+    timeout = [600] # 10min
+    evol_approaches = [('nsga3', 'categImpo'),
                        ('nsga2', 'importance'),
+                       ('nsga3', 'categories'),
                        ('nsga2', 'actors'),
-                       ('nsga2', 'categories')]
+                       ('nsga3', 'none'),
+                       ('ga', 'one'),
+                       ('nsga2', 'categImpo'),
+                       ('nsga3', 'actors')]
 else:
     exit()
 

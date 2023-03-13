@@ -38,17 +38,17 @@ def getMapBoundaries(params, num_obj):
     return loBd, hiBd
 
 ALGO2OBJ = {'ga':['one'],
-            'nsga2': ['categories', 'actors', 'importance'],
-            'nsga3': ['categories', 'actors', 'none']}
+            'nsga2': ['actors', 'importance', 'categImpo'],
+            'nsga3': ['categories', 'none', 'categImpo', 'actors']}
 
 def getAlgo(params, n_objectives):
     algo_name = params.get('evol-algo')
     restart = float(params.get('evol-restart-time'))
     if algo_name == 'nsga2':        
-        algorithm = NSGA2M(pop_size=20, n_offsprings=10, restart_time=restart,
+        algorithm = NSGA2M(pop_size=5, n_offsprings=None, restart_time=restart,
                            eliminate_duplicates=True)
     elif algo_name == 'ga':
-        algorithm = GA(pop_size=20, n_offsprings=10, restart_time=restart,
+        algorithm = GA(pop_size=5, n_offsprings=None, restart_time=restart,
                        eliminate_duplicates=True)
     elif algo_name == 'nsga3':
         
@@ -89,7 +89,10 @@ def handleConstraints(scenario, constraints):
         exp = [1 for _ in range(len(objects))]
     elif obj_def == 'importance':
         con2id = [int(c.type.value >= 20) for c in constraints]
-        exp = [1, 1]
+        exp = [3, 2]
+    elif obj_def == 'categImpo':
+        con2id = [int(c.type.value/10) for c in constraints]
+        exp = [3, 3, 2, 2, 2]
     elif obj_def == 'none':
         con2id = [i for i in range(len(constraints))]
         exp = [1 for _ in range(len(constraints))]
