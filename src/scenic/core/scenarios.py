@@ -918,7 +918,7 @@ class Scenario:
 		# x = [  97.64237302, -236.70268295,  -14.74759737,  -98.51499928,   -5.88366596, -109.51614019,   -7.30336197,  -99.24476481]
 		self.fillSample(x)
 
-		totCont, totVis, totColl = 0, 0, 0
+		totCont, totVis, totHidden, totColl = 0, 0, 0, 0
 		totPosRel, totDistRel = 0, 0
 
 		## GET HEURISTIC VALUES
@@ -947,7 +947,7 @@ class Scenario:
 				### How far is vj from being visible wrt. to vi?
 				totVis += vi.canSeeHeuristic(vj)
 			if c.type == Cstr_type.HIDDEN:
-				totVis += vi.hiddenHeuristic(vj, objects)
+				totHidden += vi.hiddenHeuristic(vj, objects)
 
 			if c.type == Cstr_type.HASTOLEFT:
 				totPosRel += vi.toLeftHeuristic(vj)
@@ -967,7 +967,7 @@ class Scenario:
 
 		# print([totVis, totCont, totColl, totPosRel, totDistRel])
 		# exit()
-		return [fun[0](totCont), fun[1](totColl), fun[2](totVis), fun[3](totPosRel), fun[4](totDistRel)]
+		return [fun[0](totCont), fun[1](totColl), fun[2](totVis), fun[3](totPosRel), fun[4](totDistRel), fun[5](totHidden)]
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -1030,7 +1030,7 @@ class Scenario:
 		# t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025, n_last=30)	
 		# t1 = ConstraintViolationToleranceTermination(n_last=20, tol=1e-6,)	
 		# t1 = IGDTermination	
-		t1 = OneSolutionHeuristicTermination(heu_vals=[0, 0, 0, 0, 0])
+		t1 = OneSolutionHeuristicTermination(heu_vals=[0, 0, 0, 0, 0, 0])
 		t2 = TimeBasedTermination(max_time=self.timeout)
 		termination = TerminationCollection(t1, t2)
 
@@ -1098,6 +1098,7 @@ class Scenario:
 						(lambda x:x**3),
 						(lambda x:x**2),
 						(lambda x:x**2),
+						(lambda x:x**2),
 						(lambda x:x**2)]
 			nsgaRes = self.getNsgaNDSs(parsed_cons, functions, verbosity)
 			totalTime = nsgaRes.exec_time
@@ -1119,7 +1120,7 @@ class Scenario:
 
 			if verbosity >= 2:
 				print("--Results--")
-				print("f = [Cont, Coll, Vis, PosRel, DistRel]")
+				print("f = [Cont, Coll, Vis, PosRel, DistRel, Hidden]")
 
 			if not measurement_outputs :
 				# Rank the solutions by prioritising containment and collision objectives
