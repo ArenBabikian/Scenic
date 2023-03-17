@@ -202,6 +202,6 @@ def getEvolNDSs(scenario, constraints, verbosity):
     termination = getTermination(num_objectives, scenario.timeout)
 
     # RUN PROBLEM
-    res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1), seed=1)
+    res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1))
     # (For Repeatability) use seed=1 option
     return res
