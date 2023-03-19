@@ -24,6 +24,9 @@ from scenic.simulators.utils.colors import Color
 
 from collections.abc import Iterable
 
+from pymoo.indicators.gd import GD
+from pymoo.indicators.igd import IGD
+
 class Scene:
 	"""Scene()
 
@@ -916,11 +919,11 @@ class Scenario:
 		objects = self.objects
 		allSamples = []
 		historicSolSets = []
+		save_history = self.params.get('evol-history')
 
 		# choose which custom requirements will be enforced for this sample
 		activeReqs = [req for req in self.initialRequirements if random.random() <= req.prob]
 
-		totalTime = -1
 		iterations = 0
 		restarts = None
 		failed = False
@@ -931,8 +934,10 @@ class Scenario:
 			#We assume that ego is obect[0]
 			parsed_cons = self.parseConfigConstraints()
 			
-			nsgaRes = utils.getEvolNDSs(self, parsed_cons, verbosity)
+			# RUN EVOLUTIONARY ALGO
+			nsgaRes, heuristicTargets = utils.getEvolNDSs(self, parsed_cons, verbosity)
 			totalTime = nsgaRes.exec_time
+			iterations = nsgaRes.algorithm.n_gen
 
 			# Get number of required nsga solutions
 			measurement_outputs = False
@@ -1020,27 +1025,30 @@ class Scenario:
 						except:
 							print('failed to sample - all')
 
-				# HANDLE HISTORY
-				if self.params.get('evol-algo') == "nsga2":
+				##############################
+				# Handle HISTORY data
+				##############################
+				if save_history != 'none':
 
 					# Restart stats
 					restarts = nsgaRes.history[-1].all_restarts
 
 					#only keep the intersting historic results
 					# Must be in ascending order
-					timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
+					timesToKeep = [i for i in range(0, 600, 30)]
+					# timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
 					# timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
-					# timesToKeep = [5, 10, 20, 30, 45]
+					# timesToKeep = [0.5, 1, 1.5, 2, 2.5, 3,3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5]
 					timeIndex = 0
 
 					for i in range(len(nsgaRes.history)):
 						solAtI = nsgaRes.history[i]
-						r = solAtI.result()
-						ex_t = solAtI.exec_time
+						res_i = solAtI.result()
+						ex_t_i = solAtI.exec_time
 						# print(f'{i}. exec={ex_t}, termin={nsgaRes.history[i].has_terminated}, tgt={timesToKeep[timeIndex]}, sol[0]={r.X[0][0]}')
-						if ex_t != None and timeIndex < len(timesToKeep) and ex_t > timesToKeep[timeIndex]:
+						if ex_t_i != None and timeIndex < len(timesToKeep) and ex_t_i > timesToKeep[timeIndex]:
 							# create a list of samples
-							historicSolSets.append((ex_t, list(r.X)))
+							historicSolSets.append((ex_t_i, res_i))
 							timeIndex += 1
 
 		else:
@@ -1143,6 +1151,9 @@ class Scenario:
 			# Gather statistics
 			stats['success'] = not failed # DONE
 
+			##############################
+			# Gather GENERAL data
+			##############################
 			if not self.evol:
 				#at this stage we should have exactly one solution
 				if len(allSamples) != 1 :
@@ -1162,10 +1173,8 @@ class Scenario:
 				allSolStats = {}
 				if measurement_outputs:
 					bestGlobal = allSamples[sortedGlobal[0][-1]]
-					bestHardPrio = allSamples[sortedHardPrio[0][-1]]
-
-					allSamples = [bestGlobal, bestHardPrio]
-					names = ['sol_best_global', 'sol_best_Hard_Prio']
+					allSamples = [bestGlobal]
+					names = ['sol_best_global']
 				else:
 					names = [f'sol-{i}' for i in range(len(allSamples))]
 					
@@ -1185,54 +1194,78 @@ class Scenario:
 
 				stats['solutions'] = allSolStats
 
-			# Analyse HISTORIC sample sets
-			if self.evol:
-
-				historyStats = {}
+				##############################
+				# Gather HISTORY data
+				##############################
+				historyStats = []
 				for historicSolSet in reversed(historicSolSets):
+					# for a solution set at a given time stamp
 					# get historic solutions as samples:
 					historicSamples = []
+					historicFs = []
+
 					t = historicSolSet[0]
-					historicSols = historicSolSet[1]
-					for historicSol in historicSols:
+					hist_sol_x = historicSolSet[1].X
+					hist_sol_f = historicSolSet[1].F
+					if len(hist_sol_x.shape) == 1:
+						# handling of GA
+						hist_sol_x = [hist_sol_x]
+						hist_sol_f = [hist_sol_f]
+
+					for sol_id, historicSol in enumerate(hist_sol_x):
 						self.fillSample(historicSol)
+						historicFs.append(hist_sol_f[sol_id])
 						found = False
 						while not found:
 							try:
 								historicSamples.append(Samplable.sampleAll(self.dependencies))
 								found = True
 							except:
-								print('failed to sample - history')							
+								print('failed to sample - history')
 
+					# ANALYSIS: historicFs and historicSamples
+					# Find sol with lowest total F
+					_, sh_heu_tot, _ = self.analyseFset(heuristicTargets, historicFs)
+
+					# Handle consraint vals of solutions
 					allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, historicSamples)
 					
 					allSolStats = {}
 					if measurement_outputs:
-						bestGlobal = historicSamples[sortedGlobal[0][-1]]
-						bestHardPrio = historicSamples[sortedHardPrio[0][-1]]
-
-						sampleSet = [bestGlobal, bestHardPrio]
-						names = ['sol_best_global', 'sol_best_Hard_Prio']
+						allSolStats['time'] = t
+						if save_history == 'shallow':
+							# def storeData(num_vio, heu_val, best_id):
+							# 	data = {}
+							# 	data['CON_sat_num'] = num_cons - num_vio
+							# 	# data['CON_sat_%'] = ( num_cons - num_vio) / num_cons
+							# 	data['heu_val_tot'] = heu_val
+							# 	data['heu_val_all'] = list(historicFs[best_id])
+							# 	return data
+							
+							allSolStats['least_con_vio'] = min(sortedGlobal, key = lambda x: x[0])[0]
+							allSolStats['gd'] = GD(heuristicTargets).do(historicSolSet[1].F)
+							allSolStats['igd'] = IGD(heuristicTargets).do(historicSolSet[1].F)
+							allSolStats['min_f_sum'] = sh_heu_tot
+							
+							# sortedGlobal.sort(key = lambda x: x[1])
+							# allSolStats['CON_violations_num'] = [i[0] for i in sortedGlobal]
+							# allSolStats['F'] = [list(i) for i in historicFs]
 						
-						for i in range(len(sampleSet)):
-							sol = sampleSet[i]						
-							solStats = {}
+						elif save_history == 'deep':
+							# Best global solution
+							sol = historicSamples[sortedGlobal[0][-1]]
 							solNumVioHard, solNumVioSoft = numVioMap[sol]
-							solStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
-							solStats['CON_sat_%'] = solStats['CON_sat_num'] / num_cons
-							solStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
-							solStats['CON_sat_%_hard'] = solStats['CON_sat_num_hard'] / num_hard_cons
-							solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
-							solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
-							solStats['CON_vals'] = allVals[sol]
+							allSolStats['CON_sat_num'] = num_cons - solNumVioHard - solNumVioSoft
+							allSolStats['CON_sat_%'] = allSolStats['CON_sat_num'] / num_cons
+							allSolStats['CON_sat_num_hard'] = num_hard_cons - solNumVioHard
+							allSolStats['CON_sat_%_hard'] = allSolStats['CON_sat_num_hard'] / num_hard_cons
+							allSolStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
+							allSolStats['CON_sat_%_soft'] = allSolStats['CON_sat_num_soft'] / num_soft_cons
+							allSolStats['CON_vals'] = allVals[sol]
 
-							allSolStats[names[i]] = solStats
-
-						historyStats[t] = allSolStats
+						historyStats.append(allSolStats)
 
 				stats['history'] = historyStats
-
-				# print(stats)
 			
 		# obtained a set of valid samples; assemble scenes from it
 		allScenes = []
@@ -1331,6 +1364,21 @@ class Scenario:
 		sortedHardPrio = sorted(sortingHardPrio)
 
 		return (allVals, numVioMap, sortedGlobal, sortedHardPrio)
+	
+	def analyseFset(self, targetHeuristics, allFs):
+		heu_totals = []
+		for i_fs in allFs:
+			assert len(targetHeuristics) == len(i_fs)
+			total_heu_val = 0
+			for heu_i in range(len(i_fs)):
+				heu_v = i_fs[heu_i]
+				heu_max = targetHeuristics[heu_i]
+				diff = heu_v - heu_max
+				if diff > 0:
+					total_heu_val += diff
+			heu_totals.append(total_heu_val)
+
+		return min(range(len(heu_totals)), key=lambda x : heu_totals[x]), min(heu_totals), heu_totals
 
 
 	def resetExternalSampler(self):

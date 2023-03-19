@@ -1,9 +1,5 @@
 
 from scenic.core.evol.constraints import Cstr_type
-from scenic.core.evol.nsga2mod import NSGA2M
-from pymoo.algorithms.moo.nsga3 import NSGA3
-from pymoo.algorithms.soo.nonconvex.es import ES
-from pymoo.algorithms.soo.nonconvex.ga import GA
 
 from pymoo.util.termination.collection import TerminationCollection
 from pymoo.util.termination.max_time import TimeBasedTermination
@@ -13,6 +9,8 @@ from pymoo.core.problem import ElementwiseProblem
 from pymoo.optimize import minimize
 
 import os
+
+from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
 
 
 def getMapBoundaries(params, num_obj):
@@ -44,18 +42,18 @@ ALGO2OBJ = {'ga':['one'],
 def getAlgo(params, n_objectives):
     algo_name = params.get('evol-algo')
     restart = float(params.get('evol-restart-time'))
-    if algo_name == 'nsga2':        
-        algorithm = NSGA2M(pop_size=5, n_offsprings=None, restart_time=restart,
+    if algo_name == 'nsga2':
+        algorithm = NSGA2MOD(pop_size=5, n_offsprings=None, restart_time=restart,
                            eliminate_duplicates=True)
     elif algo_name == 'ga':
-        algorithm = GA(pop_size=5, n_offsprings=None, restart_time=restart,
+        from pymoo.algorithms.soo.nonconvex.ga import GA
+        algorithm = GAMOD(pop_size=5, n_offsprings=None, restart_time=restart,
                        eliminate_duplicates=True)
     elif algo_name == 'nsga3':
-        
         from pymoo.factory import get_reference_directions
         # TODO analyse n_partitions
         ref_dirs = get_reference_directions("das-dennis", n_dim=n_objectives, n_partitions=1)
-        algorithm = NSGA3(ref_dirs=ref_dirs, pop_size=None, n_offsprings=None, restart_time=restart,
+        algorithm = NSGA3MOD(ref_dirs=ref_dirs, pop_size=None, n_offsprings=None, restart_time=restart,
                           eliminate_duplicates=True)
         
         # algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
@@ -178,9 +176,9 @@ def getProblem(scenario, constraints):
     return MyProblem(), len(exp)
 
 
-def getTermination(num_objectives, timeout):
+def getTermination(target_heuristic_values, timeout):
     # TODO
-    t1 = OneSolutionHeuristicTermination(heu_vals=[0 for _ in range(num_objectives)])
+    t1 = OneSolutionHeuristicTermination(heu_vals=target_heuristic_values)
     # TEMP
     # t1 = MultiObjectiveSpaceToleranceTermination(tol=0.0025, n_last=30)	
     # t1 = ConstraintViolationToleranceTermination(n_last=20, tol=1e-6,)	
@@ -188,6 +186,13 @@ def getTermination(num_objectives, timeout):
     t2 = TimeBasedTermination(max_time=timeout)
     termination = TerminationCollection(t1, t2)
     return termination
+
+
+def validateHistory(params):
+    history = params.get('evol-history')
+    if history not in ['none', 'shallow', 'deep']:
+        raise Exception(f'Evol History spec <{history}> is invalid.')
+    return None if history == 'none' else history
 
 
 def getEvolNDSs(scenario, constraints, verbosity):
@@ -199,9 +204,13 @@ def getEvolNDSs(scenario, constraints, verbosity):
     algorithm = getAlgo(scenario.params, num_objectives)
 
     # GET TERMINATION
-    termination = getTermination(num_objectives, scenario.timeout)
+    target_heuristic_values = [0 for _ in range(num_objectives)]
+    termination = getTermination(target_heuristic_values, scenario.timeout)
+
+    # VALIDATE HISTORY
+    history = validateHistory(scenario.params)
 
     # RUN PROBLEM
-    res = minimize(problem, algorithm, termination, save_history=True, verbose=(verbosity > 1))
     # (For Repeatability) use seed=1 option
-    return res
+    res = minimize(problem, algorithm, termination, save_history=history, verbose=(verbosity > 1))
+    return res, target_heuristic_values

@@ -2,8 +2,8 @@
 
 # General variable definitions
 ##############################
-MAPNAME='zalaFullcrop' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='measurements/data/zalaFullcrop/3actors/1-0/d-nsga.scenic'
+MAPNAME='tram05' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
+PATHTOCONFIGFILE='measurements/data/tram05/3actors/2-0/d-nsga.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions
@@ -13,24 +13,25 @@ USENSGA='True'
 # IMGDIR='--image-dir examples/basic/_output/ego-images'
 
 cmd="poetry run scenic \
--b --count 1 -v 3 \
+-b --count 5 -v 0 \
 ${SIMULATE} \
 ${CARLAMAP} \
 ${IMGDIR} \
 -p timeout 30 \
 -p evol ${USENSGA} \
 -p evol-algo nsga2 \
--p evol-obj categories \
--p evol-NumSols 1 \
--p evol-restart-time -1
+-p evol-obj categImpo \
+-p evol-NumSols measurement \
+-p evol-restart-time -1 \
+-p evol-history shallow \
 -p no-validation False \
 -p outputWS meas-temp \
 -p outputDir _output \
--p viewImgs True \
+-p viewImgs False \
 -p saveImgs True \
--p saveFiles True \
--p saveStats True
--p map maps/${MAPNAME}.xodr
+-p saveFiles False \
+-p saveStats True \
+-p map maps/${MAPNAME}.xodr \
 ${PATHTOCONFIGFILE}"
 echo $cmd
 eval $cmd

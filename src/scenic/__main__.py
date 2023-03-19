@@ -219,8 +219,9 @@ try:
 
         absSceneStatsMap = {}
         count = args.count
-        if params.get('evol-NumSols') == 'measurement' and get_meas_stats :
-            count *= 2
+        # LEGACY
+        # if params.get('evol-NumSols') == 'measurement' and get_meas_stats :
+        #     count *= 2
         while (count == 0 or successCount < count):
             scenes, stats = generateScene()
             prevSuccessCount = successCount
