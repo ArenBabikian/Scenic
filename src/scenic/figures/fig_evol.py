@@ -28,11 +28,13 @@ opacity = 0.25
 
 base_dir = 'measurements'
 data_dir = f'{base_dir}/data'
-src_dir = f'docker' # f'{base_dir}/results'
+src_dir = f'{base_dir}/results'
+# src_dir = f'docker' # f'{base_dir}/results'
 out_dir = f'{base_dir}/figures'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
 timeout = 420
+history_times = [i for i in range(0, 45, 2)]
 
 
 ##########################
@@ -42,22 +44,26 @@ def figRQ11(stat_sig=True, noPartial=False):
     global_out_dir = f'{out_dir}/evol'
     rt_out_dir = f'{global_out_dir}/runtime'
     sr_out_dir = f'{global_out_dir}/success-rate'
+    hist_out_dir = f'{global_out_dir}/history'
     Path(f'{rt_out_dir}/').mkdir(parents=True, exist_ok=True)
     Path(f'{sr_out_dir}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{hist_out_dir}/').mkdir(parents=True, exist_ok=True)
 
     data = {}
     for m in maps:
         fig1_data = {}
 
         for approach in evol_approaches:
-            rt_data = [] # 2D array
+            rt_data = [] # 2D array, {num_actors * num_successful_runs}
             ns_data = []
             sr_data = []
             num_at_data = []
+            hist_data = [] # 3d array, {num_actors * num_all_runs * tot_num_history points_padded}
             for config in configurations:
                 rt_con_data = []
                 num_attempts = 0
                 num_successes = 0
+                hist_con_data = []
 
                 for i in num_scenes:
                     json_path = f'{src_dir}/{m}/{config}/{i}-0/d-nsga/{approach}/_measurementstats.json'
@@ -73,13 +79,23 @@ def figRQ11(stat_sig=True, noPartial=False):
                                 num_successes += 1
                                 rt_con_data.append(r['time'])
 
+                            # history
+                            hist_con_res_data = r['history']
+                            hist_con_res_data.reverse()
+                            len_diff = len(history_times) - len(hist_con_res_data)
+                            assert len_diff >= 0
+                            for _ in range(len_diff):
+                                hist_con_res_data.append(None)
+                            hist_con_data.append(hist_con_res_data)
+
                 rt_data.append(rt_con_data)
+                hist_data.append(hist_con_data)
                 ns_data.append(num_successes)
                 succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
                 sr_data.append(succ_rate)
                 num_at_data.append(num_attempts)
-
-            fig1_data[approach] = {'rt':rt_data, 'sr':sr_data, 'ns':ns_data, 'at':num_at_data}
+                
+            fig1_data[approach] = {'rt':rt_data, 'sr':sr_data, 'ns':ns_data, 'at':num_at_data, 'hist':hist_data}
 
         data[m] = fig1_data
 
@@ -97,6 +113,7 @@ def figRQ11(stat_sig=True, noPartial=False):
         index = np.arange(n_groups)
         bar_width = 0.125
 
+        ######################
         # SUCCESS RATE ANALYSIS
         for i, approach in enumerate(evol_approaches):
             name = names_app[i]
@@ -128,6 +145,7 @@ def figRQ11(stat_sig=True, noPartial=False):
         print(f'Saved figure at {save_path}')
 
         
+        ######################
         # EXPORT LEGEND
         if m == 'zalaFullcrop':
             # export Legend
@@ -184,7 +202,7 @@ def figRQ11(stat_sig=True, noPartial=False):
                 print()
             print(">>>End Statistical Significance<<<")
 
-
+        ######################
         # RUNTIME ANALYSIS
         bps = []
         for i, approach in enumerate(evol_approaches):
@@ -216,6 +234,7 @@ def figRQ11(stat_sig=True, noPartial=False):
         plt.savefig(save_path)
 
         print(f'Saved figure at {save_path}')
+        plt.clf()
 
         if stat_sig:
             alt = "greater"
@@ -280,5 +299,100 @@ def figRQ11(stat_sig=True, noPartial=False):
                 print()
             print(">>>End Statistical Significance<<<")
 
+        
+        ######################
+        # HISTORY ANALYSIS
+
+        data_types = ["least_con_vio", "gd", "igd", "min_f_sum"]
+        data_type_cleanups = [False, True, True, True]
+        keep_only_timeout = True
+
+        for data_t in data_types:
+            Path(f'{hist_out_dir}/{data_t}/').mkdir(parents=True, exist_ok=True)
+
+        for conf_id, config in enumerate(configurations):
+            # ['2actors', '3actors', '4actors']
+
+            for i, approach in enumerate(evol_approaches):
+                config_data = data[m][approach]['hist'][conf_id]
+                if len(config_data) == 0:
+                    continue
+
+                # HANDLE increase of ccess rate
+                num_successes_sequence = [0 for _ in range(len(history_times))]
+                for run_data in config_data:
+                    # for a single run, sequence of history entries
+                    for hist_pt_i, hist_pt in enumerate(run_data):
+                        if hist_pt == None:
+                            num_successes_sequence[hist_pt_i] += 1
+
+                # make_ratio
+                tot_at = data[m][approach]['at'][conf_id]
+                num_successes_sequence = [i/tot_at for i in num_successes_sequence]
+
+
+
+                # HANDLE metric value sequence
+                for data_t_i, data_t in enumerate(data_types):
+                    
+                    # Add bar chart for success rates
+                    from mpl_toolkits.axes_grid1 import host_subplot
+                    ax1 = host_subplot(111, adjustable='box')
+                    ax1.bar(history_times, num_successes_sequence, color='0.9', edgecolor='0.7', width=2)
+                    ax1.set_ylabel('Success rate', color='0.5') 
+                    ax1.set_ylim(0, 1)
+
+                    # Prep metrics figure
+                    ax2 = plt.twinx()
+
+                    max_metric_val = -1
+                    for run_data in config_data:
+                        all_data = run_data[-1] != None
+                        if all_data or not keep_only_timeout :
+                            data_seq = [i[data_t] if not i == None else 0 for i in run_data]
+                            data_seq_2 = [i[data_t] for i in run_data if i is not None]
+
+                            if data_type_cleanups[data_t_i]:
+                                
+                                # CUT OFF THINGS FURTHER THAN 2 std-devs away
+                                med_2 = statistics.median(data_seq)
+                                if med_2 == 0:
+                                    sd_multiplier = 0
+                                else:
+                                    sd_multiplier = 1
+                                    
+                                med = statistics.median(data_seq_2)
+                                if len(data_seq_2) > 1:
+                                    sd = statistics.stdev(data_seq_2)
+                                    data_seq = [i if i <= med+sd_multiplier*sd else None for i in data_seq]
+
+                                # OPTION 2
+                                # med = statistics.median(data_seq[-len(data_seq):])
+                                # data_seq = [i if i <= med*2 else None for i in data_seq]
+
+                                # NORMALIZE remaining data to 0..1
+                                data_seq_sum = max(i for i in data_seq if i is not None)
+                                data_seq = [float(i)/data_seq_sum if i != None else None for i in data_seq]
+                                # print(sum(1 for i in data_seq if i == 1))
+
+                            ax2.plot(history_times, data_seq, linewidth=2)
+                            cur_max = max(x for x in data_seq if x is not None)
+                            if max_metric_val < cur_max:
+                                max_metric_val = cur_max
+
+                    plt.xlabel('time')
+                    plt.xticks(history_times)
+                    plt.title(f'{m}-{config}-{approach}')
+                    ax2.set_ylim(0, max_metric_val)
+                    ax2.set_ylabel(data_t)
+                    # plt.yscale('log')
+                    # plt.tight_layout()
+                    # plt.show()
+                    save_path = f'{hist_out_dir}/{data_t}/{m}-{config}-{approach}.pdf'
+                    plt.savefig(save_path)
+
+                    print(f'Saved figure at {save_path}')
+                    plt.clf()
+            # TODO create aggregate figure
 
 figRQ11(False, False)
