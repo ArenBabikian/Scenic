@@ -8,6 +8,7 @@ from util import adjustSize
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import host_subplot
 
 # from scipy.stats import fisher_exact
 # from scipy.stats import ranksums
@@ -17,24 +18,27 @@ maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
 
 num_scenes = range(10) #range(10)
-evol_approaches = ['nsga3-categImpo', 'nsga2-importance', 'nsga3-categories', 'nsga2-actors', 'nsga3-none', 'ga-one']
-names_app = ['n3-ci', 'n2-i', 'n3-c', 'n2-a', 'n3-n', 'ga-1']
+evol_approaches = ['nsga3-categImpo', 'nsga2-importance', 'nsga3-categories', 'nsga2-actors', 'nsga3-none', 'ga-one', 'nsga3-actors', 'nsga2-categImpo']
+names_app = ['n3-ci', 'n2-i', 'n3-c', 'n2-a', 'n3-n', 'ga-1', 'n3-a', 'n2-ci']
+
+# ORDERED!!!!!
+evol_approaches = ['nsga2-actors', 'nsga2-categImpo', 'nsga3-none', 'nsga3-categories', 'nsga3-categImpo', 'nsga3-actors', 'nsga2-importance', 'ga-one']
+names_app = ['n2-a', 'n2-ci', 'n3-n', 'n3-c', 'n3-ci', 'n3-a', 'n2-i', 'ga-1']
 
 
 default = plt.rcParams['axes.prop_cycle'].by_key()['color']
-colors = ['#A50205', '#0876B5', '#CC6400', '#5813B7', default[4], default[5], default[6]]
+colors = ['#A50205', '#0876B5', '#CC6400', '#5813B7', default[4], default[5], default[6], default[7]]
 colors_light = ['#E8BFC0', '#C1DDEC', '#F2D8BF']
 opacity = 0.25
 
 base_dir = 'measurements'
 data_dir = f'{base_dir}/data'
-src_dir = f'{base_dir}/results'
-# src_dir = f'docker' # f'{base_dir}/results'
+src_dir = f'docker' # f'{base_dir}/results'
 out_dir = f'{base_dir}/figures'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
-timeout = 420
-history_times = [i for i in range(0, 45, 2)]
+timeout = 600
+history_times = [i for i in range(0, 600, 30)]
 
 
 ##########################
@@ -111,7 +115,7 @@ def figRQ11(stat_sig=True, noPartial=False):
         n_groups = len(configurations)
         fig, ax = plt.subplots()
         index = np.arange(n_groups)
-        bar_width = 0.125
+        bar_width = 0.1111
 
         ######################
         # SUCCESS RATE ANALYSIS
@@ -307,11 +311,13 @@ def figRQ11(stat_sig=True, noPartial=False):
         data_type_cleanups = [False, True, True, True]
         keep_only_timeout = True
 
-        for data_t in data_types:
-            Path(f'{hist_out_dir}/{data_t}/').mkdir(parents=True, exist_ok=True)
+        for approach in evol_approaches:
+            for data_t in data_types:
+                Path(f'{hist_out_dir}/{data_t}/{approach}/').mkdir(parents=True, exist_ok=True)
 
         for conf_id, config in enumerate(configurations):
             # ['2actors', '3actors', '4actors']
+            Path(f'{hist_out_dir}/success/{config}/').mkdir(parents=True, exist_ok=True)
 
             for i, approach in enumerate(evol_approaches):
                 config_data = data[m][approach]['hist'][conf_id]
@@ -330,15 +336,31 @@ def figRQ11(stat_sig=True, noPartial=False):
                 tot_at = data[m][approach]['at'][conf_id]
                 num_successes_sequence = [i/tot_at for i in num_successes_sequence]
 
+                # Create success rate fig
+                plt.bar(history_times, num_successes_sequence, color='0.9', edgecolor='0.7', width=history_times[1]-history_times[0])
+                plt.ylabel('Success rate', color='0.5') 
+                plt.ylim(0, 1)
 
+                plt.xlabel('time')
+                plt.xticks(history_times, rotation=45)
+                plt.title(f'{m}-{config}-Success-Rate')
+                # plt.yscale('log')
+                plt.tight_layout()
+                # plt.show()
+                save_path = f'{hist_out_dir}/success/{config}/{m}-{approach}.pdf'
+                plt.savefig(save_path)
+
+                print(f'Saved figure at {save_path}')
+                plt.clf()
+
+                # continue
 
                 # HANDLE metric value sequence
                 for data_t_i, data_t in enumerate(data_types):
                     
                     # Add bar chart for success rates
-                    from mpl_toolkits.axes_grid1 import host_subplot
                     ax1 = host_subplot(111, adjustable='box')
-                    ax1.bar(history_times, num_successes_sequence, color='0.9', edgecolor='0.7', width=2)
+                    ax1.bar(history_times, num_successes_sequence, color='0.9', edgecolor='0.7', width=history_times[1]-history_times[0])
                     ax1.set_ylabel('Success rate', color='0.5') 
                     ax1.set_ylim(0, 1)
 
@@ -381,14 +403,14 @@ def figRQ11(stat_sig=True, noPartial=False):
                                 max_metric_val = cur_max
 
                     plt.xlabel('time')
-                    plt.xticks(history_times)
+                    plt.xticks(history_times, rotation=45)
                     plt.title(f'{m}-{config}-{approach}')
                     ax2.set_ylim(0, max_metric_val)
                     ax2.set_ylabel(data_t)
                     # plt.yscale('log')
-                    # plt.tight_layout()
+                    plt.tight_layout()
                     # plt.show()
-                    save_path = f'{hist_out_dir}/{data_t}/{m}-{config}-{approach}.pdf'
+                    save_path = f'{hist_out_dir}/{data_t}/{approach}/{m}-{config}.pdf'
                     plt.savefig(save_path)
 
                     print(f'Saved figure at {save_path}')
