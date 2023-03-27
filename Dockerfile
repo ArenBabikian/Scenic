@@ -10,32 +10,29 @@ COPY . .
 
 RUN poetry install
 
+##### CONNECT TO SERVER
 # ssh cloud@vm.fured.cloud.bme.hu -p 1627
 
-# Build image
+##### BUILD IMAGE
 # sudo docker build -t scenic-ab-official .
 
-# Generate the abstract scenes
-
-
-# Generate the instances
-# sudo docker run -m 16g --name sc-off-ab  -v /home/cloud/catrionam/docker:/usr/src/app/measurements/results scenic bash runAllMeasurements.sh 
+##### GENERATE INSTANCES
+# sudo docker run -m 16g --name sc-off-ab  -v /home/cloud/catrionam/docker:/usr/src/app/measurements/results scenic-ab-official bash runAllMeasurements.sh 
+#
 # sudo docker run -m 16g -it --rm --name sc-off-ab -v /home/cloud/arenb/Scenic/docker:/usr/src/app/measurements/results scenic-ab-official bash
 # poetry run python src/scenic/runmeasurements.py
 
-# docker run --name oveslantoun -it abc1 bash
-# # for cmd line
-# or
-# docker create --name oveslantoun -it abc1
+##### SIMPLE DOCKER RUNS
+# docker run --name oveslantoun -it scenic-ab-official bash
 
-# # When exited
-# docker start oveslantoun
+##### WHEN DOCKER IS ALREADY RUNNING
+# docker exec -it sc-off-ab bash
 
-# docker stop oveslantoun
+##### EXITING
+# docker stop sc-off-ab 
 
-# # when runing
-# docker exec -it oveslantoun bash
-
-# exit in bash
-# or
-# docker stop oveslantoun
+##### SCP
+# scp -P 18327 -r "cloud@vm.fured.cloud.bme.hu:/home/cloud/arenb/Scenic/measurements/figures/evol/" docker/figures/
+# 
+# BELOW DOES NOT WORK, OVERWRITES   
+# scp -P 18327 -r "cloud@vm.fured.cloud.bme.hu:/home/cloud/arenb/Scenic/docker/zalaFullcrop/*/*/d-nsga/*/_measurementstats.json" docker/

@@ -137,5 +137,5 @@ out-*/
 .archive
 meas-*/
 measurements
-docker/
+docker*/
 examples/basic/_output

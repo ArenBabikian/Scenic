@@ -3,7 +3,7 @@ import subprocess
 import sys
 import os
 
-setting = "testing" # short, scale, constraints, evol, testing
+setting = "testing" # short, scale, constraints, evol, testing, meas-test
 
 if setting == "short":
     maps = ['tram05', 'town02', 'zalaFullcrop']
@@ -60,6 +60,17 @@ elif setting == "testing":
                        ('nsga2', 'importance'),
                        ('ga', 'one')]
     evol_history = 'shallow'
+elif setting == "meas-test":
+    maps = ['tram05']
+    configurations = ['3actors']
+    scene_ids = range(2, 5)
+    approaches = ['nsga']
+    num_iterations = 5
+    timeout = [45]
+    evol_approaches = [('nsga3', 'categImpo'),
+                       ('nsga2', 'importance'),
+                       ('ga', 'one')]
+    evol_history = 'shallow'
 else:
     exit()
 
@@ -97,6 +108,7 @@ for evol_algo, evol_obj in evol_approaches:
                     command.extend(['-p', 'saveFiles', str(save)])
                     command.extend(['-p', 'saveStats', str(save)])
                     command.extend(['-p', 'evol-restart-time', str(-1)])
+                    command.extend(['-p', 'map', f'maps/{m}.xodr'])
                     command.append(fullPathToFile)
                     print(f'{fullPathToFile}: ({evol_algo}, {evol_obj})')
 

@@ -4,7 +4,7 @@ import os
 import json
 from pathlib import Path
 
-from util import adjustSize
+from scenic.figures.util import adjustSize
 
 import numpy as np
 import matplotlib.pyplot as plt
