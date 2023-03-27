@@ -111,8 +111,8 @@ class Simulation:
 
             # Run simulation
             assert self.currentTime == 0
-            # TODO currently only works for CARLA
-            assert len(self.cameraManager.images) == 0
+            # # TODO currently only works for CARLA
+            # assert len(self.cameraManager.images) == 0
             terminationReason = None
             while maxSteps is None or self.currentTime < maxSteps:
             # IMPORTANT
