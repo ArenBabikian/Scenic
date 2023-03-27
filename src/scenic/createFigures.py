@@ -500,6 +500,96 @@ def figRQ13():
         # PLOT - w/ RM
         fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
 
+##########################
+# FIGURE RQ1.4: 
+##########################
+def figRQ14():
+    # Set up output file
+    figRQ14_out_dir = f'{out_dir}/RQ1.4'
+    Path(f'{figRQ14_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    m = 'town02'    # map name
+    cons_types = ['CANSEE', 'HASINFRONT', 'HASBEHIND', 'DISTCLOSE', 'HASTOLEFT', 'DISTMED', 'HASTORIGHT', 'DISTFAR']
+
+    # Extract data (pb map values)
+    data = {}
+    map_val_data = [] # 2D array, pb map vals for each scene
+    num_attempts = 0 
+    num_successes = 0 
+    num_rm_successes = 0 
+
+    # Measurements for run of single abstract spec
+    json_path = '../../examples/basic/_output/_measurementstats.json'
+    if os.path.exists(json_path):
+        with open(json_path) as f:
+            json_data = json.load(f)
+        
+        json_res = json_data['results']
+        num_attempts += len(json_res)
+        
+        # Loop through each concrete scene
+        for r in json_res:
+            if r['success']:
+                num_successes += 1
+                sols = r['solutions']
+                last_sol_key = list(sols)[-1]
+                last_sol = sols[last_sol_key]
+                # only add data if all constraints are fully satisfied
+                if last_sol['CON_sat_%'] == 1.0: 
+                    map_val_data.append(list(last_sol['PB_Map_vals'].values()))
+    else:
+        print("json_path does not exist")
+
+    map_vals_per_cons = np.array(map_val_data).T.tolist()
+    succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+    succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+
+    data = {'vals': map_vals_per_cons, 'su':num_successes, 'sr':succ_rate, 'at':num_attempts, 'srrm':succ_rm_rate}
+
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
+
+    #create figs
+    adjustSize()
+    fig, ax = plt.subplots()
+    plt.figure(figsize=(12, 5))
+    n_cons_types = len(cons_types)
+    bar_width = 0.2
+    index = np.arange(n_cons_types)*10
+    pos = index+bar_width
+    vals = data['vals']
+
+    bps = []
+    bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
+        patch_artist=True,
+        boxprops=dict(facecolor=colors[0],color='k'),
+        capprops=dict(color='k'),
+        whiskerprops=dict(color=colors[0]),
+        flierprops=dict(color=colors[0], markeredgecolor=colors[0]),
+        medianprops=dict(color='k')))
+
+    plt.xlabel('Constraint Type')
+    plt.ylabel('Heuristic')
+    # plt.title(m)
+    plt.xticks(index + 1.5*bar_width, ('CANSEE', 'HASINFRONT', 'HASBEHIND', 'DISTCLOSE', 'HASTOLEFT', 'DISTMED', 'HASTORIGHT', 'DISTFAR'))
+    # plt.legend([bp['boxes'][0] for bp in bps], approaches)
+
+    plt.tight_layout()
+    # plt.show()
+    save_path = f'{figRQ14_out_dir}/plot.pdf'
+    plt.savefig(save_path)
+
+    print(f'Saved figure at {save_path}')
+
+def get_a12(a, b):
+    rs_m = len(a)
+    rs_n = len(b)
+    out = ranksums(a, b)
+    # print(out)
+    ranksum=out[0]
+    return (ranksum/rs_m - ((rs_m+1)/2))/rs_n
+
 def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, add):
     fig, ax = plt.subplots()
     cur_heights = [0 for _ in range(n_groups)]
@@ -1114,9 +1204,10 @@ def figExtra4():
 
 
 # figRQ11(True, False)
-# figRQ13()
 # figRQ12(True)
-figRQ2()
+# figRQ13()
+figRQ14()
+# figRQ2()
 # figRQ3()
 # figExtra2() # also prints some statistcs
 # figExtra3()
