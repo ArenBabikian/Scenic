@@ -3,7 +3,7 @@
 # General variable definitions
 ##############################
 MAPNAME='town02' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='examples/basic/8-nsga-visibility.scenic'
+PATHTOCONFIGFILE='examples/basic/onregion-tests/show-onregion.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions
@@ -13,7 +13,7 @@ USENSGA='True'
 # IMGDIR='--image-dir examples/basic/_output/ego-images'
 
 cmd="poetry run scenic \
--b --count 1 -v 1 \
+-b --count 8 -v 1 \
 ${SIMULATE} \
 ${CARLAMAP} \
 ${IMGDIR} \
