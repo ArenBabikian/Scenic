@@ -4,15 +4,15 @@ import os
 import json
 from pathlib import Path
 
-from scenic.figures.util import adjustSize
+from util import adjustSize
 
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 
-# from scipy.stats import fisher_exact
-# from scipy.stats import ranksums
-# from pingouin import mwu
+from scipy.stats import fisher_exact
+from scipy.stats import ranksums
+from pingouin import mwu
 
 maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
@@ -44,7 +44,7 @@ history_times = [i for i in range(0, 600, 30)]
 ##########################
 # FIGURE RQ1.1: Success Rate Comparison
 ##########################
-def figRQ11(stat_sig=True, noPartial=False):
+def figRQ11(stat_sig=True):
     global_out_dir = f'{out_dir}/evol'
     rt_out_dir = f'{global_out_dir}/runtime'
     sr_out_dir = f'{global_out_dir}/success-rate'
@@ -241,7 +241,7 @@ def figRQ11(stat_sig=True, noPartial=False):
         plt.clf()
 
         if stat_sig:
-            alt = "greater"
+            alt = "less"
             # alt = 'two-sided'
             incl_nf = True
             incl_np = False
@@ -260,7 +260,7 @@ def figRQ11(stat_sig=True, noPartial=False):
                 #     print(f'    {approach}(at={at}, ns={ns})')
 
                 max_l = len(max(evol_approaches, key=len))
-                print('    Results:')
+                print(f'    Results ({alt}):')
                 for i1, a1 in enumerate(evol_approaches):
                     at_1 = data[m][a1]['at'][i_c]
                     ns_1 = data[m][a1]['ns'][i_c]
@@ -283,7 +283,16 @@ def figRQ11(stat_sig=True, noPartial=False):
                             # print(statistics.median(app_times))
                             df = mwu(rt_1, rt_2, alternative=alt)
                             p=df["p-val"]["MWU"]
-                            print(('~~~~' if p>thresh else '    ') + f' nf = {a1.ljust(max_l)} * {a2.ljust(max_l)} : (pvalue={p:.3f}) (u1={df["U-val"]["MWU"]}) (eff={df["CLES"]["MWU"]})')
+                            u = df["U-val"]["MWU"]
+                            eff = df["CLES"]["MWU"]
+
+                        # NO PARTIAL
+                        df_np = mwu(rt_1_w_fail, rt_2_w_fail, alternative=alt)
+                        p_np=df_np["p-val"]["MWU"]
+                        u_np = df_np["U-val"]["MWU"]
+                        eff_np = df_np["CLES"]["MWU"]
+                            
+                        print(f'{"~~" if p>thresh else "  "}{"~~" if p_np>thresh else "  "} {a1.ljust(max_l)} * {a2.ljust(max_l)} : NF [p={p:.3f}, u1={int(u):04d}, eff={eff:.3f}], NP [p={p_np:.3f}, u1={int(u_np):04d}, eff={eff_np:.3f}]')
 
                             # # factors = [15,16,17,18,19,20,21,22,23,24,25] # 2actors
                             # factors = [291, 292, 293, 294, 295]
@@ -294,15 +303,14 @@ def figRQ11(stat_sig=True, noPartial=False):
                             #     pfac=dffac["p-val"]["MWU"]
                             #     print(('~~~~' if pfac>thresh else '    ') + f'      fact={factor}: (pvalue={pfac}) (u1={dffac["U-val"]["MWU"]}) (eff={dffac["CLES"]["MWU"]})')
 
-                        # NO PARTIAL
-                        df = mwu(rt_1_w_fail, rt_2_w_fail, alternative=alt)
-                        p=df["p-val"]["MWU"]
-                        print(('~~~~' if p>thresh else '    ') + f' np = {a1.ljust(max_l)} * {a2.ljust(max_l)} : (pvalue={p:.3f}) (u1={df["U-val"]["MWU"]}) (eff={df["CLES"]["MWU"]})')
+                        # print(('~~~~' if p>thresh else '    ') + f' np = {a1.ljust(max_l)} * {a2.ljust(max_l)} : (pvalue={p:.3f}) (u1={df_np["U-val"]["MWU"]}) (eff={df_np["CLES"]["MWU"]})')
                 
                 
                 print()
             print(">>>End Statistical Significance<<<")
 
+        if stat_sig:
+            exit()
         
         ######################
         # HISTORY ANALYSIS
@@ -417,4 +425,4 @@ def figRQ11(stat_sig=True, noPartial=False):
                     plt.clf()
             # TODO create aggregate figure
 
-figRQ11(False, False)
+figRQ11(True)
