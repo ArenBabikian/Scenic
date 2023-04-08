@@ -131,6 +131,10 @@ def distanceToSegment(point, a, b):
 	else:
 		return abs((py * lx) - (px * ly)) / lnorm
 
+def angle_between_3points(origin, point2, point3):
+    angle = math.atan2(point2.y-origin.y, point2.x-origin.x) - math.atan2(point3.y-origin.y, point3.x-origin.x)
+    return abs(angle)
+
 def polygonUnion(polys, buf=0, tolerance=0, holeTolerance=0.002):
 	if not polys:
 		return shapely.geometry.Polygon()
