@@ -1420,8 +1420,7 @@ class Scenario:
 	def analyseSolSetPBMap(self, parsed_cons, allSamples):
 		"""
 		Function that analyses the output samples
-		Analyse "Visibility" constraint
-		TODO: Other constraints
+		Analyse Visibility, Distance, and Position constraints
 		"""
 		allVals = {}
 
@@ -1470,7 +1469,6 @@ class Scenario:
 		If no upper limit is specified for the range, assume infinity (far distance)
 		"""
 		dist = tgt.position.distanceTo(src.position)
-		#print("Distance: ", dist)
 
 		# Distance Far
 		# If below range, heur = 0
@@ -1504,14 +1502,12 @@ class Scenario:
 		# Generate polygon object for tgt Car object
 		tgtRectRegion = RectangularRegion(tgt.position, tgt.heading, tgt.width, tgt.length)
 		tgtPolygon = shapely.geometry.Polygon(tgtRectRegion.corners)
-		# print("Area of car: ", tgtPolygon.area)
 
 		# Generate polygon object for visibility SectorRegion object
 		visiblePolygon = srcRegion.polygon
 
 		# Get intersection polygon
 		intersectPolygon = visiblePolygon.intersection(tgtPolygon)
-		# print("Intersect area: ", intersectPolygon.area)
 
 		return (intersectPolygon.area)/(tgtPolygon.area)	# return fractor of tgt car in visibility region
 	
