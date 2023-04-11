@@ -7,18 +7,20 @@ import random
 import re
 import copy
 import time
+import math
 from numpy.core.numeric import full
 from pymoo.util.termination.collection import TerminationCollection
 
 from pymoo.util.termination.f_tol import MultiObjectiveSpaceToleranceTermination
 from pymoo.util.termination.max_time import TimeBasedTermination
+from scenic.core.geometry import normalizeAngle, polygonUnion, viewAngleToPoint
 from scenic.core.nsga2mod import NSGA2M
 from scenic.core.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
 
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
-from scenic.core.regions import EmptyRegion
+from scenic.core.regions import EmptyRegion, RectangularRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent, DefaultIdentityDict
@@ -27,10 +29,14 @@ from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
 from scenic.domains.driving.roads import Network
 from scenic.simulators.utils.colors import Color
+from scenic.core.regions import CircularRegion, SectorRegion
 
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
+
+import shapely.geometry
+import shapely.ops
 
 class Scene:
 	"""Scene()
@@ -1264,7 +1270,6 @@ class Scenario:
 		stats['num_iterations'] = iterations # TODO adapt to nsga
 
 		if self.params.get('saveStats') == "True":
-
 			# get list of included constraints
 			# These are removed constraints for scenic
 			# these are all constraints for NSGA
@@ -1273,6 +1278,8 @@ class Scenario:
 			
 			# Analyse the allSamples (final set of samples)
 			allVals, numVioMap, sortedGlobal, sortedHardPrio = self.analyseSolSet(parsed_cons, allSamples)
+
+			pbMapVals = self.analyseSolSetPBMap(parsed_cons, allSamples)
 
 			# no stats if failed and not nsga
 			if failed and not self.nsga:
@@ -1294,6 +1301,7 @@ class Scenario:
 				stats['CON_sat_num_rm'] = len(parsed_cons) - sum(numVioMap[allSamples[0]])
 				stats['CON_sat_%_rm'] = -1 if len(parsed_cons) == 0 else stats['CON_sat_num_rm'] / len(parsed_cons)
 				stats['CON_rm_vals'] = allVals[allSamples[0]]
+				stats['PB_Map_vals'] = pbMapVals[allSamples[0]]
 			else:
 				stats['restarts'] = restarts
 				num_cons = len(parsed_cons)
@@ -1323,6 +1331,7 @@ class Scenario:
 					solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
 					solStats['CON_sat_%_soft'] = -1 if num_soft_cons == 0 else solStats['CON_sat_num_soft'] / num_soft_cons
 					solStats['CON_vals'] = allVals[sol]
+					solStats['PB_Map_vals'] = pbMapVals[sol]
 
 					allSolStats[names[i]] = solStats					
 
@@ -1330,7 +1339,6 @@ class Scenario:
 
 			# Analyse HISTORIC sample sets
 			if self.nsga:
-
 				historyStats = {}
 				for historicSolSet in reversed(historicSolSets):
 					# get historic solutions as samples:
@@ -1368,6 +1376,7 @@ class Scenario:
 							solStats['CON_sat_num_soft'] = num_soft_cons - solNumVioSoft
 							solStats['CON_sat_%_soft'] = solStats['CON_sat_num_soft'] / num_soft_cons
 							solStats['CON_vals'] = allVals[sol]
+							solStats['PB_Map_vals'] = pbMapVals[sol]
 
 							allSolStats[names[i]] = solStats
 
@@ -1410,6 +1419,115 @@ class Scenario:
 		if not allScenes:
 			return [None], stats
 		return allScenes, stats
+
+	def analyseSolSetPBMap(self, parsed_cons, allSamples):
+		"""
+		Function that analyses the output samples
+		Analyse Visibility, Distance, and Position constraints
+		"""
+		allVals = {}
+
+		for i in range(len(allSamples)):
+			sample = allSamples[i]
+			
+			vals = {}
+			for c in parsed_cons:
+				vi = sample[self.objects[c.src]]	# source
+				vj = None		
+				if c.tgt != -1 and c.type != Cstr_type.ONREGIONTYPE:
+					vj = sample[self.objects[c.tgt]]					# target
+
+				if c.type == Cstr_type.CANSEE:
+					vals[str(c)] = self.pbHeurPercent(vi.visibleRegion, vj)   # heur val based on fraction of tgt in visible region
+				elif c.type == Cstr_type.DISTCLOSE:
+					vals[str(c)] = self.distPBHeur(vi, vj, 0, 10)
+				elif c.type == Cstr_type.DISTMED:
+					vals[str(c)] = self.distPBHeur(vi, vj, 10, 20)
+				elif c.type == Cstr_type.DISTFAR:
+					vals[str(c)] = self.distPBHeur(vi, vj, 20)
+				elif c.type == Cstr_type.HASTORIGHT:
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-(math.pi / 2), math.atan(2.5/2))
+				elif c.type == Cstr_type.HASTOLEFT:
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading+(math.pi / 2), math.atan(2.5/2))
+				elif c.type == Cstr_type.HASINFRONT:
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading,  math.atan(2/5))
+				elif c.type == Cstr_type.HASBEHIND:
+					vals[str(c)] = self.posPBHeur(vi, vj, vi.heading-math.pi,  math.atan(2/5))
+
+			allVals[sample] = vals
+
+		return allVals
+
+	def posPBHeur(self, src, tgt, heading, widestAngle):
+		a = abs(viewAngleToPoint(tgt.position, src.position, heading))
+		# Angle is outside range
+		if a > widestAngle: 
+			return 1
+		else:
+			return math.log((a * (math.exp(1) - 1))/widestAngle + 1)
+		
+	def distPBHeur(self, src, tgt, rangeLow, rangeHigh=None):
+		"""
+		Heuristic [0, 1] equivalent to how close to the low range tgt is
+		If no upper limit is specified for the range, assume infinity (far distance)
+		"""
+		dist = tgt.position.distanceTo(src.position)
+
+		# Distance Far
+		# If below range, heur = 0
+		# If above range, heur = 1 - 1/(ln(dist - rangeLow + e))
+		if rangeHigh is None:
+			if (dist < rangeLow):
+				heur = 0
+			else:		
+				heur = 1 - 1/(math.log(dist-rangeLow + math.exp(1)))
+
+		# Distance close or med
+		# If below range, heur = 0
+		# If above range, heur = 1
+		# If within range, heur = ln(((dist-rangeLow)(e-1))/range + 1)
+		else:
+			range = rangeHigh - rangeLow
+			if(dist < rangeLow):
+				heur = 0
+			elif(dist > rangeHigh):
+				heur = 1
+			else:
+				distFromLow = dist-rangeLow
+				heur = math.log((distFromLow * (math.exp(1) - 1))/range + 1)
+
+		return heur
+
+	def pbHeurPercent(self, srcRegion, tgt):
+		"""
+		Heuristic [0, 1] equivalent to percentage of tgt vehicle in src's visibility region
+		"""
+		# Generate polygon object for tgt Car object
+		tgtRectRegion = RectangularRegion(tgt.position, tgt.heading, tgt.width, tgt.length)
+		tgtPolygon = shapely.geometry.Polygon(tgtRectRegion.corners)
+
+		# Generate polygon object for visibility SectorRegion object
+		visiblePolygon = srcRegion.polygon
+
+		# Get intersection polygon
+		intersectPolygon = visiblePolygon.intersection(tgtPolygon)
+
+		return (intersectPolygon.area)/(tgtPolygon.area)	# return fractor of tgt car in visibility region
+	
+	def pbHeurCorners(self, sectorRegion, tgt):
+		"""
+		Heuristic [0, 1] equivalent to amount of corners of tgt that are within src's right region
+		0 corners 		-> 0.0
+		1 corner  		-> 0.25
+		2 corners 		-> 0.5
+		3 corners 		-> 0.75
+		4 corners (all) -> 1.0
+		"""
+		cornerCount = 0
+		for corner in tgt.corners:
+			if(sectorRegion.containsPoint(corner)):
+				cornerCount += 1
+		return cornerCount*(1/4)
 
 	def analyseSolSet(self, parsed_cons, allSamples):
 		allVals = {}

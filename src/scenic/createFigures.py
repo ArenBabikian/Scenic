@@ -500,6 +500,137 @@ def figRQ13():
         # PLOT - w/ RM
         fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, '-rm')
 
+##########################
+# FIGURE RQ1.4: 
+##########################
+def figRQ14(separate=False):
+    # Set up output file
+    figRQ14_out_dir = f'{out_dir}/RQ1.4'
+    Path(f'{figRQ14_out_dir}/').mkdir(parents=True, exist_ok=True)
+
+    # Extract data (pb map values)
+    data = {}
+    map_val_data = [] # 2D array, pb map vals for each scene
+    num_attempts = 0 
+    num_successes = 0 
+    num_cons_sat = 0 
+
+    # Measurements for run of single abstract spec
+    if(separate == False):
+        cons_types = ['CANSEE', 'HASINFRONT', 'HASBEHIND', 'DISTCLOSE', 'HASTOLEFT', 'DISTMED', 'HASTORIGHT', 'DISTFAR']
+        json_path = '../../examples/basic/_output/_measurementstats.json'
+        if os.path.exists(json_path):
+            with open(json_path) as f:
+                json_data = json.load(f)
+            
+            json_res = json_data['results']
+            num_attempts += len(json_res)
+            
+            # Loop through each concrete scene
+            for r in json_res:
+                if r['success']:
+                    num_successes += 1
+                    sols = r['solutions']
+                    last_sol_key = list(sols)[-1]
+                    last_sol = sols[last_sol_key]
+                    # only add data if all constraints are fully satisfied
+                    if last_sol['CON_sat_%'] == 1.0: 
+                        num_cons_sat += 1
+                        map_val_data.append(list(last_sol['PB_Map_vals'].values()))
+            map_vals_per_cons = np.array(map_val_data).T.tolist()
+        else:
+            print("json_path does not exist")
+    else:
+        cons_types = ['CANSEE', 'HASINFRONT', 'HASBEHIND', 'DISTCLOSE\nNOCOL', 'DISTCLOSE\nCOL', 'HASTOLEFT', 'DISTMED', 'HASTORIGHT', 'DISTFAR']
+        json_path1 = '../../examples/basic/_output/cansee_measurementstats.json'
+        json_path2 = '../../examples/basic/_output/hasinfront_measurementstats.json'
+        json_path3 = '../../examples/basic/_output/hasbehind_measurementstats.json'
+        json_path4 = '../../examples/basic/_output/distclose-nocol_measurementstats.json'
+        json_path5 = '../../examples/basic/_output/distclose-col_measurementstats.json'
+        json_path6 = '../../examples/basic/_output/hastoleft_measurementstats.json'
+        json_path7 = '../../examples/basic/_output/distmed_measurementstats.json'
+        json_path8 = '../../examples/basic/_output/hastoright_measurementstats.json'
+        json_path9 = '../../examples/basic/_output/distfar_measurementstats.json'
+        paths = [json_path1, json_path2, json_path3, json_path4, json_path5, json_path6, json_path7, json_path8, json_path9]
+        map_vals_per_cons = [] 
+
+        for i in range(len(paths)):
+            map_val_data = []
+            json_path = paths[i]
+            if os.path.exists(json_path):
+                with open(json_path) as f:
+                    json_data = json.load(f)
+                
+                json_res = json_data['results']
+                num_attempts += len(json_res)
+                
+                # Loop through each concrete scene
+                for r in json_res:
+                    if r['success']:
+                        num_successes += 1
+                        sols = r['solutions']
+                        last_sol_key = list(sols)[-1]
+                        last_sol = sols[last_sol_key]
+                        # only add data if all constraints are fully satisfied
+                        if last_sol['CON_sat_%'] == 1.0: 
+                            num_cons_sat += 1
+                            map_val_data.append(list(last_sol["PB_Map_vals"].values())[0])
+            else:
+                print(f'json path {paths[i]} does not exist')
+            map_vals_per_cons.append(map_val_data)
+
+    
+    succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+    cons_succ_rate = 100*(-0.1 if num_cons_sat == 0 else num_cons_sat / num_successes)
+
+    print("Success rate: ", succ_rate)
+    print("Constraint succ rate: ", cons_succ_rate)
+    data = {'vals': map_vals_per_cons, 'su':num_successes, 'sr':succ_rate, 'at':num_attempts, 'csr':cons_succ_rate}
+
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
+
+    #create figs
+    adjustSize()
+    fig, ax = plt.subplots()
+    plt.figure(figsize=(14, 5))
+    n_cons_types = len(cons_types)
+    bar_width = 0.8
+    index = np.arange(n_cons_types)*10
+    pos = index+bar_width+0.2
+    vals = data['vals']
+
+    bps = []
+    bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
+        patch_artist=True,
+        boxprops=dict(facecolor='b',color='b'),
+        capprops=dict(color='b'),
+        whiskerprops=dict(color='b'),
+        flierprops=dict(color='b', markeredgecolor='b'),
+        medianprops=dict(color='c')))
+
+    plt.xlabel('Constraint Type', fontsize=18)
+    plt.ylabel('Heuristic', fontsize=18)
+    plt.xticks(index + 1.5*bar_width, ['CAN SEE', 'IN FRONT', 'BEHIND', 'CLOSE\n(no collision)', 'CLOSE\n(collision)', 'LEFT', 'MEDIUM\nDISTANCE', 'RIGHT', 'FAR'])
+    
+    # plt.legend([bp['boxes'][0] for bp in bps], approaches)
+
+    plt.tight_layout()
+    # plt.show()
+    save_path = f'{figRQ14_out_dir}/plot.pdf'
+    plt.savefig(save_path)
+
+    print(f'Saved figure at {save_path}')
+
+def get_a12(a, b):
+    rs_m = len(a)
+    rs_n = len(b)
+    out = ranksums(a, b)
+    # print(out)
+    ranksum=out[0]
+    return (ranksum/rs_m - ((rs_m+1)/2))/rs_n
+
 def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir, add):
     fig, ax = plt.subplots()
     cur_heights = [0 for _ in range(n_groups)]
@@ -1114,9 +1245,10 @@ def figExtra4():
 
 
 # figRQ11(True, False)
-# figRQ13()
 # figRQ12(True)
-figRQ2()
+# figRQ13()
+figRQ14(separate=True)
+# figRQ2()
 # figRQ3()
 # figExtra2() # also prints some statistcs
 # figExtra3()

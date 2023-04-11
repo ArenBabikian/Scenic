@@ -2,8 +2,8 @@
 
 # General variable definitions
 ##############################
-MAPNAME='town02' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
-PATHTOCONFIGFILE='examples/basic/pb-maps-tests/3-pb-map-test.scenic'
+MAPNAME='tram05' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
+PATHTOCONFIGFILE='examples/basic/pb-maps-tests/14-distfar-test.scenic'
 USENSGA='True' 
 
 # Simultor variable definitions
@@ -13,7 +13,7 @@ USENSGA='True'
 # IMGDIR='--image-dir examples/basic/_output/ego-images'
 
 cmd="poetry run scenic \
--b --count 1 -v 3 \
+-b --count 50 -v 1 \
 ${SIMULATE} \
 ${CARLAMAP} \
 ${IMGDIR} \
@@ -25,9 +25,9 @@ ${IMGDIR} \
 -p no-validation False \
 -p outputWS examples/basic \
 -p outputDir _output \
--p viewImgs True \
--p saveImgs True \
--p saveFiles True \
+-p viewImgs False \
+-p saveImgs False \
+-p saveFiles False \
 -p saveStats True
 -p map maps/${MAPNAME}.xodr
 ${PATHTOCONFIGFILE}"
