@@ -20,6 +20,7 @@ else:
 import scenic.syntax.translator as translator
 import scenic.core.errors as errors
 from scenic.core.simulators import SimulationCreationError
+import scenic.core.evol.dyn_utils as dyn_util
 
 parser = argparse.ArgumentParser(prog='scenic', add_help=False,
                                  usage='scenic [-h | --help] [options] FILE [options]',
@@ -47,8 +48,6 @@ simOpts.add_argument('--count', help='number of successful simulations to run (d
                      type=int, default=0)
 simOpts.add_argument('--max-sims-per-scene', type=int, default=1, metavar='N',
                      help='max # of rejected simulations before sampling a new scene (default 1)')
-simOpts.add_argument('--image-dir', help='storage location for images',
-                     default=None)
 # simOpts.add_argument('--image-limit', help='max number of images to generate (default none)',
 #                      type=int, default=None)
 
@@ -157,12 +156,12 @@ def runSimulation(scene):
     try:
         simulation = errors.callBeginningScenicTrace(
             lambda: simulator.simulate(scene, maxSteps=args.time, verbosity=args.verbosity,
-                                       maxIterations=args.max_sims_per_scene, imageDir=args.image_dir)
+                                       maxIterations=args.max_sims_per_scene)
         )
     except SimulationCreationError as e:
         if args.verbosity >= 1:
             print(f'  Failed to create simulation: {e}')
-        return False
+        return False, None
     if args.verbosity >= 1:
         totalTime = time.time() - startTime
         print(f'  Ran simulation in {totalTime:.4g} seconds.')
@@ -174,7 +173,7 @@ def runSimulation(scene):
                     print(f'      {step:4d}: {subval}')
             else:
                 print(f'    Record "{name}": {value}')
-    return simulation is not None
+    return simulation is not None, simulation.stats
 
 try:
     if args.gather_stats is None:   # Generate scenes interactively until killed
@@ -188,7 +187,8 @@ try:
         save_files = params.get('saveFiles') == 'True'
         view_imgs = params.get('viewImgs') == 'True'
         get_meas_stats = params.get('saveStats') == 'True'
-        save_something = save_imgs or save_files or get_meas_stats
+        save_sim_stats = params.get('sim-saveStats') == 'True'
+        save_something = save_imgs or save_files or get_meas_stats or save_sim_stats
         get_abs_scene = params.get('getAbsScene') == 'True'
         if not ws and save_something:
             print(' You need to specify the outputWS parameter if you want to save stuff.')
@@ -223,6 +223,15 @@ try:
         # if params.get('evol-NumSols') == 'measurement' and get_meas_stats :
         #     count *= 2
         while (count == 0 or successCount < count):
+
+            # #############################
+            # We implement a 2-STEP PROCESS
+            # ############################# 
+
+            #########
+            # STEP 1:
+            # From an abstract scene spec given as input,
+            # Generate 1+ initial scene, where all inital concrete positions are defined
             scenes, stats = generateScene()
             prevSuccessCount = successCount
             if get_meas_stats:
@@ -230,6 +239,7 @@ try:
                 print(f'  Saved measurement stats at    {meas_path}')
                 with open(meas_path, 'w') as outfile:
                     json.dump(measurementStats, outfile, indent=4)
+
             for i in range(len(scenes)):
                 dirPath = f'{p}/{prevSuccessCount}-{i}'
                 if save_files or save_imgs:
@@ -240,18 +250,7 @@ try:
                     successCount +=1
                     # currently, the count is the number of attempts
                     continue
-                if args.simulate:
-                    success = runSimulation(scene)
-                    if success:
-                        successCount += 1
-                else:
-                    if delay is None:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
-                    else:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
-                        plt.pause(delay)
-                        plt.clf()
-                    successCount += 1
+                # SAVE
                 if save_files:
                     scene.saveExactCoords(path=dirPath)
                 if get_abs_scene:
@@ -260,6 +259,55 @@ try:
                     print(f'  Saved json stats at           {json_path}')
                     with open(json_path, 'w') as outfile:
                         json.dump(absSceneStatsMap, outfile, indent=4)
+
+                # SIMULATION
+                if args.simulate:
+                
+                    #########
+                    # STEP 2:
+                    # For each generated concrete initial scene,
+                    # Add dynamic components (speeds and behaviors)    
+                    
+                    n_dyn_abstract_scenes = 1 if params.get('sim-extend') == 'False' else params.get('sim-n-absScenes')
+                    n_dyn_conctretizations = params.get('sim-n-concretizations')
+                    n_dyn_simulations = params.get('sim-n-sims')
+                    
+                    # >>> ABSTRACT SCENE
+                    for abs_scene_id in range(n_dyn_abstract_scenes):
+
+                        dyn_abs_cons = dyn_util.gatherAbsCons(scene)
+                        all_res = []
+
+                        # >>> CONCRETE SCENE
+                        for k in range(n_dyn_conctretizations):
+
+                            conc_speeds = dyn_util.concretizeDynamicAbstractScene(scene, dyn_abs_cons)
+                            dyn_conc_res = dyn_util.init_agg_res(conc_speeds) # FOR AGGREGATION
+                            
+                            for j in range(n_dyn_simulations):
+
+                                success, sim_stats = runSimulation(scene)
+                                if success:
+                                    successCount += 1
+                                if save_sim_stats:
+                                    sim_stats_path = f'{p}/abstractscene{abs_scene_id}/concretization{k}/_rep{j}Stats.json'
+                                    dyn_util.save_particular_file(sim_stats_path, sim_stats)
+
+                                    dyn_util.update_agg_res(dyn_conc_res, success, sim_stats) # FOR AGGREGATION
+                                    
+                            if save_sim_stats:
+                                all_res.append(dyn_conc_res)
+                                path_agg = f'{p}/abstractscene{abs_scene_id}/_simstats.json'
+                                dyn_util.save_aggregate_file(path_agg, scenario, args.scenicFile, dyn_abs_cons, all_res)
+                            
+                else:
+                    if delay is None:
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
+                    else:
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
+                        plt.pause(delay)
+                        plt.clf()
+                    successCount += 1
 
             gc.collect()
             gc.collect()

@@ -3,12 +3,11 @@
 from copy import Error, copy
 import os
 import random
-import re
 import copy
 import time
 import scenic.core.evol.evol_utils as utils
 
-from scenic.core.evol.constraints import Cstr, Cstr_type
+from scenic.core.evol.constraints import Cstr, Cstr_type, Cstr_util
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
@@ -882,24 +881,6 @@ class Scenario:
 			return False
 		return True
 
-	def parseConfigConstraints(self):
-		# Parse constraints from config file
-		str_cons = self.params.get('constraints')
-		if str_cons == None:
-			return []
-		list_cons = str_cons.split(';')
-		parsed_cons = []
-
-		# since last constraint also has a ";" at the end, we ignore last split
-		for con_str in list_cons[:-1]:
-			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
-			con_type = Cstr_type[res.group(1)]
-			id1 = int(res.group(2))
-			id2 = int(res.group(3))
-			con = Cstr(con_type, id1, id2)
-			parsed_cons.append(con)
-		
-		return parsed_cons
 
 	def generate(self, maxIterations=2000, verbosity=0, feedback=None):
 		"""Sample a `Scene` from this scenario.
@@ -932,7 +913,7 @@ class Scenario:
 			# Custom constraints coming from parameters
 
 			#We assume that ego is obect[0]
-			parsed_cons = self.parseConfigConstraints()
+			parsed_cons = Cstr_util.parseConfigConstraints(self.params, 'constraints')
 			
 			# RUN EVOLUTIONARY ALGO
 			nsgaRes, heuristicTargets = utils.getEvolNDSs(self, parsed_cons, verbosity)
@@ -1036,6 +1017,7 @@ class Scenario:
 					#only keep the intersting historic results
 					# Must be in ascending order
 					timesToKeep = [i for i in range(0, 600, 30)]
+					# timesToKeep = [i for i in range(0, 45, 2)]
 					# timesToKeep = [30, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600]
 					# timesToKeep = [30, 60, 120, 180, 300, 600, 1200, 1800, 2400, 3000]
 					# timesToKeep = [0.5, 1, 1.5, 2, 2.5, 3,3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5]
@@ -1133,7 +1115,8 @@ class Scenario:
 			# get list of included constraints
 			# These are removed constraints for scenic
 			# these are all constraints for NSGA
-			parsed_cons = self.parseConfigConstraints()
+			# As such, we need to call parseConfigCons once again 
+			parsed_cons = Cstr_util.parseConfigConstraints(self.params, 'constraints')
 			num_hard_cons = len(list(filter(lambda x : x.type == Cstr_type.ONROAD or x.type == Cstr_type.NOCOLLISION, parsed_cons)))
 			
 			# Analyse the allSamples (final set of samples)

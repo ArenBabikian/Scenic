@@ -4,6 +4,7 @@
 import enum
 import time
 import types
+from pathlib import Path
 from collections import OrderedDict, defaultdict
 
 from scenic.core.object_types import (enableDynamicProxyFor, setDynamicProxyFor,
@@ -13,6 +14,8 @@ import scenic.core.dynamics as dynamics
 from scenic.core.errors import RuntimeParseError, InvalidScenarioError
 from scenic.core.requirements import RequirementType
 from scenic.core.vectors import Vector
+import scenic.simulators.carla.utils.visuals as visuals
+import scenic.core.evol.dyn_utils as dyn_util
 
 class SimulationCreationError(Exception):
     """Exception indicating a simulation could not be run from the given scene.
@@ -29,7 +32,7 @@ class Simulator:
     """A simulator which can import/execute scenes from Scenic."""
 
     def simulate(self, scene, maxSteps=None, maxIterations=100, verbosity=0,
-                 raiseGuardViolations=False, imageDir=None):
+                 raiseGuardViolations=False):
         """Run a simulation for a given scene."""
 
         # Repeatedly run simulations until we find one satisfying the requirements
@@ -39,7 +42,7 @@ class Simulator:
             # Run a single simulation
             try:
                 simulation = self.createSimulation(scene, verbosity=verbosity)
-                simulation.run(maxSteps, imageDir)
+                simulation.run(maxSteps)
             except (RejectSimulationException, RejectionException, dynamics.GuardViolation) as e:
                 if verbosity >= 2:
                     print(f'  Rejected simulation {iterations} at time step '
@@ -75,8 +78,11 @@ class Simulation:
         self.timestep = timestep
         self.verbosity = verbosity
         self.worker_num = 0
+        self.params = scene.params
+        # self.stats = [[] for _ in self.objects]
+        self.stats = dyn_util.init_part_stats(len(self.objects))
 
-    def run(self, maxSteps, imageDir):
+    def run(self, maxSteps):
         """Run the simulation.
 
         Throws a RejectSimulationException if a requirement is violated.
@@ -104,6 +110,9 @@ class Simulation:
             # properties during setup
             self.updateObjects()
 
+            # Add ColisionSensors
+            self.collsensors = list(visuals.CollisionSensor(self.world, o.carlaActor) for o in self.scene.objects)
+
             # Record initially-recorded values
             values = dynamicScenario._evaluateRecordedExprs(RequirementType.recordInitial)
             for name, val in values.items():
@@ -119,6 +128,9 @@ class Simulation:
             # while maxSteps is None or (maxSteps is not None and self.currentTime < maxSteps) or (maxImages is None) or (maxImages is not None and self.currentNumImages < maxImages):
                 if self.verbosity >= 3:
                     print(f'    Time step {self.currentTime}:')
+
+                if self.params.get('sim-saveStats') == 'True':
+                    dyn_util.update_part_stats(self)
 
                 # Run compose blocks of compositional scenarios
                 terminationReason = dynamicScenario._step()
@@ -180,21 +192,22 @@ class Simulation:
 
                 # Hard-coded for Carla.
                 # TODO Need to perform a check is self is instance of CarlaSimulation
-                totalNumImages = len(self.cameraManager.images)
-                if (totalNumImages > self.currentNumImages):
-                    if self.verbosity >= 3:
-                        print(f'        New image(s) found')
-                    # Save image if directory is specified
-                    # print(imageDir)
-                    if imageDir is not None:
+                
+                # Save image if directory is specified
+                save_images = None if 'sim-imDir' not in self.params else self.params.get('sim-imDir')
+                if save_images:
+                    totalNumImages = len(self.cameraManager.images)
+                    if (totalNumImages > self.currentNumImages):
+                        if self.verbosity >= 3:
+                            print(f'        New image(s) found')
                         for i in range(self.currentNumImages, totalNumImages):
                             image = self.cameraManager.images[i]
-                            # image_path = '%s/%06d.png' % (imageDir, image.frame)
-                            image_path = '%s/%02d.png' % (imageDir, i)
+                            # image_path = '%s/%06d.png' % (self.params['sim-imDir'], image.frame)
+                            image_path = '%s/%02d.png' % (self.params['sim-imDir'], i)
                             image.save_to_disk(image_path)
                             if self.verbosity >= 3:
                                 print(f'        Saved at {image_path}.')
-                    self.currentNumImages = totalNumImages
+                        self.currentNumImages = totalNumImages
 
                 # Save the new state
                 trajectory.append(self.currentState())

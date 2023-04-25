@@ -41,7 +41,8 @@ ALGO2OBJ = {'ga':['one'],
 
 def getAlgo(params, n_objectives):
     algo_name = params.get('evol-algo')
-    restart = float(params.get('evol-restart-time'))
+    restart_raw = params.get('evol-restart-time')
+    restart = float(restart_raw if restart_raw else -1)
     if algo_name == 'nsga2':
         algorithm = NSGA2MOD(pop_size=5, n_offsprings=None, restart_time=restart,
                            eliminate_duplicates=True)

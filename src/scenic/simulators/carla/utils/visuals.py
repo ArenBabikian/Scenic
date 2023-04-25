@@ -202,7 +202,8 @@ class CollisionSensor(object):
         self.sensor = None
         self._history = []
         self._actor = actor
-        self._actor_mass = actor.get_physics_control().mass
+		# TODO TEMP
+        # self._actor_mass = actor.get_physics_control().mass
         self._hud = hud
         self._world = world
         bp = self._world.get_blueprint_library().find('sensor.other.collision')
@@ -216,6 +217,7 @@ class CollisionSensor(object):
         return [(c[0], c[1] / self._actor_mass) for c in self._history]
 
     def get_collision_history(self):
+        import collections
         history = collections.defaultdict(int)
         for frame, intensity in self._history:
             history[frame] += intensity
