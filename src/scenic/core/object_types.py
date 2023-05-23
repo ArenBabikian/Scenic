@@ -408,13 +408,15 @@ class OrientedPoint(Point):
 		return self.posRelHeuristic(other, self.heading+(math.pi / 2), 20, math.atan(2.5/2))
 
 	def toRightHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading-(math.pi / 2), 20, math.atan(2.5/2))
+		# return self.posRelHeuristic(other, self.heading-(math.pi / 2), 20, 0.2) # FOR DYNAMIC CONC
+		return self.posRelHeuristic(other, self.heading-(math.pi / 2), 20, math.atan(2.5/2)) # 0.89
 
 	def inFrontHeuristic(self, other):
 		return self.posRelHeuristic(other, self.heading, 50, math.atan(2/5))
 
 	def behindHeuristic(self, other):
-		return self.posRelHeuristic(other, self.heading+math.pi, 50, math.atan(2/5))
+		return self.posRelHeuristic(other, self.heading+math.pi, 50, 0.05)  # FOR DYNAMIC CONC
+		return self.posRelHeuristic(other, self.heading+math.pi, 50, math.atan(2/5)) # 0.38
 
 ## Object
 

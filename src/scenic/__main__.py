@@ -240,11 +240,10 @@ try:
                 with open(meas_path, 'w') as outfile:
                     json.dump(measurementStats, outfile, indent=4)
 
-            for i in range(len(scenes)):
+            for i, scene in enumerate(scenes):
                 dirPath = f'{p}/{prevSuccessCount}-{i}'
                 if save_files or save_imgs:
                     os.makedirs(dirPath, exist_ok=True)
-                scene = scenes[i]
                 if scene is None:
                     # failed to generate scene
                     successCount +=1
@@ -260,14 +259,23 @@ try:
                     with open(json_path, 'w') as outfile:
                         json.dump(absSceneStatsMap, outfile, indent=4)
 
+                # MATPLOTLIB representation
+                if save_imgs or view_imgs:
+                    if delay is None:
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
+                    else:
+                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
+                        plt.pause(delay)
+                        plt.clf()
+                    # successCount += 1
+
                 # SIMULATION
                 if args.simulate:
                 
                     #########
                     # STEP 2:
                     # For each generated concrete initial scene,
-                    # Add dynamic components (speeds and behaviors)    
-                    
+                    # Add dynamic components (speeds and behaviors)
                     n_dyn_abstract_scenes = 1 if params.get('sim-extend') == 'False' else params.get('sim-n-absScenes')
                     n_dyn_conctretizations = params.get('sim-n-concretizations')
                     n_dyn_simulations = params.get('sim-n-sims')
@@ -281,34 +289,29 @@ try:
                         # >>> CONCRETE SCENE
                         for k in range(n_dyn_conctretizations):
 
-                            conc_speeds = dyn_util.concretizeDynamicAbstractScene(scene, dyn_abs_cons)
+                            conc_speeds = dyn_util.concretizeDynamicAbstractScene(scene, dyn_abs_cons, scenario.network)
+                            if not conc_speeds:
+                                continue
+                                                                                  
                             dyn_conc_res = dyn_util.init_agg_res(conc_speeds) # FOR AGGREGATION
                             
                             for j in range(n_dyn_simulations):
 
                                 success, sim_stats = runSimulation(scene)
-                                if success:
-                                    successCount += 1
+                                # if success:
+                                #     successCount += 1
                                 if save_sim_stats:
-                                    sim_stats_path = f'{p}/abstractscene{abs_scene_id}/concretization{k}/_rep{j}Stats.json'
+                                    sim_stats_path = f'{dirPath}/abstractscene{abs_scene_id}/concretization{k}/_rep{j}Stats.json'
                                     dyn_util.save_particular_file(sim_stats_path, sim_stats)
 
                                     dyn_util.update_agg_res(dyn_conc_res, success, sim_stats) # FOR AGGREGATION
                                     
                             if save_sim_stats:
                                 all_res.append(dyn_conc_res)
-                                path_agg = f'{p}/abstractscene{abs_scene_id}/_simstats.json'
+                                path_agg = f'{dirPath}/abstractscene{abs_scene_id}/_simstats.json'
                                 dyn_util.save_aggregate_file(path_agg, scenario, args.scenicFile, dyn_abs_cons, all_res)
-                            
-                else:
-                    if delay is None:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
-                    else:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
-                        plt.pause(delay)
-                        plt.clf()
-                    successCount += 1
 
+                successCount += 1
             gc.collect()
             gc.collect()
             gc.collect()

@@ -6,9 +6,10 @@ import os
 setting = "default" # short, scale, constraints, evol, testing, meas-test
 
 # GLOBAL
-maps = ['town02']
-# maps = ['tram05'] # ['tram05', 'town02', 'zalaFullcrop']
-num_frames = 100
+# maps = ['town02']
+# maps = ['zalaFullcrop']
+maps = ['tram05'] # ['tram05', 'town02', 'zalaFullcrop']
+num_frames = 1500
 verbosity = 0
 save = True
 
@@ -21,15 +22,20 @@ specs = [
     # {'filename':'testAbstractSimple', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'True'},
     # {'filename':'testAbsDyn', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'},
     # {'filename':'testAbsDynBASIC', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
-    {'filename':'testAbsDyn2actors', 'evol':'True', 'no-validation':'False', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
+    # {'filename':'testAbsDyn2actors', 'evol':'True', 'no-validation':'False', 'conc_count':'1', 'render':'1', 'rand-beh':'False'},
+    # {'filename':'testAbsDyn2actorsSimple', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
+    # {'filename':'good/abstract', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
+    {'filename':'exact_test', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
+
 ]
+
 
 #TODO add support for count > 1
     
 num_scenes_per_input_which_is_supposed_to_be_an_exact_scenario = 1
 num_abstract_dynamic_scenes = 1
-num_dynamic_conretizations = 2
-num_simulations = 3
+num_dynamic_conretizations = 1
+num_simulations = 1
 
 
 for m in maps:
@@ -65,13 +71,14 @@ for m in maps:
         command.extend(['-p', 'sim-extend', spec['rand-beh']])
         command.extend(['-p', 'render', spec['render']])
         command.extend(['-p', 'no-validation', spec['no-validation']])
+        command.extend(['-p', 'sim-imDir', f'{res_path}/images2'])
 
         # SAVE
         command.extend(['-p', 'outputWS', res_path])
         command.extend(['-p', 'outputDir', m])
 
         command.extend(['-p', 'sim-saveStats', str(save)])
-        command.extend(['-p', 'viewImgs', str(save)])
+        # command.extend(['-p', 'viewImgs', str(save)])
         command.extend(['-p', 'saveImgs', str(save)])
         command.extend(['-p', 'saveFiles', str(save)])
         command.extend(['-p', 'saveStats', str(save)])
