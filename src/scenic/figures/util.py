@@ -1,5 +1,6 @@
 
 
+from pathlib import Path
 import matplotlib.pyplot as plt
 
 def adjustSize(ax=plt, s=14):
@@ -12,3 +13,8 @@ def adjustSize(ax=plt, s=14):
     ax.rc('ytick', labelsize=s)
     ax.rc('legend', fontsize=s)
     ax.rc('figure', titlesize=s)
+
+
+def mk(path):
+    Path(f'{path}/').mkdir(parents=True, exist_ok=True)
+    return path

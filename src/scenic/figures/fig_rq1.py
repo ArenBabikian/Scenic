@@ -4,32 +4,29 @@ import os
 import json
 from pathlib import Path
 
-from util import adjustSize
+from util import adjustSize, mk
 
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import host_subplot
 
 from scipy.stats import fisher_exact
-from scipy.stats import ranksums
 from pingouin import mwu
 
 maps = ['tram05']
 configurations = ['2actors', '3actors', '4actors']
 
-num_scenes = range(10) #range(10)
-evol_approaches = ['nsga3-categImpo', 'nsga2-importance', 'nsga3-categories', 'nsga2-actors', 'nsga3-none', 'ga-one', 'nsga3-actors', 'nsga2-categImpo']
-names_app = ['n3-ci', 'n2-i', 'n3-c', 'n2-a', 'n3-n', 'ga-1', 'n3-a', 'n2-ci']
+q=plt.rcParams['axes.prop_cycle'].by_key()['color']
+colors = [q[2],  '#E3723D',q[4], q[5], q[6], q[7], q[8], q[9]]
+colors = [q[2],   '#DBB743',q[4],q[5],q[6], q[9], q[7],'#E3723D']
 
-# ORDERED!!!!!
+num_scenes = range(10)
 evol_approaches = ['nsga2-actors', 'nsga2-categImpo', 'nsga3-none', 'nsga3-categories', 'nsga3-categImpo', 'nsga3-actors', 'nsga2-importance', 'ga-one']
-names_app = ['n2-a', 'n2-ci', 'n3-n', 'n3-c', 'n3-ci', 'n3-a', 'n2-i', 'ga-1']
+names_app = ['N2-A', 'N2-WC', 'N3-\u00F8', 'N3-C', 'N3-WC', 'N3-A', 'N2-WD', 'GA-G']
 
 
-default = plt.rcParams['axes.prop_cycle'].by_key()['color']
-colors = ['#A50205', '#0876B5', '#CC6400', '#5813B7', default[4], default[5], default[6], default[7]]
-colors_light = ['#E8BFC0', '#C1DDEC', '#F2D8BF']
-opacity = 0.25
+# default = plt.rcParams['axes.prop_cycle'].by_key()['color']
+# colors = ['#A50205', '#0876B5', '#CC6400', '#5813B7', default[4], default[5], default[6], default[7]]
 
 base_dir = 'measurements'
 data_dir = f'{base_dir}/data'
@@ -37,21 +34,25 @@ src_dir = f'docker' # f'{base_dir}/results'
 out_dir = f'{base_dir}/figures'
 Path(f'{out_dir}/').mkdir(parents=True, exist_ok=True)
 
+# HISTORY CONFIG
 timeout = 600
 history_times = [i for i in range(0, 600, 30)]
 
 
 ##########################
-# FIGURE RQ1.1: Success Rate Comparison
+# FIGURE RQ1: Comparing various MHS Approaches
 ##########################
-def figRQ11(stat_sig=True):
-    global_out_dir = f'{out_dir}/evol'
-    rt_out_dir = f'{global_out_dir}/runtime'
-    sr_out_dir = f'{global_out_dir}/success-rate'
-    hist_out_dir = f'{global_out_dir}/history'
-    Path(f'{rt_out_dir}/').mkdir(parents=True, exist_ok=True)
-    Path(f'{sr_out_dir}/').mkdir(parents=True, exist_ok=True)
-    Path(f'{hist_out_dir}/').mkdir(parents=True, exist_ok=True)
+def figRQ1(stat_sig=True):
+
+    # IN
+    src_dir = 'docker/results/RQ1'
+    
+    # OUT DIR
+    global_out_dir = 'docker/figures/RQ1'
+    rt_out_dir = mk(f'{global_out_dir}/runtime')
+    sr_out_dir = mk(f'{global_out_dir}/success-rate')
+    if not stat_sig:
+        hist_out_dir = mk(f'docker/figures/extra0/history')
 
     data = {}
     for m in maps:
@@ -109,7 +110,7 @@ def figRQ11(stat_sig=True):
     # exit()
 
     #create figs
-    # adjustSize()
+    adjustSize()
     for m in maps:
 
         n_groups = len(configurations)
@@ -124,52 +125,63 @@ def figRQ11(stat_sig=True):
             pos = index+i*bar_width
 
             vals = data[m][approach]['sr']
-            plt.bar(pos, vals, bar_width, 
-                # color=colors[i], 
-                color=colors[i],
+            # print(vals)
+            # continue
+            ax.bar(pos, vals, bar_width, 
+                color=colors[i], 
+                # color=colors[i],
                 # alpha=1 if approach == 'nsga' else opacity, 
                 label=name, 
-                edgecolor=colors[i], 
-                hatch='//')
-                
-                # print success ratio
-                # for i, v in enumerate(vals_rm):
-                #     ax.text(pos[i], max(0, vals_rm[i])+1, str(round(v)), ha='center', fontweight='bold')
+                # edgecolor=colors[i], 
+                # hatch='//'
+                )
+        
+        # #define matplotlib figure and axis
+        # fig, ax = plt.subplots()
 
+        # #create simple line plot
+        # ax.plot([0, 10],[0, 20])
+
+        # #set aspect ratio to 1
+        ratio = 0.5
+        x_left, x_right = ax.get_xlim()
+        y_low, y_high = ax.get_ylim()
+        ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)        
+        
         plt.xlabel('Scene size')
         plt.ylabel('Success rate (%)')
         # plt.title(m)
-        plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
-        plt.legend()
+        plt.xticks(index + 3.5*bar_width, ('2 actors', '3 actors', '4 actors'))
+        # plt.legend()
         plt.tight_layout()
+        # plt.tight_layout(pad=0)
+        # plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
         # plt.show()
+
         save_path = f'{sr_out_dir}/{m}.pdf'
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight')
 
         print(f'Saved figure at {save_path}')
 
-        
-        ######################
         # EXPORT LEGEND
-        if m == 'zalaFullcrop':
-            # export Legend
-            # legend = plt.legend(loc=3, framealpha=1, frameon=False)
-            plt.axis('off')
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0 + box.height * 0.2,
-                            box.width, box.height * 0.9])
+        # legend = plt.legend(loc=3, framealpha=1, frameon=False)
+        plt.axis('off')
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.2,
+                        box.width, box.height * 0.9])
 
-            # Put a legend below current axis
-            legend = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), framealpha=1, frameon=False, ncol=7)
+        # Put a legend below current axis
+        legend = ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), framealpha=1, frameon=False, ncol=4)
 
-            # legend = plt.legend(ncol=7, framealpha=1, frameon=False)
-            fig  = legend.figure
-            fig.canvas.draw()
-            bbox  = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            legend_path = f'{global_out_dir}/legend.pdf'
-            fig.savefig(legend_path, dpi="figure", bbox_inches=bbox)
-            # fig.savefig(legend_path)
-            print(f'Saved figure at {legend_path}')
+        # legend = plt.legend(ncol=7, framealpha=1, frameon=False)
+        fig  = legend.figure
+        fig.canvas.draw()
+        bbox  = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        legend_path = f'{sr_out_dir}/legend.pdf'
+        fig.savefig(legend_path, dpi="figure", bbox_inches=bbox)
+        # fig.savefig(legend_path)
+        print(f'Saved figure at {legend_path}')
+
 
         plt.clf()
 
@@ -209,39 +221,56 @@ def figRQ11(stat_sig=True):
         ######################
         # RUNTIME ANALYSIS
         bps = []
+        fig, ax = plt.subplots()
         for i, approach in enumerate(evol_approaches):
             name = names_app[i]
             pos = index+i*bar_width
 
             vals = data[m][approach]['rt']
-            bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
+            # bps.append(ax.boxplot(vals, positions=pos, widths=bar_width,
+            #     patch_artist=True,
+            #     boxprops=dict(facecolor=colors[i],color='k'),
+            #     capprops=dict(color='k'),
+            #     whiskerprops=dict(color=colors[i]),
+            #     flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+            #     medianprops=dict(color='k'),
+            #     labels=[approach, approach, approach]))
+            
+            ax.boxplot(vals, positions=pos, widths=bar_width,
                 patch_artist=True,
                 boxprops=dict(facecolor=colors[i],color='k'),
                 capprops=dict(color='k'),
                 whiskerprops=dict(color=colors[i]),
                 flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
                 medianprops=dict(color='k'),
-                labels=[approach, approach, approach]))
+                labels=[approach, approach, approach])
                 
                 # print success ratio
                 # for i, v in enumerate(vals_rm):
                 #     ax.text(pos[i], max(0, vals_rm[i])+1, str(round(v)), ha='center', fontweight='bold')
 
+
+        ratio = 0.5
+        x_left, x_right = ax.get_xlim()
+        y_low, y_high = ax.get_ylim()
+        ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+
         plt.xlabel('Scene size')
         plt.ylabel('Runtime (s)')
         # plt.title(m)
-        plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
-        plt.legend([bp['boxes'][0] for bp in bps], evol_approaches)
+        plt.xticks(index + 3.5*bar_width, ('2 actors', '3 actors', '4 actors'))
+        # plt.legend([bp['boxes'][0] for bp in bps], evol_approaches)
         plt.tight_layout()
         # plt.show()
         save_path = f'{rt_out_dir}/{m}.pdf'
-        plt.savefig(save_path)
+        plt.savefig(save_path, bbox_inches='tight')
 
         print(f'Saved figure at {save_path}')
         plt.clf()
 
         if stat_sig:
             alt = "less"
+            # alt = "greater"
             # alt = 'two-sided'
             incl_nf = True
             incl_np = False
@@ -292,7 +321,7 @@ def figRQ11(stat_sig=True):
                         u_np = df_np["U-val"]["MWU"]
                         eff_np = df_np["CLES"]["MWU"]
                             
-                        print(f'{"~~" if p>thresh else "  "}{"~~" if p_np>thresh else "  "} {a1.ljust(max_l)} * {a2.ljust(max_l)} : NF [p={p:.3f}, u1={int(u):04d}, eff={eff:.3f}], NP [p={p_np:.3f}, u1={int(u_np):04d}, eff={eff_np:.3f}]')
+                        print(f'{"~~" if p>thresh else "  "}{"~~" if p_np>thresh else "  "} {a1.ljust(max_l)} * {a2.ljust(max_l)} : NoFailures [p={p:.3f}, u1={int(u):04d}, eff={eff:.3f}], FailsAsTimeOut [p={p_np:.3f}, u1={int(u_np):04d}, eff={eff_np:.3f}]')
 
                             # # factors = [15,16,17,18,19,20,21,22,23,24,25] # 2actors
                             # factors = [291, 292, 293, 294, 295]
@@ -425,4 +454,4 @@ def figRQ11(stat_sig=True):
                     plt.clf()
             # TODO create aggregate figure
 
-figRQ11(True)
+figRQ1()
