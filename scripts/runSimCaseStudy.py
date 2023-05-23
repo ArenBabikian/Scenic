@@ -14,7 +14,7 @@ verbosity = 0
 save = True
 
 
-spec_dir = 'meas-sim/specifications'
+spec_dir = 'examples/dynamics'
 res_path = 'meas-sim/results'
 specs = [
     # {'filename':'test0', 'evol':'True', 'no-validation':'True', 'count':'1'},
@@ -26,10 +26,7 @@ specs = [
     # {'filename':'testAbsDyn2actorsSimple', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
     # {'filename':'good/abstract', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
     {'filename':'exact_test', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
-
 ]
-
-
 #TODO add support for count > 1
     
 num_scenes_per_input_which_is_supposed_to_be_an_exact_scenario = 1
