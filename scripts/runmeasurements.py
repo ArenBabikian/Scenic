@@ -102,7 +102,7 @@ for evol_algo, evol_obj in evol_approaches:
                         command.extend(['-p', 'evol-NumSols', 'measurement'])
                         command.extend(['-p', 'evol-history', evol_history])
                     command.extend(['-p', 'timeout', str(timeout[a_ind])])
-                    command.extend(['-p', 'outputWS', 'measurements/results'])
+                    command.extend(['-p', 'outputWS', 'measurements/results4'])
                     command.extend(['-p', 'outputDir', saveDir])
                     command.extend(['-p', 'saveImgs', str(save)])
                     command.extend(['-p', 'saveFiles', str(save)])
@@ -111,9 +111,11 @@ for evol_algo, evol_obj in evol_approaches:
                     command.extend(['-p', 'map', f'maps/{m}.xodr'])
                     command.append(fullPathToFile)
                     print(f'{fullPathToFile}: ({evol_algo}, {evol_obj})')
+                    print(command)
 
                     if isWindows:
                         p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=True)
                     else:
                         p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout)
                     p.wait()
+                    exit()
