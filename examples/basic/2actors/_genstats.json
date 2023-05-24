@@ -1,0 +1,194 @@
+{
+    "measurements/data/town02/2actors/0-0": {
+        "num_cons": 6.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 3,
+        "all": [
+            "CANSEE : [1, 0];",
+            "HASTORIGHT : [0, 1];",
+            "DISTMED : [1, 0];"
+        ],
+        "deleted-sc1": [],
+        "deleted-sc2": [],
+        "deleted-sc3": [
+            "HASTORIGHT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/1-0": {
+        "num_cons": 5.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 2,
+        "all": [
+            "HASTOLEFT : [1, 0];",
+            "DISTMED : [1, 0];"
+        ],
+        "deleted-sc1": [],
+        "deleted-sc2": [],
+        "deleted-sc3": []
+    },
+    "measurements/data/town02/2actors/2-0": {
+        "num_cons": 8.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 5,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [1, 0];",
+            "DISTCLOSE : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/3-0": {
+        "num_cons": 7.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 4,
+        "all": [
+            "CANSEE : [0, 1];",
+            "HASBEHIND : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "DISTFAR : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASBEHIND : [1, 0];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/4-0": {
+        "num_cons": 6.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 3,
+        "all": [
+            "HASTORIGHT : [1, 0];",
+            "HASBEHIND : [0, 1];",
+            "DISTFAR : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASTORIGHT : [1, 0];"
+        ],
+        "deleted-sc2": [
+            "HASTORIGHT : [1, 0];"
+        ],
+        "deleted-sc3": [
+            "HASBEHIND : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/5-0": {
+        "num_cons": 8.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 5,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [1, 0];",
+            "DISTFAR : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/6-0": {
+        "num_cons": 7.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 4,
+        "all": [
+            "CANSEE : [0, 1];",
+            "HASBEHIND : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "DISTMED : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/7-0": {
+        "num_cons": 8.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 5,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [1, 0];",
+            "DISTMED : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [1, 0];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/8-0": {
+        "num_cons": 6.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 3,
+        "all": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];",
+            "DISTMED : [1, 0];"
+        ],
+        "deleted-sc1": [],
+        "deleted-sc2": [],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    },
+    "measurements/data/town02/2actors/9-0": {
+        "num_cons": 8.0,
+        "num_hard_cons": 3.0,
+        "num_soft_cons": 5,
+        "all": [
+            "CANSEE : [0, 1];",
+            "CANSEE : [1, 0];",
+            "HASINFRONT : [0, 1];",
+            "HASINFRONT : [1, 0];",
+            "DISTCLOSE : [1, 0];"
+        ],
+        "deleted-sc1": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc2": [
+            "HASINFRONT : [0, 1];"
+        ],
+        "deleted-sc3": [
+            "CANSEE : [0, 1];",
+            "HASINFRONT : [0, 1];"
+        ]
+    }
+}

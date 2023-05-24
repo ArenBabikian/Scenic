@@ -979,7 +979,9 @@ class Scenario:
 		problem = MyProblem()
 		# algorithm = GA(pop_size=20, n_offsprings=10, eliminate_duplicates=True)
 		restart = float(self.params.get('restart-time'))
-		algorithm = NSGA2M(pop_size=20, n_offsprings=10, restart_time=restart, eliminate_duplicates=True)
+		pop = int(self.params.get('pop_size'))
+		offspring = int(self.params.get('num_offspring'))
+		algorithm = NSGA2M(pop_size=pop, n_offsprings=offspring, restart_time=restart, eliminate_duplicates=True)
 		# algorithm = NSGA3(ref_dirs=X, pop_size=20, n_offsprings=10)
 
 		# n_par = self.params.get('nsga-Iters')
