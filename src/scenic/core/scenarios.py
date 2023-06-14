@@ -1300,10 +1300,17 @@ class Scenario:
 			for c in parsed_cons:
 				vi = sample[self.objects[c.src]]
 				vj = None
-				if c.tgt != -1:
+				if c.tgt != -1 and type(c.tgt) is not str:
 					vj = sample[self.objects[c.tgt]]
+
 				if c.type == Cstr_type.ONROAD:
-					vals[str(c)] = vi.containedHeuristic(self.containerOfObject(vi))
+            		# TODO ONROAD is temporarily kept, but should be phased out
+					vals[str(c)] = vi.containedHeuristic(self.network.drivableRegion)
+					if vals[str(c)] != 0 : numVioHard += 1
+					# num_hard_cons += 1
+				if c.type == Cstr_type.ONREGIONTYPE:
+					container = utils.type2region(Scenario, c.tgt, vi)
+					vals[str(c)] = vi.containedHeuristic(container)
 					if vals[str(c)] != 0 : numVioHard += 1
 					# num_hard_cons += 1
 				if c.type == Cstr_type.NOCOLLISION:

@@ -11,6 +11,7 @@ from pymoo.optimize import minimize
 import os
 
 from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
+from scenic.core.regions import PolygonalRegion, PolylineRegion
 
 
 def getMapBoundaries(params, num_obj):
@@ -100,8 +101,33 @@ def handleConstraints(scenario, constraints):
         exp = [1 for _ in range(len(constraints))]
 
     return con2id, exp
-    
-	
+
+
+def type2region(scenario, regionType, vi):
+    network = scenario.network
+    TYPE2REGION = {
+        'default': scenario.containerOfObject(vi), # Default region wrt. actor type
+        'drivable': network.drivableRegion, # All lanes union all intersections.
+        'walkable': network.walkableRegion, # All sidewalks union all crossings.
+        'road': network.roadRegion, # All roads (not part of an intersection).
+        'lane': network.laneRegion, # All lanes
+        'intersection': network.intersectionRegion, # All intersections.
+        'crossing': network.crossingRegion, # All pedestrian crossings.
+        'sidewalk': network.sidewalkRegion, # All sidewalks
+        'curb': network.curbRegion, # All curbs of ordinary roads.
+        'shoulder': network.shoulderRegion # All shoulders (by default, includes parking lanes).
+    }
+
+    if regionType not in TYPE2REGION:
+        raise Exception(f'Unhandled region type <{regionType}>')
+
+    container = TYPE2REGION[regionType]
+    if container is None:
+        raise Exception(f'Container for region type <{regionType}> is None')
+
+    return container
+
+
 def getHeuristic(scenario, x, constraints, con2id, exp):
     objects = scenario.objects
 
@@ -109,18 +135,22 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
     scenario.fillSample(x)
 
     ## GET HEURISTIC VALUES
-    ## Assuming that ego position in actor llist does not change
+    ## Assuming that ego position in actor list does not change
     for c_id, c in enumerate(constraints):
         vi = objects[c.src]
         vj = None
-        if c.tgt != -1:
+        if c.tgt != -1 and type(c.tgt) is not str:
             vj = objects[c.tgt]
         heu_val = 0
         
         # Constraints Switch
         if c.type == Cstr_type.ONROAD:
+            # TODO ONROAD is temporarily kept, but should be phased out
             ### How far is the farthest corner of vi from a valid region that can contain it?
-            container = scenario.containerOfObject(vi)
+            container = scenario.network.drivableRegion
+            heu_val = vi.containedHeuristic(container)
+        if c.type == Cstr_type.ONREGIONTYPE:
+            container = type2region(scenario, c.tgt, vi)
             heu_val = vi.containedHeuristic(container)
         if c.type == Cstr_type.NOCOLLISION:
             ### Are vi and vj intersecting?

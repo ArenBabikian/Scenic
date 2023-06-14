@@ -4,6 +4,7 @@ import re
 
 class Cstr_type(Enum):
 	ONROAD = 0
+	ONREGIONTYPE = 1
 
 	NOCOLLISION = 10
 
@@ -59,10 +60,13 @@ class Cstr_util:
 
 		# since last constraint also has a ";" at the end, we ignore last split
 		for con_str in list_cons[:-1]:
-			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
+			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*|[a-z]*)\]", con_str)
 			con_type = Cstr_type[res.group(1)]
 			id1 = int(res.group(2))
-			id2 = int(res.group(3))
+			try:
+				id2 = int(res.group(3))
+			except ValueError:
+				id2 = res.group(3)
 			con = Cstr(con_type, id1, id2)
 			parsed_cons.append(con)
 		
