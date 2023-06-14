@@ -16,8 +16,11 @@ from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
 def getMapBoundaries(params, num_obj):
     map_name = os.path.basename(params.get('map'))
     bounds = []
+    # [loX, loY, hiX, hiY]
     if map_name == "town02.xodr":
         bounds = [-15, -315, 200, -98]
+    elif map_name == "town10HD.xodr":
+        bounds = [-126, -151, 121, 80]
     elif map_name == "tram05.xodr":
         bounds = [-155, -101, 103, 80]
     elif map_name == "tram05-mod.xodr":
