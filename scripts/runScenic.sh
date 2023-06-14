@@ -5,7 +5,7 @@
 MAPNAME='town10HD' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
 PATHTOCONFIGFILE='measurements/data/tram05/2actors/2-0/d-nsga.scenic'
 USENSGA='True'
-# PATHTOCONFIGFILE='examples/other/explore_map.scenic'
+# PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
 # USENSGA='False'
 
 cmd="poetry run scenic \

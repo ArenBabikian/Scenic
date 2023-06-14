@@ -12,7 +12,7 @@ verbosity = 0
 save = True
 isWindows = False
 
-spec_dir = 'examples/dynamics'
+spec_dir = 'examplesResearch/dynamics'
 res_path = 'meas-sim-ubu/results'
 frames_save_path = f'{res_path}/images'
 specs = [
