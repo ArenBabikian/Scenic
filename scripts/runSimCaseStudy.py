@@ -5,27 +5,20 @@ import os
 
 setting = "default" # short, scale, constraints, evol, testing, meas-test
 
-# GLOBAL
-# maps = ['town02']
-# maps = ['zalaFullcrop']
+# CONFIG GLOBAL
 maps = ['tram05'] # ['tram05', 'town02', 'zalaFullcrop']
 num_frames = 1500
 verbosity = 0
 save = True
-
+isWindows = False
 
 spec_dir = 'examples/dynamics'
-res_path = 'meas-sim/results'
+res_path = 'meas-sim-ubu/results'
+frames_save_path = f'{res_path}/images'
 specs = [
-    # {'filename':'test0', 'evol':'True', 'no-validation':'True', 'count':'1'},
-    # {'filename':'testExact', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1'},
-    # {'filename':'testAbstractSimple', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'True'},
-    # {'filename':'testAbsDyn', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'},
-    # {'filename':'testAbsDynBASIC', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
-    # {'filename':'testAbsDyn2actors', 'evol':'True', 'no-validation':'False', 'conc_count':'1', 'render':'1', 'rand-beh':'False'},
-    # {'filename':'testAbsDyn2actorsSimple', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
-    # {'filename':'good/abstract', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
-    {'filename':'exact_test', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'rand-beh':'False'}
+    # {'filename':'abstract', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
+    {'filename':'exact_test', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'save_frames':False, 'rand-beh':'False'}
+    # {'filename':'minimal_no_dyn', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'save_frames':True, 'rand-beh':'False'}
 ]
 #TODO add support for count > 1
     
@@ -33,7 +26,6 @@ num_scenes_per_input_which_is_supposed_to_be_an_exact_scenario = 1
 num_abstract_dynamic_scenes = 1
 num_dynamic_conretizations = 1
 num_simulations = 1
-
 
 for m in maps:
     for spec in specs:
@@ -65,10 +57,12 @@ for m in maps:
         # SIMULATION
         command.extend(['-S', '--model', 'scenic.simulators.carla.model'])
         command.extend(['--time', str(num_frames)]) # number of frames
+        command.extend(['-p', 'address', '172.30.208.1'])
         command.extend(['-p', 'sim-extend', spec['rand-beh']])
         command.extend(['-p', 'render', spec['render']])
         command.extend(['-p', 'no-validation', spec['no-validation']])
-        command.extend(['-p', 'sim-imDir', f'{res_path}/images2'])
+        if spec['save_frames']:
+            command.extend(['-p', 'sim-imDir', frames_save_path])
 
         # SAVE
         command.extend(['-p', 'outputWS', res_path])
@@ -87,5 +81,5 @@ for m in maps:
         command.append(fullPathToFile)
         print(f'{fullPathToFile}')
 
-        p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=True) # sheel-False for Linux
+        p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout, shell=isWindows) # sheel-False for Linux
         p.wait()
