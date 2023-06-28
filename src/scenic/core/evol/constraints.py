@@ -19,6 +19,8 @@ class Cstr_type(Enum):
 	DISTMED = 41
 	DISTFAR = 42
 
+	COLLIDESATMANEUVER = 50
+
 	SP_NONE = 100
 	SP_SLOW = 101
 	SP_MED = 102
@@ -60,7 +62,7 @@ class Cstr_util:
 
 		# since last constraint also has a ";" at the end, we ignore last split
 		for con_str in list_cons[:-1]:
-			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*|[a-z]*)\]", con_str)
+			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*|[a-z_]*)\]", con_str)
 			con_type = Cstr_type[res.group(1)]
 			id1 = int(res.group(2))
 			try:

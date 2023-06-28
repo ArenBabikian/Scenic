@@ -66,6 +66,14 @@ class Scene:
 		# draw objects
 		for obj in self.objects:
 			obj.show(self.workspace, plt, highlight=(obj is self.egoObject))
+
+		# TODO Clean up
+		import scenic.core.evol.map_utils as map_utils
+		abstractPathGraphs = map_utils.addAbstractPaths(self, plt)
+		plt.show(block=block) # SHOWS THE FULL MAP
+		map_utils.visualizeAbstractGraphs(self.egoObject, abstractPathGraphs, True)
+		return
+	
 		# zoom in if requested
 		if zoom != None:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)

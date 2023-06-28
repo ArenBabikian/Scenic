@@ -277,8 +277,8 @@ try:
                     # For each generated concrete initial scene,
                     # Add dynamic components (speeds and behaviors)
                     n_dyn_abstract_scenes = 1 if params.get('sim-extend') == 'False' else params.get('sim-n-absScenes')
-                    n_dyn_conctretizations = params.get('sim-n-concretizations')
-                    n_dyn_simulations = params.get('sim-n-sims')
+                    n_dyn_conctretizations = 1 if 'sim-n-concretizations' not in params else params.get('sim-n-concretizations')
+                    n_dyn_simulations = 1 if 'sim-n-sims' not in params else params.get('sim-n-sims')
                     
                     # >>> ABSTRACT SCENE
                     for abs_scene_id in range(n_dyn_abstract_scenes):

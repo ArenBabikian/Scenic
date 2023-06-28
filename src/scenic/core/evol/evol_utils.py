@@ -11,8 +11,7 @@ from pymoo.optimize import minimize
 import os
 
 from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
-from scenic.core.regions import PolygonalRegion, PolylineRegion
-
+import scenic.core.evol.heuristics as heu_utils
 
 def getMapBoundaries(params, num_obj):
     map_name = os.path.basename(params.get('map'))
@@ -20,6 +19,9 @@ def getMapBoundaries(params, num_obj):
     # [loX, loY, hiX, hiY]
     if map_name == "town02.xodr":
         bounds = [-15, -315, 200, -98]
+    if map_name == "town05.xodr":
+        # TENTATIVELY focus only on an intersection
+        bounds = [-31, -72, 71, 78]
     elif map_name == "town10HD.xodr":
         bounds = [-126, -151, 121, 80]
     elif map_name == "tram05.xodr":
@@ -86,7 +88,7 @@ def handleConstraints(scenario, constraints):
         exp = [1]
     elif obj_def == 'categories':
         con2id = [int(c.type.value/10) for c in constraints]
-        exp = [1, 1, 1, 1, 1]
+        exp = [1, 1, 1, 1, 1, 1]
     elif obj_def == 'actors':
         con2id = [c.src for c in constraints]
         exp = [1 for _ in range(len(objects))]
@@ -95,7 +97,7 @@ def handleConstraints(scenario, constraints):
         exp = [3, 2]
     elif obj_def == 'categImpo':
         con2id = [int(c.type.value/10) for c in constraints]
-        exp = [3, 3, 2, 2, 2]
+        exp = [3, 3, 2, 2, 2, 3]
     elif obj_def == 'none':
         con2id = [i for i in range(len(constraints))]
         exp = [1 for _ in range(len(constraints))]
@@ -152,10 +154,12 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
         if c.type == Cstr_type.ONREGIONTYPE:
             container = type2region(scenario, c.tgt, vi)
             heu_val = vi.containedHeuristic(container)
+
         if c.type == Cstr_type.NOCOLLISION:
             ### Are vi and vj intersecting?
             if vi.intersects(vj):
                 heu_val = 10
+
         if c.type == Cstr_type.CANSEE:
             ### How far is vj from being visible wrt. to vi?
             heu_val = vi.canSeeHeuristic(vj)
@@ -175,6 +179,10 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
             heu_val = vi.distMedHeuristic(vj)
         if c.type == Cstr_type.DISTFAR:
             heu_val = vi.distFarHeuristic(vj)
+
+        if c.type == Cstr_type.COLLIDESATMANEUVER:
+            maneuver_name = c.tgt
+            heu_val = heu_utils.collidesAtManeuverHeuristic(vi, maneuver_name, scenario)
 
         obj_funcs[con2id[c_id]] += heu_val
 
