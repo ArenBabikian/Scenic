@@ -70,8 +70,10 @@ class Scene:
 		# TODO Clean up
 		import scenic.core.evol.map_utils as map_utils
 		abstractPathGraphs = map_utils.addAbstractPaths(self, plt)
+		map_utils.showLaneSections(self, plt)
+		# map_utils.highlightSpecificElement(self, plt, )
 		plt.show(block=block) # SHOWS THE FULL MAP
-		map_utils.visualizeAbstractGraphs(self.egoObject, abstractPathGraphs, True)
+		#map_utils.visualizeAbstractGraphs(self.egoObject, abstractPathGraphs, True)
 		return
 	
 		# zoom in if requested

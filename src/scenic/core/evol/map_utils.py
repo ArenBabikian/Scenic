@@ -7,6 +7,9 @@ from scenic.domains.driving.roads import Intersection, LaneSection
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from scenic.formats.opendrive import xodr_parser
+from src.scenic.formats.opendrive.xodr_parser import Lane, Poly3
+
 colors = ['#000000',  '#0000EE', '#444444',]
 
 def createAbstractGraph(root_seg: AbstractSegment):
@@ -71,6 +74,129 @@ def visualizeAbstractGraphs(actor, graphMap, addLabels):
     plt.title('Graph Title')
     plt.axis('off')
     plt.show()
+
+
+def showLaneSections(scene, map_plt):
+    n = scene.workspace.network
+
+    for rd in n.roads:
+        for lane in rd.lanes:
+            for laneSec in lane.sections:
+                laneSec.show(map_plt, style=':', color='r')
+
+def highlightSpecificElement(scene, map_plt):
+    uids = [('road1_sec0_lane3', 'c'),
+            ('road1_sec1_lane2', 'k'),
+            ('road43_lane0', 'k'),
+            ('road10_sec0_lane2', 'k')
+            ]
+    uids = [('road0', 'c'),
+            ('road1', 'c'),
+            ('road7', 'c')]
+
+    n = scene.workspace.network
+    # print(n.elements['road1'].sections)
+    loc = n.elements['road1_sec1_lane2']
+    print(loc._successor.__repr__())
+
+    print('>>>>>>Depicted<<<<')
+    for uid, color in uids:
+        elem = n.elements[uid]
+        print(elem.__repr__())
+        elem.show(map_plt, style='-', color=color, )
+
+
+# ###################
+# XODR HANDLING
+# ###################
+
+def parse_into_segmments(seg_len, road, next_sec, s, left, right):
+
+    left_segments = {}
+    right_segments = {}
+
+    next_seg_s = road.length
+    if next_sec is not None:
+        next_seg_s = float(next_sec.get('s'))
+    cur_section_len = next_seg_s - s
+
+    real_seg_len = -1
+    if left is not None:
+        left_segments, left_seg_len = parse_lanes_to_segments(left, cur_section_len, seg_len)
+        real_seg_len = left_seg_len # print(left_segments)
+
+    if right is not None:
+        right_segments, right_seg_len = parse_lanes_to_segments(right, cur_section_len, seg_len)
+        real_seg_len = right_seg_len
+
+    assert left is not None or right is not None
+
+    if right is not None and left is not None:
+        assert len(left_segments) == len(right_segments)
+        assert right_seg_len == left_seg_len
+    left_len = len(left_segments)
+    right_len = len(right_segments)
+    left_segments_at_i = {}
+    right_segments_at_i = {}
+
+    for i in range(max(left_len, right_len)):
+
+        if left_len!= 0:
+            left_segments_at_i = left_segments[i]
+        if right_len != 0:
+            right_segments_at_i = right_segments[i]
+
+        new_s = i * real_seg_len
+        lane_segment_at_i = xodr_parser.LaneSection(new_s, left_segments_at_i, 
+        right_segments_at_i)
+
+        # TODO do linking
+        road.lane_secs.append(lane_segment_at_i)
+
+
+def parse_lanes_to_segments(lanes_elem, cur_section_len, segment_len):
+        '''Lanes_elem should be <left> or <right> element.
+        Returns list dict of lane ids and Lane objects.'''
+
+        num_segments = round(cur_section_len/segment_len)
+        num_segments = 1 if num_segments == 0 else num_segments
+        segment_len_real = cur_section_len/num_segments
+    
+        lane_segments = [{} for _ in range(num_segments)]
+        # [{}] * num_segments # does not work = makes compies of the same {}
+        for l in lanes_elem.iter('lane'):
+            id_ = int(l.get('id'))
+            type_ = l.get('type')
+            link = l.find('link')
+            pred = None
+            succ = None
+            if link is not None:
+                pred_elem = link.find('predecessor')
+                succ_elem = link.find('successor')
+                if pred_elem is not None:
+                    pred = int(pred_elem.get('id'))
+                if succ_elem is not None:
+                    succ = int(succ_elem.get('id'))
+
+            for i in range(num_segments):
+                
+                pred_seg = id_ if i != 0 else pred
+                succ_seg = id_ if i != num_segments-1 else succ
+
+                laneSegment = Lane(id_, type_, pred_seg, succ_seg)
+                # TODO MISSING SOME MAGIC HERE to make the widths continuous
+                for w in l.iter('width'):
+                    w_poly = Poly3(float(w.get('a')),
+                                float(w.get('b')),
+                                float(w.get('c')),
+                                float(w.get('d')))
+                    laneSegment.width.append((w_poly, (i) * segment_len_real))
+                    # the sOffset is relatve to the start of the LaneSection, which is always 0
+                    laneSegment.width.append((w_poly, 0))
+                lane_segments[i][id_] = laneSegment
+
+        return lane_segments, segment_len_real
+
 
 # TODO 0 REMOVE THIS, it is only for testing
 def _addSegmentHighlighting(scene, plt):

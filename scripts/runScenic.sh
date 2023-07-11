@@ -3,14 +3,16 @@
 # General variable definitions
 ##############################
 MAPNAME='town05' #'town02', 'tram05', 'tram05-mod', 'zalaFullcrop'
+# MAPNAME='tram05'
 PATHTOCONFIGFILE='measurements/data/tram05/2actors/2-0/d-nsga.scenic'
 PATHTOCONFIGFILE='examplesResearch/mapAbstraction/intersection.scenic' # town10HD
 # PATHTOCONFIGFILE='examplesResearch/mapAbstraction/testing.scenic' # town10HD
 PATHTOCONFIGFILE='examplesResearch/mapAbstraction/simpler_test.scenic' # town10HD
 USENSGA='True'
-# PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
-# PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-rd.scenic'
-# USENSGA='False'
+PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
+PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-rd.scenic'
+# PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-tram.scenic'
+USENSGA='False'
 
 cmd="poetry run scenic \
 -b --count 1 -v 0 \

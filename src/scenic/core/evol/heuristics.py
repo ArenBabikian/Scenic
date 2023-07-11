@@ -4,7 +4,7 @@ from scenic.domains.driving.roads import Intersection, Lane, LaneSection, Maneuv
 from queue import Queue
 
 
-MAXPATHLENGTH = 5
+MAXPATHLENGTH = 10
 ALLOWEDABSTRACTEDGETYPES = {'rd_straight', 'rd_lc_r', 'rd_lc_l', 'is_left', 'is_right', 'is_straight'}
 
 MANEUVERNAME2TYPE = {
@@ -28,7 +28,7 @@ class AbstractSegment:
     def __init__(self, segment_region):
         self.segmentRegion = segment_region
         self.laneChangeToReach = None
-        self.isInIntersection = False
+        self.intersection = None
 
         self.isLeaf = False
 
@@ -36,7 +36,7 @@ class AbstractSegment:
 
         self.next_segments = {}
 
-    def addNextSegment(self, nextAbstractSegment, edgeType:str):
+    def addNextSegment(self, nextAbstractSegment, edgeType:str, intersection):
         if edgeType not in ALLOWEDABSTRACTEDGETYPES:
             raise AssertionError(f'{edgeType} abstract edge type is not allowed')
         
@@ -55,14 +55,16 @@ class AbstractSegment:
         self.next_segments[edgeType] = nextAbstractSegment
 
         if edgeType.startswith('is'):
-            nextAbstractSegment.isInIntersection = True
+            nextAbstractSegment.intersection = intersection
 
 
 def getNextSegments(current_segment: AbstractSegment, target_maneuver: ManeuverType):
 
     # DESIGN DECISION: we end searching for paths 1 segment after the first intersection 
     if current_segment.isLeaf:
-        return [], None
+        return [], None, None
+    
+    nextIsLeaf = False
 
     # TODO 1 current_region  is a laneSection
     current_region = current_segment.segmentRegion
@@ -70,25 +72,52 @@ def getNextSegments(current_segment: AbstractSegment, target_maneuver: ManeuverT
         lane = current_region.lane
     else:
         lane = current_region
-    grp = current_region.group
-    grp_succ = grp.successor
 
-    if isinstance(grp_succ, Intersection):
-        # print([m.connectingLane for m in filter(lambda x: x.startLane == lane, grp_succ.maneuvers)])
-        successor_pairs = [(MANEUVERTYPE2NAME[m.type], m.connectingLane) for m in filter(lambda x: x.startLane == lane, grp_succ.maneuvers)]
+    laneSection_successor = current_region._successor
+    if laneSection_successor == None:
+        return [], None, None
+
+    # When we are at an intersection, laneSection_successor is a Lane already
+    if isinstance(laneSection_successor, Lane):
+        lane_successor = laneSection_successor
+    else:
+        lane_successor = laneSection_successor.lane
+    current_group = current_region.group
+    group_successor = current_group._successor
+
+    succ_intersection = None
+
+    # Check if successor is in an intersection
+    succ_is_intersection = False
+    if isinstance(group_successor, Intersection):
+        all_conecting_lanes = {m.connectingLane for m in group_successor.maneuvers}
+        if lane_successor in all_conecting_lanes:
+            # this if is necessary in cases where the has multiple segments, 
+            # so the next segment would not be in a intersection, but the next group would be
+            succ_is_intersection = True
+            succ_intersection = group_successor
+
+    if succ_is_intersection:
+        # INTERSECTION QUERIES
+        succ_maneuvers = {m for m in filter(lambda x: x.startLane == lane, group_successor.maneuvers)}
+        successor_pairs = [(MANEUVERTYPE2NAME[m.type], m.connectingLane) for m in succ_maneuvers]
         # NOTE Cannot do lane change into an intersection
         # NOTE slight semantic thing, ex. we are "right_turning" into the connecting lane. This is to prevent cases where we have multiple rd_straight segments if a segment leads into an intersection 
     
         # TODO 2 in the case where a target maneuver is given, must do taget maneuver at intersection.
         # TODO 3 if taret maneuver not possiple, we prune  all the way back to the segmet that has >1 children
-
     else:
-        successor = current_region.successor
+        # ROAD QUERIES
+        successor = current_region._successor
         # validate successor type
         # TODO with the road segmentation, this could be unnesc
+        # TODO among the available sections, we need to select the correct successor
+        # problem when currnet lane is in an intersection, and next lane has many sections
         if isinstance(successor, Lane):
-            assert len(successor.sections) == 1
-            successor = successor.sections[0]
+
+            successor = successor.sections[0] # sections should be in order
+            #validation
+            assert successor._predecessor == None
 
         successor_pairs = [('rd_straight', successor)]
 
@@ -98,8 +127,26 @@ def getNextSegments(current_segment: AbstractSegment, target_maneuver: ManeuverT
         # a connecting lane (part of intersection) from the region object...
         # DESIGN DECISION: we end searching for paths 1 segment after the first intersection 
         # ASSUMPTION: no two intersections that are adjacent
-        if current_segment.isInIntersection:
-            return successor_pairs, True
+        if current_segment.intersection:
+            nextIsLeaf = False
+
+            # determine if current intersection is a leaf
+            non_succ_maneuvers = {m for m in filter(lambda x: x.connectingLane != lane, current_segment.intersection.maneuvers)}
+            # print(non_succ_maneuvers)
+            non_succ_connecting_roads = [m.connectingLane for m in non_succ_maneuvers]
+
+            for cross_rd in non_succ_connecting_roads:
+                try:
+                    a = current_region.intersect(cross_rd)
+                    if not isinstance(a, EmptyRegion):
+                        nextIsLeaf = True
+                        break 
+                except:
+                    # this happens when intersect is a line?
+                    nextIsLeaf = False
+
+            # NOTE if we want to stop after any intersection, simply set nextIsLeaf = False here
+            return successor_pairs, nextIsLeaf, succ_intersection
 
         # NOTE to test the ZIG-ZAG, we can coment out below
         left_lane = successor._laneToLeft
@@ -113,7 +160,7 @@ def getNextSegments(current_segment: AbstractSegment, target_maneuver: ManeuverT
                 successor_pairs.append(('rd_lc_r', right_lane))
 
     # returns a list of (maneuver_name, target_map_region) pairs, and wether the segments are leafs
-    return successor_pairs, False
+    return successor_pairs, nextIsLeaf, succ_intersection
 
 
 def getAbstractPathGraph(actor, target_maneuver, scenario=None):
@@ -148,7 +195,7 @@ def getAbstractPathGraph(actor, target_maneuver, scenario=None):
         absSegsAtNextDepth = []
 
         for cur_segment in absSegsAtCurDepth:
-            next_seg_specs, isLeaf = getNextSegments(cur_segment, target_maneuver)
+            next_seg_specs, nextIsLeaf, isIntersection = getNextSegments(cur_segment, target_maneuver)
             for seg_man_type, next_reg in next_seg_specs:
 
                 # Storing in a 'CACHE'
@@ -159,14 +206,14 @@ def getAbstractPathGraph(actor, target_maneuver, scenario=None):
                     next_seg = AbstractSegment(next_reg)
                     regId2seg[key] = next_seg
 
-                next_seg.isLeaf = isLeaf
+                next_seg.isLeaf = nextIsLeaf
 
-                cur_segment.addNextSegment(next_seg, seg_man_type)
+                cur_segment.addNextSegment(next_seg, seg_man_type, isIntersection)
                 # handling and selection of next segments is done in 'getNextSegments'
                 absSegsAtNextDepth.append(next_seg)
 
-                # if isLeaf is true, it means that cur_segment is in an intersection
-                if isLeaf:
+                # if nextIsLeaf is true, it means that cur_segment is in an intersection
+                if nextIsLeaf:
                     all_inters_regs.append(cur_segment.segmentRegion)
                 # print(f'{seg_man_type} >> {next_reg.uid} {next_seg.__hash__()}, ')
         i+=1
@@ -207,7 +254,7 @@ def collidesAtManeuverHeuristic(actor, maneuver_name, scenario):
                 # TODO 5 Confirm this:
                 # this happens when intersect is a line?
                 # Maybe look at this for heuristic = 5
-                intersection_inters_reg = EmptyRegion()
+                intersection_inters_reg = EmptyRegion('')
 
             if not isinstance(intersection_inters_reg, EmptyRegion):
                 return 0 # TODO 4 TENTATIVE
