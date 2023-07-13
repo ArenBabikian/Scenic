@@ -56,7 +56,7 @@ class Scene:
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
 
-	def show(self, zoom=None, dirPath=None, saveImages=False, viewImages=False, block=True):
+	def show(self, zoom=None, dirPath=None, params=None, block=True):
 		"""Render a schematic of the scene for debugging."""
 		import matplotlib.pyplot as plt
 		fig = plt.figure()
@@ -67,24 +67,20 @@ class Scene:
 		for obj in self.objects:
 			obj.show(self.workspace, plt, highlight=(obj is self.egoObject))
 
-		# TODO Clean up
-		import scenic.core.evol.map_utils as map_utils
-		abstractPathGraphs = map_utils.addAbstractPaths(self, plt)
-		map_utils.showLaneSections(self, plt)
-		# map_utils.highlightSpecificElement(self, plt, )
-		plt.show(block=block) # SHOWS THE FULL MAP
-		#map_utils.visualizeAbstractGraphs(self.egoObject, abstractPathGraphs, True)
-		return
+		if params['save_path'] or params['view_path']:
+			import scenic.core.evol.map_utils as map_utils
+			map_utils.handle_paths(self, params, plt)
+			return # TODOTEMPORARY
 	
 		# zoom in if requested
 		if zoom != None:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
 		
-		if saveImages:
+		if params['save_im']:
 			filePath = f'{dirPath}/image.png'
 			fig.savefig(filePath)
 			print(f'  Saved image at                {filePath}')
-		if viewImages:
+		if params['view_im']:
 			plt.show(block=block)
 
 	def getParamMap(self):
@@ -1323,10 +1319,12 @@ class Scenario:
 					vals[str(c)] = vi.containedHeuristic(container)
 					if vals[str(c)] != 0 : numVioHard += 1
 					# num_hard_cons += 1
+
 				if c.type == Cstr_type.NOCOLLISION:
 					vals[str(c)] = 1 if vi.intersects(vj) else 0
 					if vals[str(c)] != 0 : numVioHard += 1
 					# num_hard_cons += 1
+
 				if c.type == Cstr_type.CANSEE:
 					vals[str(c)] = vi.canSeeHeuristic(vj)
 					if vals[str(c)] != 0 : numVioSoft += 1

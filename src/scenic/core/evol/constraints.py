@@ -7,6 +7,7 @@ class Cstr_type(Enum):
 	ONREGIONTYPE = 1
 
 	NOCOLLISION = 10
+	NOTONSAMEROAD = 11
 
 	CANSEE = 20
 

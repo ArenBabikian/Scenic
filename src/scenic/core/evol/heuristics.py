@@ -32,8 +32,6 @@ class AbstractSegment:
 
         self.isLeaf = False
 
-        self.previous_segments = [] # TEMPORARY
-
         self.next_segments = {}
 
     def addNextSegment(self, nextAbstractSegment, edgeType:str, intersection):
@@ -164,12 +162,12 @@ def getNextSegments(current_segment: AbstractSegment, target_maneuver: ManeuverT
 
 
 def getAbstractPathGraph(actor, target_maneuver, scenario=None):
-    # TODO 1 tentatively missing the segmentation of the map
-    # In reality, we would like to have an AbstractSegment for each road segment
 
     # TODO make this global?
     regId2seg = {}
     # root_region is the starting segment of an  actor
+
+    # TODO is belo wrelevant?
     if scenario == None:
         root_region = actor.laneSection
     else:            
@@ -228,7 +226,7 @@ def name2maneuverType(maneuverName):
     return MANEUVERNAME2TYPE[maneuverName]
 
 
-def collidesAtManeuverHeuristic(actor, maneuver_name, scenario):
+def heuristic_collidesAtManeuver(actor, maneuver_name, scenario):
 
     maneuver_type = name2maneuverType(maneuver_name)
     ego_path_root, ego_inters_regs = getAbstractPathGraph(actor, maneuver_type, scenario)
@@ -265,6 +263,33 @@ def collidesAtManeuverHeuristic(actor, maneuver_name, scenario):
     # TODO 4 heuristic medium val if intersection regions dont collide but in same intersection
     # TODO 5 a posteriori select colliding path from collision point (this is after MHS finishes)
     # TODO 6 what do we wanna do with vehicle that is not involved in the collision?
-    # TODO 7 how to prevent collision before ijntersection
+    # TODO 7 how to prevent collision before intersection
 
     return 5 # TODO 4 TENTATIVE
+
+
+def heuristic_notOnSameRoad(scenario, vi, vj):
+    heu_val = 0
+    penalty_val = 10
+    road_i = scenario.network.roadAt(vi.position)
+    road_j = scenario.network.roadAt(vj.position)
+
+    # TEMP
+    # def getSuccessor(road):
+    #     return None if road == None else road._successor
+    # def getNoneOrUid(road):
+    #     return None if road == None else road.uid
+    # print(f'{getNoneOrUid(road_i)} -> {getNoneOrUid(getSuccessor(road_i))}')
+    # print(f'{getNoneOrUid(road_j)} -> {getNoneOrUid(getSuccessor(road_j))}')
+    # print('----------')
+
+    if road_i == None or road_j == None:
+        return penalty_val
+
+    isProblem = road_i == road_j or \
+        road_i._successor == road_j or \
+        road_j._successor == road_i
+
+    if isProblem:
+        heu_val = 10
+    return heu_val

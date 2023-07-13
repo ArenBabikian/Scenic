@@ -4,6 +4,7 @@ model scenic.simulators.carla.model
 
 param constraints = " ONREGIONTYPE : [0, road]; \
 ONREGIONTYPE : [1, road]; \
+NOTONSAMEROAD : [0, 1]; \
 DISTFAR : [0, 1]; \
 COLLIDESATMANEUVER : [0, is_right]; \
 "

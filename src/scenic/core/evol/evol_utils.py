@@ -159,6 +159,8 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
             ### Are vi and vj intersecting?
             if vi.intersects(vj):
                 heu_val = 10
+        if c.type == Cstr_type.NOTONSAMEROAD:
+            heu_val = heu_utils.heuristic_notOnSameRoad(scenario, vi, vj)
 
         if c.type == Cstr_type.CANSEE:
             ### How far is vj from being visible wrt. to vi?
@@ -182,7 +184,7 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
 
         if c.type == Cstr_type.COLLIDESATMANEUVER:
             maneuver_name = c.tgt
-            heu_val = heu_utils.collidesAtManeuverHeuristic(vi, maneuver_name, scenario)
+            heu_val = heu_utils.heuristic_collidesAtManeuver(vi, maneuver_name, scenario)
 
         obj_funcs[con2id[c_id]] += heu_val
 

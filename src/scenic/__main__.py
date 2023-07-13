@@ -20,7 +20,7 @@ else:
 import scenic.syntax.translator as translator
 import scenic.core.errors as errors
 from scenic.core.simulators import SimulationCreationError
-import scenic.core.evol.dyn_utils as dyn_util
+import scenic.core.evol.dyn_utils as dyn_util_
 
 parser = argparse.ArgumentParser(prog='scenic', add_help=False,
                                  usage='scenic [-h | --help] [options] FILE [options]',
@@ -185,14 +185,16 @@ try:
         ws = params.get('outputWS')
         save_imgs = params.get('saveImgs') == 'True'
         save_files = params.get('saveFiles') == 'True'
+        save_paths = params.get('savePaths') == 'True'
+        view_paths = params.get('viewPaths') == 'True'
         view_imgs = params.get('viewImgs') == 'True'
         get_meas_stats = params.get('saveStats') == 'True'
         save_sim_stats = params.get('sim-saveStats') == 'True'
-        save_something = save_imgs or save_files or get_meas_stats or save_sim_stats
+
+        save_something = save_imgs or save_files or get_meas_stats or save_sim_stats or save_paths
         get_abs_scene = params.get('getAbsScene') == 'True'
-        if not ws and save_something:
-            print(' You need to specify the outputWS parameter if you want to save stuff.')
-            exit(1)
+        assert ws or not save_something, 'You need to specify the outputWS parameter if you want to save stuff.'
+        assert not view_paths or view_imgs
 
         # Define save folder path
         folderName = params.get('outputDir')
@@ -260,11 +262,12 @@ try:
                         json.dump(absSceneStatsMap, outfile, indent=4)
 
                 # MATPLOTLIB representation
-                if save_imgs or view_imgs:
+                if save_imgs or view_imgs or save_paths:
+                    image_params = {'save_im':save_imgs, 'view_im':view_imgs, 'save_path':save_paths, 'view_path':view_paths}
                     if delay is None:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs)
+                        scene.show(zoom=args.zoom, dirPath=dirPath, params=image_params)
                     else:
-                        scene.show(zoom=args.zoom, dirPath=dirPath, saveImages=save_imgs, viewImages=view_imgs, block=False)
+                        scene.show(zoom=args.zoom, dirPath=dirPath, params=image_params, block=False)
                         plt.pause(delay)
                         plt.clf()
                     # successCount += 1

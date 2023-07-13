@@ -1,7 +1,8 @@
-
+import random
 from queue import Queue
-from scenic.core.evol.heuristics import AbstractSegment, getAbstractPathGraph
-from scenic.core.regions import PolygonalRegion
+from scenic.core.evol.constraints import Cstr_type, Cstr_util
+from scenic.core.evol.heuristics import AbstractSegment, getAbstractPathGraph, name2maneuverType
+from scenic.core.regions import EmptyRegion, PolygonalRegion
 
 from scenic.domains.driving.roads import Intersection, LaneSection
 import networkx as nx
@@ -12,8 +13,21 @@ from src.scenic.formats.opendrive.xodr_parser import Lane, Poly3
 
 colors = ['#000000',  '#0000EE', '#444444',]
 
+class TwoWaySegment:
+    def __init__(self, segment_region):
+        self.segment_region = segment_region
+        self.prev_segments = set()
+        self.next_segments = set()
+    
+    def add_prev(self, seg):
+        self.prev_segments.add(seg)
+    def add_next(self, seg):
+        self.next_segments.add(seg)
+
 def createAbstractGraph(root_seg: AbstractSegment):
     G = nx.DiGraph()
+    twoWayRoot = TwoWaySegment(root_seg.segmentRegion)
+    abs2TwoWay = {root_seg:twoWayRoot}
 
     q = Queue()
     q.put((root_seg, 0))    
@@ -23,38 +37,144 @@ def createAbstractGraph(root_seg: AbstractSegment):
         cur_seg, dep = q.get()
         for edge_type, child in cur_seg.next_segments.items():
             q.put((child, dep+1))
+
+            if child not in abs2TwoWay:
+                abs2TwoWay[child] = TwoWaySegment(child.segmentRegion)
+            abs2TwoWay[child].add_prev(abs2TwoWay[cur_seg])
+            abs2TwoWay[cur_seg].add_next(abs2TwoWay[child])
+
             G.add_node(child, subset = dep+1)
             G.add_edge(cur_seg, child, label=edge_type)
-    return G
+    return G, abs2TwoWay.values()
 
 
-def addAbstractPaths(scene, map_plt):
+def getActorToGraphMap(scene):
     abstractPathGraphs = {}
-    inters_regs = []
-
+    actor2twoWay = {}
+    actor2nodes = {}
+    inters_regs = {}
     for _, o in enumerate(scene.objects):
-    
+
         root, inters_i_regs = getAbstractPathGraph(o, None)
-        
+        print(f'Actor at {o.position} is on segment <{o.laneSection.uid}>')
+
+        inters_regs[o] = inters_i_regs
+
+        graph, twoWayNodes = createAbstractGraph(root)
+        actor2twoWay[o] = twoWayNodes
+        abstractPathGraphs[o] = graph
+        actor2nodes[o] = [x.segmentRegion for x in graph.nodes]
+
+    return abstractPathGraphs, actor2twoWay, actor2nodes, inters_regs
+
+
+def addAbstractPathsToMap(actor2nodes, actor2intersRegs, style, map_plt):
+
+    # Show all possible paths of each object
+    for k, nodes in enumerate(actor2nodes.values()):
+        combinedRegion = PolygonalRegion.unionAll(nodes)
+        combinedRegion.show(map_plt, style=style, color=colors[k])
+
+    if actor2intersRegs  == None:
+        return
+
+    # show pairwise overlapping regions within intersection
+    inters_regs = []
+    for inters_i_regs in actor2intersRegs.values():
         inters_union = PolygonalRegion.unionAll(inters_i_regs)
         inters_regs.append(inters_union)
 
-        graph = createAbstractGraph(root)
-        abstractPathGraphs[o] = graph
-
-    # Show all possible paths of each object
-    for k, g in enumerate(abstractPathGraphs.values()):
-        combinedRegion = PolygonalRegion.unionAll([x.segmentRegion for x in g.nodes])
-        combinedRegion.show(map_plt, style='-', color=colors[k])
-
-    # show pairwise overlapping regions within intersection
     for i in range(len(inters_regs)):
         for j in range(i+1, len(inters_regs)):
             overlap = inters_regs[i].intersect(inters_regs[j])
-            overlap.show(map_plt, style='-', color='#7D2E68', )
-        
-    return abstractPathGraphs
+            overlap.show(map_plt, style=style, color='#7D2E68', )
 
+
+def getDedicatedPathPerActor(scene, actor2twoWay, actor2intersRegs, collision_cons):
+
+    actor2path = {}
+    actor2targetRegion = {}
+
+    actorsMissingPath = [x for x in scene.objects]
+
+    # Find actors that are supposed to collide
+    collidingActor2maneuver = {}
+    for coll in collision_cons:
+        actorX = scene.objects[coll.src]
+        maneuver_type = name2maneuverType(coll.tgt)
+        collidingActor2maneuver[actorX] = maneuver_type
+
+    for actorA in collidingActor2maneuver:
+        if actorA not in actorsMissingPath:
+            continue
+        actorAIntersRegs = actor2intersRegs[actorA]
+        # TODO above, we need to do some filtering for maneuver
+
+        # FIND THE intersecting (target) regions
+        random.shuffle(actorAIntersRegs)
+        for actorB in actorsMissingPath:
+            if actorB == actorA:
+                continue
+            actorBIntersRegs = actor2intersRegs[actorB]
+            random.shuffle(actorBIntersRegs)
+
+            for intersRegA in actorAIntersRegs:
+                for intersRegB in actorBIntersRegs:
+                    # if both regions collide, we know the target regions for both actor
+                    # we would just need to (1) find the associated TwoWay, 
+                    # (2) find the path leading to it, 
+                    # (3) return all the nodes in that path
+
+                    try:
+                        intersection = intersRegA.intersect(intersRegB)
+                    except:
+                        intersection = EmptyRegion('')
+
+                    found_intersection =  not isinstance(intersection, EmptyRegion)
+                    if found_intersection:
+                        # FOUND REGIONS!!
+                        actor2targetRegion[actorA] = intersRegA
+                        actor2targetRegion[actorB] = intersRegB
+                        break
+                if found_intersection:
+                    break
+            if found_intersection:
+                break
+
+        # FIND PATHS to target regions
+        for actor, intersReg in actor2targetRegion.items():
+            actorTwoWays = actor2twoWay[actor]
+            intersTwoWays = list(filter(lambda x: x.segment_region == intersReg, actorTwoWays))
+            assert len(intersTwoWays) == 1
+
+            # Add the intersecting segment
+            actorNodes = [intersReg]
+            cur_TwoWay = list(intersTwoWays)[0]
+
+            # Add the next (final) segment
+            next_segs = cur_TwoWay.next_segments
+            assert len(next_segs) == 1 and len(list(next_segs)[0].next_segments) == 0
+            next_seg = list(next_segs)[0].segment_region
+            actorNodes.append(next_seg)
+
+            while len(cur_TwoWay.prev_segments) > 0:
+                prev_TwoWays = cur_TwoWay.prev_segments
+                # TODO we might want to optimize this instead of randomizing (long-temr)
+                cur_TwoWay = random.sample(prev_TwoWays, 1)[0]
+                actorNodes.append(cur_TwoWay.segment_region)
+
+            # we have assigned paths to actor
+            actor2path[actor] = actorNodes
+            actorsMissingPath.remove(actor)
+
+    #TODO case where we have a 3rd actor that is not involved in the collision
+
+    return actor2path, {a:[r] for a, r in actor2targetRegion.items()}
+
+
+# ###################
+# MAP HANDLING
+# ###################
 
 def visualizeAbstractGraphs(actor, graphMap, addLabels):
 
@@ -84,6 +204,7 @@ def showLaneSections(scene, map_plt):
             for laneSec in lane.sections:
                 laneSec.show(map_plt, style=':', color='r')
 
+
 def highlightSpecificElement(scene, map_plt):
     uids = [('road1_sec0_lane3', 'c'),
             ('road1_sec1_lane2', 'k'),
@@ -104,6 +225,42 @@ def highlightSpecificElement(scene, map_plt):
         elem = n.elements[uid]
         print(elem.__repr__())
         elem.show(map_plt, style='-', color=color, )
+
+
+# ###################
+# PATH HANDLING
+# ###################
+
+def handle_paths(scene, params, map_plt):
+
+    # All reachable segments
+    abstractPathGraphs, actor2twoWay, actor2nodes, actor2intersRegs = getActorToGraphMap(scene)
+
+    # dedicated path per actor
+    parsed_cons = Cstr_util.parseConfigConstraints(scene.params, 'constraints')
+    collision_cons = filter(lambda x: x.type == Cstr_type.COLLIDESATMANEUVER,  parsed_cons)
+
+    actor2path, actor2targetRegion = getDedicatedPathPerActor(scene, actor2twoWay, actor2intersRegs, collision_cons)
+
+    if params['save_path']:
+        # TODO
+        # Pending what Balazs says is needed
+        print
+        
+    if params['view_path']:
+
+        # Add all reachable nodes
+        # addAbstractPathsToMap(actor2nodes, actor2intersRegs, '-', map_plt)
+        addAbstractPathsToMap(actor2nodes, None, ':', map_plt)
+
+        # Add dedicated path
+        addAbstractPathsToMap(actor2path, actor2targetRegion, '-', map_plt)
+
+        showLaneSections(scene, plt) # TODO will probably  end up as default
+        # map_utils.highlightSpecificElement(self, plt, )
+        plt.show(block=True) # SHOWS THE FULL MAP # TODO TENTATIVE/TEMPORARY
+        # visualizeAbstractGraphs(scene.egoObject, abstractPathGraphs, True)
+        return
 
 
 # ###################

@@ -9,10 +9,10 @@ PATHTOCONFIGFILE='examplesResearch/mapAbstraction/intersection.scenic' # town10H
 # PATHTOCONFIGFILE='examplesResearch/mapAbstraction/testing.scenic' # town10HD
 PATHTOCONFIGFILE='examplesResearch/mapAbstraction/simpler_test.scenic' # town10HD
 USENSGA='True'
-PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
-PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-rd.scenic'
+# PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
+# PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-rd.scenic'
 # PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-tram.scenic'
-USENSGA='False'
+# USENSGA='False'
 
 cmd="poetry run scenic \
 -b --count 1 -v 0 \
@@ -30,6 +30,8 @@ cmd="poetry run scenic \
 -p viewImgs True \
 -p saveImgs False \
 -p saveFiles False \
+-p viewPaths True \
+-p savePaths True \
 -p saveStats False \
 -p map maps/${MAPNAME}.xodr \
 ${PATHTOCONFIGFILE}"
