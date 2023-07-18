@@ -415,7 +415,7 @@ class Road:
         last_lefts = None
         last_rights = None
         cur_p = None
-            
+
         for i in range(len(self.lane_secs)):
             cur_sec = self.lane_secs[i]
             cur_sec_points = []
@@ -1465,16 +1465,8 @@ class RoadMap:
                 right = ls_elem.find('right')
                 left_lanes = {}
                 right_lanes = {}
-
-                # TODO TENTATIVE
-                # TRAM05: currently, roads 0, 1 and 7 are not working
-                whitelist = [9, 10, 11, 12, 13, 14] #[0, 1, 7, 9, 10, 11, 12, 13]
-                doSmallBlocks = road.id_ in whitelist
-
-                # TOWN05: everything is working, but we only segment the relevant roads for time purposes
-                doSmallBlocks = True
                 
-                if  doSmallBlocks and self.segmentation_len > 1:
+                if  self.segmentation_len > 1:
                     next_sec = lane_sections[i+1] if i<len(lane_sections)-1 else None
                     map_utils.parse_into_segmments(self.segmentation_len, road, next_sec, s, left, right)
                     continue

@@ -110,6 +110,8 @@ def getDedicatedPathPerActor(scene, actor2twoWay, actor2intersRegs, collision_co
         actorAIntersRegs = actor2intersRegs[actorA]
         # TODO above, we need to do some filtering for maneuver
 
+        # TODO we get a problem if the map is getting segmented, and we are lookimnmg for the collision but one of the vehicles must go through another intersection before it reaches the colliding intersection
+
         # FIND THE intersecting (target) regions
         random.shuffle(actorAIntersRegs)
         for actorB in actorsMissingPath:
@@ -118,6 +120,7 @@ def getDedicatedPathPerActor(scene, actor2twoWay, actor2intersRegs, collision_co
             actorBIntersRegs = actor2intersRegs[actorB]
             random.shuffle(actorBIntersRegs)
 
+            found_intersection = False
             for intersRegA in actorAIntersRegs:
                 for intersRegB in actorBIntersRegs:
                     # if both regions collide, we know the target regions for both actor
@@ -279,11 +282,11 @@ def parse_into_segmments(seg_len, road, next_sec, s, left, right):
 
     real_seg_len = -1
     if left is not None:
-        left_segments, left_seg_len = parse_lanes_to_segments(left, cur_section_len, seg_len)
+        left_segments, left_seg_len = parse_lanes_to_segments(left, cur_section_len, seg_len, s)
         real_seg_len = left_seg_len # print(left_segments)
 
     if right is not None:
-        right_segments, right_seg_len = parse_lanes_to_segments(right, cur_section_len, seg_len)
+        right_segments, right_seg_len = parse_lanes_to_segments(right, cur_section_len, seg_len, s)
         real_seg_len = right_seg_len
 
     assert left is not None or right is not None
@@ -303,17 +306,23 @@ def parse_into_segmments(seg_len, road, next_sec, s, left, right):
         if right_len != 0:
             right_segments_at_i = right_segments[i]
 
-        new_s = i * real_seg_len
-        lane_segment_at_i = xodr_parser.LaneSection(new_s, left_segments_at_i, 
-        right_segments_at_i)
+        # s of the laneSection is relative to the start of the road
+        new_s = (i * real_seg_len) + s
+        lane_segment_at_i = xodr_parser.LaneSection(new_s, left_segments_at_i, right_segments_at_i)
 
         # TODO do linking
         road.lane_secs.append(lane_segment_at_i)
 
 
-def parse_lanes_to_segments(lanes_elem, cur_section_len, segment_len):
-        '''Lanes_elem should be <left> or <right> element.
+def parse_lanes_to_segments(lanes_elem, cur_section_len, segment_len, s):
+        '''Lanes_elem (of a laneSection) should be <left> or <right> element.
         Returns list dict of lane ids and Lane objects.'''
+
+        def getNextOrInf(l, index):
+            if index == len(l)-1:
+                return float('inf')
+            else:
+                return l[index+1]
 
         num_segments = round(cur_section_len/segment_len)
         num_segments = 1 if num_segments == 0 else num_segments
@@ -335,22 +344,58 @@ def parse_lanes_to_segments(lanes_elem, cur_section_len, segment_len):
                 if succ_elem is not None:
                     succ = int(succ_elem.get('id'))
 
+            widths = list(l.iter('width'))
+            offsets = [float(w.get('sOffset')) for w in widths]
+            # NOTE: sOffsets are supposed to (1) start from 0 at every laneSection, and (2) be increasing (so the vallue is always relative to the start of the laneSection)
+
+            offset_start_i = 0
+            offset_end_i = 0
             for i in range(num_segments):
                 
                 pred_seg = id_ if i != 0 else pred
                 succ_seg = id_ if i != num_segments-1 else succ
 
+                # Create a Lane pbject for each segment
                 laneSegment = Lane(id_, type_, pred_seg, succ_seg)
-                # TODO MISSING SOME MAGIC HERE to make the widths continuous
-                for w in l.iter('width'):
-                    w_poly = Poly3(float(w.get('a')),
-                                float(w.get('b')),
-                                float(w.get('c')),
-                                float(w.get('d')))
-                    laneSegment.width.append((w_poly, (i) * segment_len_real))
-                    # the sOffset is relatve to the start of the LaneSection, which is always 0
-                    laneSegment.width.append((w_poly, 0))
+
+                # Offset handling magic
+                seg_start = i * segment_len_real
+                seg_end = (i+1) * segment_len_real
+
+                wo_start = offsets[offset_start_i]
+                wo_end = getNextOrInf(offsets, offset_end_i)
+                if wo_end == seg_start:
+                    offset_start_i += 1
+                    offset_end_i += 1
+                    wo_start = offsets[offset_start_i]
+                    wo_end = getNextOrInf(offsets, offset_end_i)
+
+                calc_offsets = [seg_start-wo_start] # relative to the start of the segment
+                local_offsets = [0] # relative to the start of the segment
+                while seg_end > wo_end:
+                    local_offsets.append(wo_end-seg_start)
+                    calc_offsets.append(0)
+                    offset_end_i += 1
+                    wo_end = getNextOrInf(offsets, offset_end_i)
+
+                # Going through list of wdths
+                for j in  range(offset_start_i, offset_end_i+1):
+                    w = widths[j]
+                    o = local_offsets[j-offset_start_i]
+                    offset = calc_offsets[j-offset_start_i]
+
+                    a = float(w.get('a'))
+                    b = float(w.get('b'))
+                    c = float(w.get('c'))
+                    d = float(w.get('d'))
+                    a_new = a + b*offset + c*offset*offset + d*offset*offset*offset
+                    b_new = b + 2*c*offset + 3*d*offset*offset
+                    c_new = c + 3*d*offset
+                    d_new = d
+                    w_poly = Poly3(a_new, b_new, c_new, d_new)
+                    laneSegment.width.append((w_poly, o))
                 lane_segments[i][id_] = laneSegment
+                offset_start_i = offset_end_i
 
         return lane_segments, segment_len_real
 
