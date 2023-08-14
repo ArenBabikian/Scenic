@@ -254,12 +254,12 @@ def handle_paths(scene, params, map_plt):
 
         # Add all reachable nodes
         # addAbstractPathsToMap(actor2nodes, actor2intersRegs, '-', map_plt)
-        addAbstractPathsToMap(actor2nodes, None, ':', map_plt)
+        # addAbstractPathsToMap(actor2nodes, None, '-', map_plt)
 
         # Add dedicated path
-        addAbstractPathsToMap(actor2path, actor2targetRegion, '-', map_plt)
-
         showLaneSections(scene, plt) # TODO will probably  end up as default
+        addAbstractPathsToMap(actor2path, actor2targetRegion, 'r-', map_plt)
+
         # map_utils.highlightSpecificElement(self, plt, )
         plt.show(block=True) # SHOWS THE FULL MAP # TODO TENTATIVE/TEMPORARY
         # visualizeAbstractGraphs(scene.egoObject, abstractPathGraphs, True)

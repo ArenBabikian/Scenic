@@ -4,6 +4,7 @@ from scenic.core.evol.constraints import Cstr_type
 from pymoo.util.termination.collection import TerminationCollection
 from pymoo.util.termination.max_time import TimeBasedTermination
 from scenic.core.evol.OneSolutionHeuristicTermination import OneSolutionHeuristicTermination
+from scenic.core.vectors import Vector
 
 from pymoo.core.problem import ElementwiseProblem
 from pymoo.optimize import minimize
@@ -12,8 +13,13 @@ import os
 
 from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
 import scenic.core.evol.heuristics as heu_utils
+from scenic.domains.driving.roads import _toVector
 
 def getMapBoundaries(params, num_obj):
+
+    # TODO dynamically determine map borders based on coordinates
+    # TODO particularly relevant for intersections being tested
+
     map_name = os.path.basename(params.get('map'))
     bounds = []
     # [loX, loY, hiX, hiY]
@@ -22,6 +28,7 @@ def getMapBoundaries(params, num_obj):
     if map_name == "town05.xodr":
         # TENTATIVELY focus only on an intersection
         bounds = [-31, -72, 71, 78]
+        bounds = [16, -13, 43, 13] # inside the intersection
     elif map_name == "town10HD.xodr":
         bounds = [-126, -151, 121, 80]
     elif map_name == "tram05.xodr":
@@ -130,11 +137,52 @@ def type2region(scenario, regionType, vi):
     return container
 
 
+def fillSample(scenario, coords):
+    for i, vi in enumerate(scenario.objects):
+
+        # Notes: coords = [x_a0, y_a0, x_a1, y_a1, ...]
+        val_x = coords[2*i]
+        val_y = coords[2*i + 1]
+        v = Vector(val_x, val_y)
+
+        vi.position = v
+        if i not in scenario.actorIdsWithManeuver:
+            # Structure is that every object that is assigned a maneuver is given a heading 
+            # as soon as it is confirmed that the actor is placed in a position where the 
+            # maneuver is possible
+            # TODO MAYBE IMPROVE THIS??????
+            vi.heading = scenario.network._defaultRoadDirection(v)
+
+
+def fillSamplePostMHS(scenario, coords):
+    for i, vi in enumerate(scenario.objects):
+
+        # Notes: coords = [x_a0, y_a0, x_a1, y_a1, ...]
+        val_x = coords[2*i]
+        val_y = coords[2*i + 1]
+        v = Vector(val_x, val_y)
+
+        vi.position = v
+
+        # Assign orientation
+        actor_pos = _toVector(v)
+        all_possible_maneuvers = scenario.testedIntersection.maneuversAt(actor_pos)
+        if i in scenario.actorIdsWithManeuver:
+            all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == scenario.actorIdsWithManeuver[i]]
+
+        all_possible_orientations = [m.connectingLane.orientation[actor_pos] for m in all_possible_maneuvers]
+
+        if len(all_possible_orientations) == 0:
+            vi.heading = 0
+        else:
+            vi.heading = all_possible_orientations[0]
+
+
 def getHeuristic(scenario, x, constraints, con2id, exp):
     objects = scenario.objects
 
     obj_funcs = [0 for _ in range(len(exp))]
-    scenario.fillSample(x)
+    fillSample(scenario, x)
 
     ## GET HEURISTIC VALUES
     ## Assuming that ego position in actor list does not change
@@ -185,6 +233,10 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
         if c.type == Cstr_type.COLLIDESATMANEUVER:
             maneuver_name = c.tgt
             heu_val = heu_utils.heuristic_collidesAtManeuver(vi, maneuver_name, scenario)
+
+        if c.type == Cstr_type.DOINGMANEUVER:
+            maneuver_name = c.tgt
+            heu_val = heu_utils.heuristic_doingManeuver(vi, maneuver_name, scenario)
 
         obj_funcs[con2id[c_id]] += heu_val
 

@@ -1,6 +1,6 @@
 """Scenario and scene objects."""
 
-from copy import Error, copy
+from copy import Error, copy, deepcopy
 import os
 import random
 import copy
@@ -9,16 +9,17 @@ import scenic.core.evol.evol_utils as utils
 
 from scenic.core.evol.constraints import Cstr, Cstr_type, Cstr_util
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
+from scenic.core.evol.input_validation import validate_constraints
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
-from scenic.core.regions import EmptyRegion
+from scenic.core.regions import EmptyRegion, PolygonalRegion
 from scenic.core.workspaces import Workspace
 from scenic.core.vectors import Vector
 from scenic.core.utils import areEquivalent
 from scenic.core.errors import InvalidScenarioError
 from scenic.core.dynamics import Behavior
 from scenic.core.requirements import BoundRequirement
-from scenic.domains.driving.roads import Network
+from scenic.domains.driving.roads import ManeuverType, Network
 from scenic.simulators.utils.colors import Color
 
 from collections.abc import Iterable
@@ -68,10 +69,12 @@ class Scene:
 			obj.show(self.workspace, plt, highlight=(obj is self.egoObject))
 
 		if params['save_path'] or params['view_path']:
-			import scenic.core.evol.map_utils as map_utils
-			map_utils.handle_paths(self, params, plt)
+			import scenic.core.evol.map_backwards_utils as map_utils
+			# Below is OLD. for when we were generating vehicles far from the intersection
+			# import scenic.core.evol.map_utils as map_utils
+			map_utils.handle_paths(self, params, plt, includeLongPathToIntersection=False)
 			return # TODOTEMPORARY
-	
+
 		# zoom in if requested
 		if zoom != None:
 			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
@@ -818,6 +821,33 @@ class Scenario:
 		if not self.noValidation:
 			self.validate()
 
+		self.handleIntersection(params)
+		self.actorIdsWithManeuver = {}
+
+	def  handleIntersection(self, params):
+		intersection_id = params.get('intersectiontesting')
+		if intersection_id == None:
+			self.testedIntersection = None
+		else:
+			intersectionsWithId = list(filter(lambda x: x.id == intersection_id, self.network.intersections))
+			assert len(intersectionsWithId) == 1
+			intersection =  intersectionsWithId[0]
+			self.testedIntersection = intersection
+			self.maneuverToLanes = {ManeuverType.RIGHT_TURN:[],
+			    ManeuverType.LEFT_TURN:[], 
+				ManeuverType.STRAIGHT:[]}
+			for maneuver in intersection.maneuvers:
+				conn_lane = maneuver.connectingLane
+				self.maneuverToLanes[maneuver.type].append(conn_lane)
+
+			self.maneuverToRegion = {}
+			for man_type, all_regions in self.maneuverToLanes.items():
+				if len(all_regions) == 0:
+					self.maneuverToRegion[man_type] = None
+				else:
+					self.maneuverToRegion[man_type] = PolygonalRegion.unionAll(all_regions)
+
+	
 	def isEquivalentTo(self, other):
 		if type(other) is not Scenario:
 			return False
@@ -868,17 +898,6 @@ class Scenario:
 						raise InvalidScenarioError(f'Object at {oi.position} intersects'
 												   f' object at {oj.position}')
 
-	def fillSample(self, coords):
-		for i in range(len(self.objects)):
-			vi = self.objects[i]
-
-			# Notes: coords = [x_a0, y_a0, x_a1, y_a1, ...]
-			val_x = coords[2*i]
-			val_y = coords[2*i + 1]
-			v = Vector(val_x, val_y)
-
-			vi.position = v
-			vi.heading = self.network._defaultRoadDirection(v)
 
 	def hasStaticBounds(self, obj):
 		if needsSampling(obj.position):
@@ -920,6 +939,9 @@ class Scenario:
 
 			#We assume that ego is obect[0]
 			parsed_cons = Cstr_util.parseConfigConstraints(self.params, 'constraints')
+
+			#TODO Long-term, add some validation for the parsed constraints
+			validate_constraints(self, parsed_cons)
 			
 			# RUN EVOLUTIONARY ALGO
 			nsgaRes, heuristicTargets = utils.getEvolNDSs(self, parsed_cons, verbosity)
@@ -977,7 +999,7 @@ class Scenario:
 					aggFit = sortedFitness[i]
 					j = aggFit[-1]
 						
-					self.fillSample(all_res[j])
+					utils.fillSamplePostMHS(self, all_res[j])
 					found = False
 					while not found:
 						try:
@@ -1003,7 +1025,7 @@ class Scenario:
 							print(f'--Solution {i}--')
 							print(f'x = {tuple([round(e, 1) for e in all_res[i]])}')
 							print(f'f = {tuple([round(e, 1) for e in all_fit[i]])}')
-					self.fillSample(all_res[i])
+					utils.fillSamplePostMHS(self, all_res[i])
 					found = False
 					while not found:
 						try:
@@ -1202,7 +1224,7 @@ class Scenario:
 						hist_sol_f = [hist_sol_f]
 
 					for sol_id, historicSol in enumerate(hist_sol_x):
-						self.fillSample(historicSol)
+						utils.fillSamplePostMHS(self, historicSol)
 						historicFs.append(hist_sol_f[sol_id])
 						found = False
 						while not found:

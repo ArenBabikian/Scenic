@@ -14,7 +14,7 @@ isWindows = False
 
 spec_dir = 'examplesResearch/dynamics'
 res_path = 'meas-sim-ubu/results'
-frames_save_path = f'{res_path}/images'
+frames_save_path = f'{res_path}/imagesAugust'
 specs = [
     # {'filename':'abstract', 'evol':'True', 'no-validation':'False', 'conc_count':'10', 'render':'1', 'rand-beh':'False'},
     {'filename':'exact_test', 'evol':'False', 'no-validation':'True', 'conc_count':'1', 'render':'1', 'save_frames':False, 'rand-beh':'False'}
@@ -70,9 +70,10 @@ for m in maps:
 
         command.extend(['-p', 'sim-saveStats', str(save)])
         # command.extend(['-p', 'viewImgs', str(save)])
-        command.extend(['-p', 'saveImgs', str(save)])
-        command.extend(['-p', 'saveFiles', str(save)])
-        command.extend(['-p', 'saveStats', str(save)])
+        # command.extend(['-p', 'saveImgs', str(save)])
+        # command.extend(['-p', 'saveFiles', str(save)])
+        # command.extend(['-p', 'saveStats', str(save)])
+        # command.extend(['-p', 'record', f'{res_path}/recording'])
 
         command.extend(['-p', 'map', f'maps/{m}.xodr'])
         if m == 'town02':

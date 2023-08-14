@@ -1,5 +1,5 @@
 param weather = 'ClearNoon'
-param map_options = dict(useCache=True, writeCache=False, fill_intersections=False, segmentation_len=8, ref_points=20, tolerance=0.05)
+param map_options = dict(useCache=False, writeCache=False, fill_intersections=False, segmentation_len=3, ref_points=20, tolerance=0.05)
 model scenic.simulators.carla.model
 
 param constraints = " ONREGIONTYPE : [0, road]; \

@@ -20,7 +20,7 @@ else:
 import scenic.syntax.translator as translator
 import scenic.core.errors as errors
 from scenic.core.simulators import SimulationCreationError
-import scenic.core.evol.dyn_utils as dyn_util_
+import scenic.core.evol.dyn_utils as dyn_util
 
 parser = argparse.ArgumentParser(prog='scenic', add_help=False,
                                  usage='scenic [-h | --help] [options] FILE [options]',

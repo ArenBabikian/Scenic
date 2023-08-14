@@ -22,6 +22,8 @@ class Cstr_type(Enum):
 
 	COLLIDESATMANEUVER = 50
 
+	DOINGMANEUVER = 60
+
 	SP_NONE = 100
 	SP_SLOW = 101
 	SP_MED = 102
@@ -53,6 +55,12 @@ class Cstr():
 		return self.pretty()
 	
 class Cstr_util:
+
+	PRIORITY = {Cstr_type.DOINGMANEUVER: 0,
+	     Cstr_type.DISTCLOSE:1,
+		 Cstr_type.DISTMED:1,
+		 Cstr_type.DISTFAR:1}
+
 	def parseConfigConstraints(params, keyword):
 		# Parse constraints from config file
 		str_cons = params.get(keyword)
@@ -73,4 +81,7 @@ class Cstr_util:
 			con = Cstr(con_type, id1, id2)
 			parsed_cons.append(con)
 		
+		# Reorder according to priority
+		parsed_cons = sorted(parsed_cons, key=lambda c: c.type in Cstr_util.PRIORITY, reverse=True)
+
 		return parsed_cons

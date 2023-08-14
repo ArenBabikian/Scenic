@@ -1,10 +1,10 @@
 
 from scenic.core.regions import EmptyRegion, PolygonalRegion, PolylineRegion
-from scenic.domains.driving.roads import Intersection, Lane, LaneSection, ManeuverType, NetworkElement
+from scenic.domains.driving.roads import Intersection, Lane, LaneSection, ManeuverType, _toVector
 from queue import Queue
+import scenic.core.evol.heuristics_utils as heu_utils
 
-
-MAXPATHLENGTH = 10
+MAXPATHLENGTH = 50
 ALLOWEDABSTRACTEDGETYPES = {'rd_straight', 'rd_lc_r', 'rd_lc_l', 'is_left', 'is_right', 'is_straight'}
 
 MANEUVERNAME2TYPE = {
@@ -267,7 +267,7 @@ def heuristic_collidesAtManeuver(actor, maneuver_name, scenario):
 
     return 5 # TODO 4 TENTATIVE
 
-
+##############################################
 def heuristic_notOnSameRoad(scenario, vi, vj):
     heu_val = 0
     penalty_val = 10
@@ -293,3 +293,33 @@ def heuristic_notOnSameRoad(scenario, vi, vj):
     if isProblem:
         heu_val = 10
     return heu_val
+
+
+############################################################
+def heuristic_doingManeuver(actor, maneuver_name, scenario):
+    actor_pos = actor.position
+    maneuver_type = name2maneuverType(maneuver_name)
+    assert scenario.testedIntersection is not None, "Must specify which intersection to test on!!!!"
+
+    targetRegion = scenario.maneuverToRegion[maneuver_type]
+    assert targetRegion != None, f"Intersection {scenario.testedIntersection} does not allow {maneuver_type}"
+
+    heu_val = heu_utils.dist_center_to_container(actor, targetRegion)
+
+    # Assign orientation
+    actor_pos = _toVector(actor_pos)
+    all_possible_maneuvers = scenario.testedIntersection.maneuversAt(actor_pos)
+    # print(all_possible_maneuvers)
+    if heu_val == 0:
+
+        all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == maneuver_type]
+
+    all_possible_orientations = [m.connectingLane.orientation[actor_pos] for m in all_possible_maneuvers]
+
+    if len(all_possible_orientations) == 0:
+        actor.heading = 0
+    else:
+        actor.heading = all_possible_orientations[0]
+
+    return heu_val
+

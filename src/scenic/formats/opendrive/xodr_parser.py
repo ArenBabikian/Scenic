@@ -19,8 +19,6 @@ from scenic.core.geometry import (polygonUnion, cleanPolygon, cleanChain, plotPo
 from scenic.core.vectors import Vector
 from scenic.domains.driving import roads as roadDomain
 
-import scenic.core.evol.map_utils as map_utils
-
 class OpenDriveWarning(UserWarning):
     pass
 
@@ -1468,6 +1466,7 @@ class RoadMap:
                 
                 if  self.segmentation_len > 1:
                     next_sec = lane_sections[i+1] if i<len(lane_sections)-1 else None
+                    import scenic.core.evol.map_utils as map_utils
                     map_utils.parse_into_segmments(self.segmentation_len, road, next_sec, s, left, right)
                     continue
 
