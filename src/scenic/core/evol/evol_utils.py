@@ -136,6 +136,38 @@ def type2region(scenario, regionType, vi):
 
     return container
 
+def findClosestWaypoint(scenario, point, assignedManeuver=None):
+    
+    assert scenario.testedIntersection is not None, "WaypointSnapping only suported for intersection testing (for now)"
+
+    # 0. to avoid prioriting for a targetted maneuver, set assignedManeuver=None
+
+    # 1. find connaectingRoads it is potentially on
+    all_possible_maneuvers = scenario.testedIntersection.maneuversAt(point)
+    all_possible_lanes = [m.connectingLane for m in all_possible_maneuvers]
+
+    # 2. for each connecting road, find closest point (and distance to) on centerline
+    if len(all_possible_lanes) == 0:
+        return point, None, 0
+
+    curDistToClosestPoint = float('inf')
+    closestPoint = point
+    m, h = None, 0
+
+    for i, lane in enumerate(all_possible_lanes):
+        m = all_possible_maneuvers[i].type
+        cl = lane.centerline
+        d = cl.distanceTo(point)
+        # Assign best point
+        if d < curDistToClosestPoint and (assignedManeuver == None or assignedManeuver == m):
+            curDistToClosestPoint = d
+            proj = cl.project(point)
+            closestPoint = Vector(proj.x, proj.y)
+            h_raw = lane.orientation[closestPoint]
+            h = 0 if h_raw == None else h_raw
+
+    return closestPoint, m, h
+
 
 def fillSample(scenario, coords):
     for i, vi in enumerate(scenario.objects):
@@ -145,37 +177,35 @@ def fillSample(scenario, coords):
         val_y = coords[2*i + 1]
         v = Vector(val_x, val_y)
 
-        vi.position = v
-        if i not in scenario.actorIdsWithManeuver:
-            # Structure is that every object that is assigned a maneuver is given a heading 
-            # as soon as it is confirmed that the actor is placed in a position where the 
-            # maneuver is possible
-            # TODO MAYBE IMPROVE THIS??????
-            vi.heading = scenario.network._defaultRoadDirection(v)
-
-
-def fillSamplePostMHS(scenario, coords):
-    for i, vi in enumerate(scenario.objects):
-
-        # Notes: coords = [x_a0, y_a0, x_a1, y_a1, ...]
-        val_x = coords[2*i]
-        val_y = coords[2*i + 1]
-        v = Vector(val_x, val_y)
-
-        vi.position = v
-
-        # Assign orientation
-        actor_pos = _toVector(v)
-        all_possible_maneuvers = scenario.testedIntersection.maneuversAt(actor_pos)
-        if i in scenario.actorIdsWithManeuver:
-            all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == scenario.actorIdsWithManeuver[i]]
-
-        all_possible_orientations = [m.connectingLane.orientation[actor_pos] for m in all_possible_maneuvers]
-
-        if len(all_possible_orientations) == 0:
-            vi.heading = 0
+        assignedManeuver = None if i not in scenario.actorIdsWithManeuver else scenario.actorIdsWithManeuver[i]
+        
+        if i in scenario.actorIdsSnappedToWayPoint:
+            #     WAYPOINT, NOT MANEUVER
+            # (places position to closest waypoint, and assigns corresponding heading. If not on a lane, returns same point and heading 0)
+            #     WAYPOINT,     MANEUVER
+            # (places position to closest waypoint on lane which allows corresponding maneuevr, and assigns corresponding heading)
+            v, maneuver, heading = findClosestWaypoint(scenario, v, assignedManeuver)
         else:
-            vi.heading = all_possible_orientations[0]
+            # (keep point as is)
+            if assignedManeuver != None:
+
+                # NOT WAYPOINT,     MANEUVER
+                # (Default heading if in a positin where the assigned maneuever is not possible. Otherwise, assign the correct heading)
+
+                all_possible_maneuvers = scenario.testedIntersection.maneuversAt(v)
+                all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == assignedManeuver]
+                all_possible_orientations = [m.connectingLane.orientation[v] for m in all_possible_maneuvers]
+
+                heading  = scenario.network._defaultRoadDirection(v) if len(all_possible_orientations) == 0 \
+                    else all_possible_orientations[0]
+
+            else:
+                # NOT WAYPOINT, NOT MANEUVER 
+                # (keep point as is, assigns default heading at point)
+                heading = scenario.network._defaultRoadDirection(v)
+
+        vi.position = v
+        vi.heading = heading
 
 
 def getHeuristic(scenario, x, constraints, con2id, exp):

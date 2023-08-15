@@ -144,7 +144,8 @@ def findRoadInIntersection(actor, scene):
     all_man = scene.workspace.network.intersectionAt(pos).maneuvers
     current_connectingRoad = [m.connectingLane for m in all_man if m.connectingLane.orientation[pos] == heading]
 
-    assert len(current_connectingRoad) == 1, f'INVALID HEADING FOR {actor}'
+    # TODO The line below is potetntially causing a bug...
+    assert len(current_connectingRoad) == 1, f'INVALID HEADING FOR {actor} ({len(current_connectingRoad)})'
     return current_connectingRoad[0]
 
 

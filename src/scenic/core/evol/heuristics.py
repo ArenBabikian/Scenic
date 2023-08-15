@@ -306,20 +306,4 @@ def heuristic_doingManeuver(actor, maneuver_name, scenario):
 
     heu_val = heu_utils.dist_center_to_container(actor, targetRegion)
 
-    # Assign orientation
-    actor_pos = _toVector(actor_pos)
-    all_possible_maneuvers = scenario.testedIntersection.maneuversAt(actor_pos)
-    # print(all_possible_maneuvers)
-    if heu_val == 0:
-
-        all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == maneuver_type]
-
-    all_possible_orientations = [m.connectingLane.orientation[actor_pos] for m in all_possible_maneuvers]
-
-    if len(all_possible_orientations) == 0:
-        actor.heading = 0
-    else:
-        actor.heading = all_possible_orientations[0]
-
     return heu_val
-

@@ -3,6 +3,7 @@ param map_options = dict(useCache=True,writeCache=True, fill_intersections=False
 model scenic.simulators.carla.model
 
 param intersectiontesting = 1574
+param snapToWaypoint = [0, 1, 2]
 
 param constraints = " \
 ONREGIONTYPE : [0, intersection]; \

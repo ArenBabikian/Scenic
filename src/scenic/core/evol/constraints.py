@@ -71,6 +71,10 @@ class Cstr_util:
 
 		# since last constraint also has a ";" at the end, we ignore last split
 		for con_str in list_cons[:-1]:
+			if con_str.strip().startswith('#'):
+				# commented constraints
+				continue
+
 			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*|[a-z_]*)\]", con_str)
 			con_type = Cstr_type[res.group(1)]
 			id1 = int(res.group(2))
