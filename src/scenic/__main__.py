@@ -11,6 +11,9 @@ from datetime import datetime
 from pathlib import Path
 import json
 import gc
+import scenic.core.printer.printer as printer
+from scenic.core.static_analysis.static_analysis_util import doStaticAnalysis
+
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -186,13 +189,15 @@ try:
         save_imgs = params.get('saveImgs') == 'True'
         save_files = params.get('saveFiles') == 'True'
         save_paths = params.get('savePaths') == 'True'
-        view_paths = params.get('viewPaths') == 'True'
+        view_paths = params.get('showPaths') == 'True'
         view_imgs = params.get('viewImgs') == 'True'
         get_meas_stats = params.get('saveStats') == 'True'
         save_sim_stats = params.get('sim-saveStats') == 'True'
 
         save_something = save_imgs or save_files or get_meas_stats or save_sim_stats or save_paths
-        get_abs_scene = params.get('getAbsScene') == 'True'
+        get_abs_scene = params.get('getAbsScene')
+        if get_abs_scene not in ['all', 'scenic', 'evol', 'dyn', None]:
+            exit('Invalid specification for <getAbsScene> parameter')
         assert ws or not save_something, 'You need to specify the outputWS parameter if you want to save stuff.'
         assert not view_paths or view_imgs
 
@@ -219,6 +224,13 @@ try:
             measurementStats['approach'] = approach
             measurementStats['results'] = []
 
+
+        # Static Analysis
+        if params.get('static-analysis') == 'True':
+            doStaticAnalysis(scenario, p)
+            exit()
+
+        # Scenario generation
         absSceneStatsMap = {}
         count = args.count
         # LEGACY
@@ -252,18 +264,11 @@ try:
                     # currently, the count is the number of attempts
                     continue
                 # SAVE
-                if save_files:
-                    scene.saveExactCoords(path=dirPath)
-                if get_abs_scene:
-                    absSceneStats = scene.getAbsScene(path=dirPath)
-                    absSceneStatsMap[dirPath] = absSceneStats
-                    print(f'  Saved json stats at           {json_path}')
-                    with open(json_path, 'w') as outfile:
-                        json.dump(absSceneStatsMap, outfile, indent=4)
+                printer.printToFile(scene, save_files, get_abs_scene, path=dirPath, jsonpath=json_path, jsonstats=absSceneStatsMap)
 
                 # MATPLOTLIB representation
                 if save_imgs or view_imgs or save_paths:
-                    image_params = {'save_im':save_imgs, 'view_im':view_imgs, 'save_path':save_paths, 'view_path':view_paths}
+                    image_params = {'save_im':save_imgs, 'view_im':view_imgs, 'view_path':view_paths}
                     if delay is None:
                         scene.show(zoom=args.zoom, dirPath=dirPath, params=image_params)
                     else:

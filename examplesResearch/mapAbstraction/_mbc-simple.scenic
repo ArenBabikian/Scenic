@@ -19,6 +19,8 @@ HASTORIGHT : [2, 1]; \
 DOINGMANEUVER : [0, is_left]; \
 # DOINGMANEUVER : [1, is_right]; \
 DOINGMANEUVER : [2, is_straight]; \
+COLLIDINGPATHS : [1, 0]; \
+COLLIDINGPATHS : [2, 0]; \
 "
 
 #HASINFRONT : [0, 1]; \

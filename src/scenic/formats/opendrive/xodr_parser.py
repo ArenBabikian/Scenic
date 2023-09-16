@@ -1466,7 +1466,7 @@ class RoadMap:
                 
                 if  self.segmentation_len > 1:
                     next_sec = lane_sections[i+1] if i<len(lane_sections)-1 else None
-                    import scenic.core.evol.map_utils as map_utils
+                    import scenic.core.map.map_xodr_utils as map_utils
                     map_utils.parse_into_segmments(self.segmentation_len, road, next_sec, s, left, right)
                     continue
 

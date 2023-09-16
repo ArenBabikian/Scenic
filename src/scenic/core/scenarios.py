@@ -3,13 +3,13 @@
 from copy import Error, copy, deepcopy
 import os
 import random
-import copy
 import time
 import scenic.core.evol.evol_utils as utils
 
 from scenic.core.evol.constraints import Cstr, Cstr_type, Cstr_util
 from scenic.core.distributions import Samplable, RejectionException, needsSampling
 from scenic.core.evol.input_validation import validate_constraints
+from scenic.core.map.map_visualisation_utils import zoomToIntersection
 from scenic.core.lazy_eval import needsLazyEvaluation
 from scenic.core.external_params import ExternalSampler
 from scenic.core.regions import EmptyRegion, PolygonalRegion
@@ -57,7 +57,7 @@ class Scene:
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
 
-	def show(self, zoom=None, dirPath=None, params=None, block=True):
+	def show(self, zoom=None, dirPath=None, params=None, block=True, centerline=None):
 		"""Render a schematic of the scene for debugging."""
 		import matplotlib.pyplot as plt
 		fig = plt.figure()
@@ -67,703 +67,31 @@ class Scene:
 		# draw objects
 		for obj in self.objects:
 			obj.show(self.workspace, plt, highlight=(obj is self.egoObject))
+			# print(self.workspace.network.nominalDirectionsAt(obj.position))
+			# print(obj.heading)
 
-		if params['save_path'] or params['view_path']:
-			import scenic.core.evol.map_backwards_utils as map_utils
+		if centerline is not None:
+			centerline.show(plt, color='k')
+
+		if params.get('view_path'):
+			import scenic.core.map.map_backwards_utils as map_utils
 			# Below is OLD. for when we were generating vehicles far from the intersection
 			# import scenic.core.evol.map_utils as map_utils
 			map_utils.handle_paths(self, params, plt, includeLongPathToIntersection=False)
-			return # TODOTEMPORARY
 
 		# zoom in if requested
 		if zoom != None:
-			self.workspace.zoomAround(plt, self.objects, expansion=zoom)
+			if self.params.get('intersectiontesting') != None:
+				zoomToIntersection(self, plt)
+			else:
+				self.workspace.zoomAround(plt, self.objects, expansion=zoom)
 		
-		if params['save_im']:
+		if params.get('save_im'):
 			filePath = f'{dirPath}/image.png'
 			fig.savefig(filePath)
 			print(f'  Saved image at                {filePath}')
-		if params['view_im']:
+		if params.get('view_im'):
 			plt.show(block=block)
-
-	def getParamMap(self):
-		mapPath = os.path.abspath(self.params['map']).replace('\\', '/')
-		return f'param map = localPath(\'{mapPath}\')\n'
-
-
-	def saveExactCoords(self, path=None):
-		filePath = f'{path}/exact.scenic'
-		ego = self.egoObject
-		with open(filePath, "w") as f:
-			f.write(self.getParamMap())
-			f.write('model scenic.simulators.carla.model\n')
-			f.write('\n')
-			# Actor initializations
-			for i in range(len(self.objects)):
-				o = self.objects[i]
-				oName = f'o{i}'
-				if o is ego:
-					oName = 'ego'
-				col = o.color
-				if type(col) is Color:
-					col = [col.r, col.g, col.b]
-				f.write(f'{oName} = Car at {o.position}, with color{o.color}\n')
-		print(f'  Saved exact coordinates at    {filePath}')
-
-	def getAbsScene(self, path=None):
-		stats = {}
-		all_heur = {}
-		accepted_cstrs = []
-		# NOTE: ignoring bidirectional relations
-		for i in range(len(self.objects)):
-			oi = self.objects[i]
-			# for j in range(i+1, len(self.objects)):
-			for j in range(len(self.objects)):
-				if i == j:
-					continue
-
-				# BIDIRECTIONAL
-				
-				oj = self.objects[j]
-				cur_heur = {}
-
-				# POSITION CSTRS
-				if oi.toLeftHeuristic(oj) == 0:
-					con_type = Cstr_type['HASTOLEFT']
-					accepted_cstrs.append(Cstr(con_type, i, j))
-				if oi.toRightHeuristic(oj) == 0:
-					con_type = Cstr_type['HASTORIGHT']
-					accepted_cstrs.append(Cstr(con_type, i, j))
-				if oi.inFrontHeuristic(oj) == 0:
-					con_type = Cstr_type['HASINFRONT']
-					accepted_cstrs.append(Cstr(con_type, i, j))
-				if oi.behindHeuristic(oj) == 0:
-					con_type = Cstr_type['HASBEHIND']
-					accepted_cstrs.append(Cstr(con_type, i, j))
-
-				# CANSEE CSTRS
-				val_canSee = oi.canSeeHeuristic(oj)
-				cur_heur['CANSEE-A'] = val_canSee
-				if val_canSee == 0:
-					accepted_cstrs.append(Cstr(Cstr_type['CANSEE'], i, j))
-
-				# UNIDIRECTIONAL
-				# only consider distance once, because it is symetric
-				if i < j:
-					continue
-
-				# DISTANCE CSTRS
-				val_close = oi.distCloseHeuristic(oj)
-				val_med = oi.distMedHeuristic(oj)
-				val_far = oi.distFarHeuristic(oj)
-				cur_heur['DISTCLOSE'] = val_close
-				cur_heur['DISTMED'] = val_med
-				cur_heur['DISTFAR'] = val_far
-
-				# Below is mathematical obligation
-				vals_dist = [val_close, val_med, val_far]
-				kw = ['DISTCLOSE', 'DISTMED', 'DISTFAR']
-				con_type = Cstr_type[kw[vals_dist.index(0)]]
-				accepted_cstrs.append(Cstr(con_type, i, j))
-
-				# Add to all heuristics
-				ind = (i, j)
-				all_heur[ind] = cur_heur
-
-		# sort constraints wrt. type
-		accepted_cstrs.sort(key=lambda x: x.type.value)
-		n_obj = len(self.objects)
-		n_hard_cons = n_obj + (n_obj * (n_obj-1))/2 #onroad + nocollisions
-		stats['num_cons'] = n_hard_cons + len(accepted_cstrs)
-		stats['num_hard_cons'] = n_hard_cons
-		stats['num_soft_cons'] = len(accepted_cstrs)
-		stats['all'] = [str(c) for c in accepted_cstrs]
-
-		# NSGA : includes all constraints (full repr of abs scen)
-		self.generateNsgaConfig(accepted_cstrs, path)
-
-		# Scenic : some things are not representible
-		sorted_cstrs = self.seperateByType(accepted_cstrs)
-		del_sc1 = self.generateVeneerRequireConfig(copy.deepcopy(sorted_cstrs), path)
-		stats['deleted-sc1'] = del_sc1
-		del_sc2 = self.generateRegionRequireConfig(copy.deepcopy(sorted_cstrs), path)
-		stats['deleted-sc2'] = del_sc2
-		del_sc3 = self.generateRegionOnlyConfig(copy.deepcopy(accepted_cstrs), path)
-		stats['deleted-sc3'] = del_sc3
-
-		return stats
-
-		
-
-	def generateNsgaConfig(self, constraints, path):
-		filePath = f'{path}/d-nsga.scenic'
-		with open(filePath, "w") as f:
-			f.write(self.getParamMap())
-			f.write('param constraints = \" \\')
-
-			# Default constraints
-			for i in range(len(self.objects)):
-				f.write(f'ONROAD : [{i}, -1]; \\\n')
-			for i in range(len(self.objects)):
-				for j in range(i+1, len(self.objects)):
-					f.write(f'NOCOLLISION : [{i}, {j}]; \\\n')
-
-			# Added constraints
-			for c in constraints:
-				f.write(f'{c} \\\n')
-			f.write('\"\n')
-			f.write('model scenic.simulators.carla.model\n')
-			f.write('\n')
-
-			# Actor initializations
-			ind_to_name = self.get_actor_names()
-			for i in range(len(self.objects)):
-				col = self.objects[i].color
-				if type(col) is Color:
-					col = [col.r, col.g, col.b]
-				f.write(f'{ind_to_name[i]} = Car with color{col}\n')
-
-		print(f'  Saved nsga config file at     {filePath}')
-
-
-	def seperateByType(self, constraints):
-		canSeeCstrs = []
-		posCstrs = []
-		distCstrs = []
-
-		# seperate constraints
-		for c in constraints:
-			if c.type.value == 3:
-				canSeeCstrs.append(c)
-			elif c.type.value >= 4 and c.type.value <= 7:
-				posCstrs.append(c)
-			elif c.type.value >= 8 and c.type.value <= 10:
-				distCstrs.append(c)
-			else:
-				raise Error('incorrect constraint type')
-
-		return [canSeeCstrs, posCstrs, distCstrs]
-
-
-	def most_common_cstr(self, cycles):
-		# get a full list of involved constraints, with repetition
-		full_list = []
-		for x in cycles:
-			full_list.extend(x)
-
-		# find most common constraint in the cycles
-		return max(set(full_list), key=full_list.count)
-
-
-	def most_common_pair(self, cycles):
-		# get a full list of involved constraints, with repetition
-		all_pairs = []
-		for cyc in cycles:
-			for con in cyc:
-				all_pairs.append((con.src, con.tgt))
-
-		# find most common constraint in the cycles
-		return max(set(all_pairs), key=all_pairs.count)
-
-
-	def find_ordering(self, constraints):
-		copyCstrs = constraints.copy()
-		toBePlaced = list(range(len(self.objects)))
-		ordering = []
-
-		while len(ordering) < len(self.objects):
-			for i in toBePlaced:
-
-				#check if depends on anything
-				if not list(filter(lambda x : x.tgt == i, copyCstrs)):
-					# i depends on nothing (above is empty)
-					ordering.append(i)
-					toBePlaced.remove(i)
-					copyCstrs = list(filter(lambda x : x.src != i, copyCstrs))
-					break
-		
-		return ordering
-
-
-	def findCycles(self, deps):
-
-		# TODO improve this! This is embarassing :(
-
-		# BUG : [0, 2] - [2, 0] - [0, 2] - [2, 0]
-		max = len(self.objects)
-		cycles = []
-
-		if max < 1: return cycles
-
-		for c in list(filter(lambda x : x.src == x.tgt, deps)):
-			cycles.append([c]) 
-
-		if max < 2: return cycles
-		
-		for c1 in deps:
-			for c2 in list(filter(lambda x : x.src == c1.tgt and x.tgt == c1.src, deps)):
-				cycles.append([c1, c2]) 
-
-		if max < 3: return cycles
-
-		for c1 in deps:
-			for c2 in list(filter(lambda x : x.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda y : y.src == c2.tgt and y.tgt == c1.src, deps)):
-					cycles.append([c1, c2, c3])
-
-		if max < 4: return cycles
-
-		for c1 in deps:
-			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda y : y.src == c3.tgt and y.tgt == c1.src, deps)):
-						cycles.append([c1, c2, c3, c4])
-
-		if max < 5: return cycles
-
-		for c1 in deps:
-			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
-						for c5 in list(filter(lambda y : y.src == c4.tgt and y.tgt == c1.src, deps)):
-							cycles.append([c1, c2, c3, c4, c5])
-
-		if max < 6: return cycles
-		
-		for c1 in deps:
-			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
-						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
-							for c6 in list(filter(lambda y : y.src == c5.tgt and y.tgt == c1.src, deps)):
-								cycles.append([c1, c2, c3, c4, c5, c6])
-
-		if max < 7: return cycles
-		
-		for c1 in deps:
-			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
-						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
-							for c6 in list(filter(lambda u : u.src == c5.tgt, deps)):
-								for c7 in list(filter(lambda y : y.src == c6.tgt and y.tgt == c1.src, deps)):
-									cycles.append([c1, c2, c3, c4, c5, c6, c7])
-
-		if max < 8: return cycles
-
-		for c1 in deps:
-			for c2 in list(filter(lambda w : w.src == c1.tgt, deps)):
-				for c3 in list(filter(lambda x : x.src == c2.tgt, deps)):
-					for c4 in list(filter(lambda z : z.src == c3.tgt, deps)):
-						for c5 in list(filter(lambda v : v.src == c4.tgt, deps)):
-							for c6 in list(filter(lambda u : u.src == c5.tgt, deps)):
-								for c7 in list(filter(lambda t : t.src == c6.tgt, deps)):
-									for c8 in list(filter(lambda y : y.src == c7.tgt and y.tgt == c1.src, deps)):
-										cycles.append([c1, c2, c3, c4, c5, c6, c7, c8])
-
-		if max < 9: return cycles
-
-
-	def get_actor_names(self):
-		ego = self.egoObject
-		ind_to_name = {}
-		for i in range(len(self.objects)):
-			o = self.objects[i]
-			oName = f'o{i}'
-			if o is ego:
-				oName = 'ego'
-			ind_to_name[i] = oName
-
-		return ind_to_name
-
-
-	def generateVeneerRequireConfig(self, sorted_constraints, path):
-		
-		# PosRel : Veneer
-		# DistRel : Veneer if hasAssociatedPosRel else require
-		# canSee : require
-
-		# Represenatability
-		# posRel cycles = NO
-		# canSee cycles = YES
-		# obj w/ multi dependencies = NO
-
-		### PREP
-
-		# Initialize relevant sets
-		removedCstrs = []
-		canSeeCstrs, posCstrs, distCstrs = sorted_constraints
-
-		# 1. handle cycles
-		cycles = self.findCycles(posCstrs)
-		# for x in cycles:
-		# 	print(x)
-
-		while cycles:
-			# find most common constraint
-			most_common = self.most_common_cstr(cycles)
-			# print(f'REMOVED: <{most_common}>')
-
-			#remove the most common constraint
-			posCstrs.remove(most_common)
-			removedCstrs.append(most_common)
-
-			#check if cycles are left
-			cycles = self.findCycles(posCstrs)
-
-			# for x in cycles:
-			# 	print(x)
-
-		# 2. find ordering
-		# print('------REMAINING------')
-		# for c in posCstrs:
-		# 	print(c)
-
-		ordering = self.find_ordering(posCstrs)
-		# print(f'ordering = {ordering}')
-		
-
-		# 3. handle objects w/ multiple dependencies
-		# print('------MULTI-DEP------')
-		for i in range(len(self.objects)):
-			deps = list(filter(lambda x : x.tgt == i, posCstrs))
-			# print(f'{i} = {deps}')
-			if len(deps) > 1:
-				numToDel = len(deps) - 1
-				for _ in range(numToDel):
-					itemToDel = random.choice(deps)
-					posCstrs.remove(itemToDel)
-					deps.remove(itemToDel)
-					removedCstrs.append(itemToDel)
-
-
-		# print(f'REMOVED ALL = {removedCstrs}')
-		
-		### START WRITING FILE
-		# At this stage, we have: canSee, posRel, distRel, removed Constraints
-
-		ind_to_name = self.get_actor_names()
-		filePath = f'{path}/d-sc1.scenic'
-		with open(filePath, "w") as f:
-			f.write(self.getParamMap())
-
-			### handle REMOVED constraints
-			if removedCstrs:
-				f.write('# The original abstract scenario is IRREPRESENTIBLE.\n')
-				f.write('# Thus we removed these constraints to make it representible\n')
-				f.write('param constraints = \" \\\n')
-				for c in removedCstrs:
-					f.write(f'{c} \\\n')
-				f.write('\"\n')
-
-			f.write('model scenic.simulators.carla.model\n')
-			f.write('\n')
-
-			### handle POSITION constraints + possibly DISTANCE
-
-			# initialise the actor
-			for i in ordering:
-				posDepsOfi = list(filter(lambda x : x.tgt == i, posCstrs))
-				if len(posDepsOfi) > 1:
-					raise Error('Some kind of cycle error!')
-
-				postext = ""
-				# Handle positions
-				if len(posDepsOfi) == 1:
-					posDep = posDepsOfi[0]
-					if posDep.type.value == 4:
-						direction = "left of"
-					if posDep.type.value == 5:
-						direction = "right of"
-					if posDep.type.value == 6:
-						direction = "behind"
-					if posDep.type.value == 7:
-						direction = "ahead of"
-					posCstrs.remove(posDep)
-
-					s = posDep.src
-					t = i
-
-					# Handle distances (if any)
-					distDeps = list(filter(lambda x : (x.src == s and x.tgt == t) or (x.src == t and x.tgt == s), distCstrs))
-					if len(distDeps) > 1:
-						raise Error('multiple distance constraints!!!')
-
-					lb, ub = 0, 50
-					if len(distDeps) == 1:
-						distDep = distDeps[0]					
-						if distDep.type.value == 8:
-							lb, ub = 0, 10
-						if distDep.type.value == 9:
-							lb, ub = 10, 20
-						if distDep.type.value == 10:
-							lb, ub = 20, 50
-						distCstrs.remove(distDep)
-
-					postext = f'{direction} {ind_to_name[s]} by Range({lb}, {ub}), '
-
-				# assign color
-				col = self.objects[i].color
-				if type(col) is Color:
-					col = [col.r, col.g, col.b]
-				f.write(f'{ind_to_name[i]} = Car {postext}with color{col}\n')
-
-			if posCstrs:
-				raise Error('Remaining position constraints!!')
-
-			f.write('\n')
-
-			### handle VISIBILITY constraints
-			for c in canSeeCstrs:
-				f.write(f'require {ind_to_name[c.src]} can see {ind_to_name[c.tgt]}\n')
-
-			### handle remaining DISTANCE constraints
-			for c in distCstrs:
-				src = ind_to_name[c.src]
-				tgt = ind_to_name[c.tgt]					
-				if c.type.value == 8:
-					f.write(f'require (distance from {src} to {tgt}) <= 10 \n')
-				if c.type.value == 9:
-					f.write(f'require 10 <= (distance from {src} to {tgt}) <= 20 \n')
-				if c.type.value == 10:
-					f.write(f'require 20 <= (distance from {src} to {tgt}) <= 50 \n')
-
-		print(f'  Saved ven-req config file at  {filePath}')
-		return [str(c) for c in removedCstrs]
-
-	def generateRegionOnlyConfig(self, allConstraints, path):
-		
-		# PosRel : Region
-		# DistRel : Region
-		# canSee : Region
-
-		# Represenatability
-		# posRel cycles = NO
-		# canSee cycles = NO
-		# obj w/ multi dependencies = YES
-
-		### PREP
-
-		# Initialize relevant sets
-		removedCstrs = []
-		
-		# 1. handle cycles
-		
-		cycles = self.findCycles(allConstraints)
-
-		while cycles:
-			# find most common constraint
-			most_common_src, most_common_tgt = self.most_common_pair(cycles)
-
-			#remove the most common constraint
-			toRemove = list(filter(lambda x : x.src == most_common_src and x.tgt == most_common_tgt, allConstraints))
-			for c in toRemove:
-				allConstraints.remove(c)
-				removedCstrs.append(c)
-
-			#check if cycles are left
-			cycles = self.findCycles(allConstraints)
-
-		# 2. find ordering
-		ordering = self.find_ordering(allConstraints)
-		
-		### START WRITING FILE
-		# At this stage, we have: canSee, posRel, distRel, removed Constraints
-		ind_to_name = self.get_actor_names()
-		filePath = f'{path}/d-sc3.scenic'
-		with open(filePath, "w") as f:
-			f.write(self.getParamMap())
-
-			### handle REMOVED constraints
-			if removedCstrs:
-				f.write('# The original abstract scenario is IRREPRESENTIBLE.\n')
-				f.write('# Thus we removed these constraints to make it representible\n')
-				f.write('param constraints = \" \\\n')
-				for c in removedCstrs:
-					f.write(f'{c} \\\n')
-				f.write('\"\n')
-
-			f.write('model scenic.simulators.carla.model\n')
-			f.write('\n')
-
-			### handle ALL constraints (as regions)
-
-			# initialise the actors
-			for i in ordering:
-				posDepsOfi = list(filter(lambda x : x.tgt == i, allConstraints))
-				reg = ""
-				# Handle positions
-				for d in posDepsOfi:
-					addIntersect = reg
-					if addIntersect:
-						reg += ".intersect("
-
-					s_name = ind_to_name[d.src]
-					if d.type.value == 3:
-						# CANSEE
-						reg += f'SectorRegion({s_name}, 50, {s_name}.heading, math.radians(22.5))'
-					if d.type.value == 4:
-						# HASTOLEFT
-						reg += f'SectorRegion({s_name}, 20, {s_name}.heading+(math.pi/2), math.atan(2.5/2))'
-					if d.type.value == 5:
-						# HASTORIGHT
-						reg += f'SectorRegion({s_name}, 20, {s_name}.heading-(math.pi/2), math.atan(2.5/2))'
-					if d.type.value == 6:
-						# HASBEHIND
-						reg += f'SectorRegion({s_name}, 50, {s_name}.heading+math.pi, math.atan(2/5))'
-					if d.type.value == 7:
-						# HASINFRONT
-						reg += f'SectorRegion({s_name}, 50, {s_name}.heading, math.atan(2/5))'
-					if d.type.value == 8:
-						# DISTCLOSE
-						reg += f'CircularRegion({s_name}, 10)'
-					if d.type.value == 9:
-						# DISTMED
-						reg += f'CircularRegion({s_name}, 20)'
-						if addIntersect : reg += ")"
-						reg += f'.difference(CircularRegion({s_name}, 10)'
-						if not addIntersect : reg += ")"
-					if d.type.value == 10:
-						# DISTFAR
-						reg += f'CircularRegion({s_name}, 50)'
-						if addIntersect : reg += ")"
-						reg += f'.difference(CircularRegion({s_name}, 20)'
-						if not addIntersect : reg += ")"
-					allConstraints.remove(d)
-					
-					if addIntersect:
-						reg += ")"
-			
-				if reg:
-					reg = f'in {reg}, '
-
-				# assign color
-				col = self.objects[i].color
-				if type(col) is Color:
-					col = [col.r, col.g, col.b]
-				f.write(f'{ind_to_name[i]} = Car {reg}with color{col}\n')
-
-			if allConstraints:
-				raise Error('Remaining constraints!!')
-
-		print(f'  Saved reg-onl config file at  {filePath}')
-		return [str(c) for c in removedCstrs]
-
-	def generateRegionRequireConfig(self, sorted_constraints, path):
-		
-		# PosRel : Region
-		# DistRel : require
-		# canSee : require
-
-		# Represenatability
-		# posRel cycles = NO
-		# canSee cycles = YES
-		# obj w/ multi dependencies = YES
-
-		### PREP
-
-		# Initialize relevant sets
-		removedCstrs = []
-		canSeeCstrs, posCstrs, distCstrs = sorted_constraints
-
-		# 1. handle cycles
-		cycles = self.findCycles(posCstrs)
-
-		while cycles:
-			# find most common constraint
-			most_common = self.most_common_cstr(cycles)
-
-			#remove the most common constraint
-			posCstrs.remove(most_common)
-			removedCstrs.append(most_common)
-
-			#check if cycles are left
-			cycles = self.findCycles(posCstrs)
-
-		# 2. find ordering
-		ordering = self.find_ordering(posCstrs)
-		
-		### START WRITING FILE
-		# At this stage, we have: canSee, posRel, distRel, removed Constraints
-		ind_to_name = self.get_actor_names()
-		filePath = f'{path}/d-sc2.scenic'
-		with open(filePath, "w") as f:
-			f.write(self.getParamMap())
-
-			### handle REMOVED constraints
-			if removedCstrs:
-				f.write('# The original abstract scenario is IRREPRESENTIBLE.\n')
-				f.write('# Thus we removed these constraints to make it representible\n')
-				f.write('param constraints = \" \\\n')
-				for c in removedCstrs:
-					f.write(f'{c} \\\n')
-				f.write('\"\n')
-
-			f.write('model scenic.simulators.carla.model\n')
-			f.write('\n')
-
-			### handle POSITION constraints (as regions)
-
-			# initialise the actors
-			for i in ordering:
-				posDepsOfi = list(filter(lambda x : x.tgt == i, posCstrs))
-				reg = ""
-
-				# Handle positions
-				for d in posDepsOfi:
-					addIntersect = reg
-					if addIntersect:
-						reg += ".intersect("
-
-					s_name = ind_to_name[d.src]
-					if d.type.value == 4:
-						# HASTOLEFT
-						reg += f'SectorRegion({s_name}, 20, {s_name}.heading+(math.pi/2), math.atan(2.5/2))'
-					if d.type.value == 5:
-						# HASTORIGHT
-						reg += f'SectorRegion({s_name}, 20, {s_name}.heading-(math.pi/2), math.atan(2.5/2))'
-					if d.type.value == 6:
-						# HASBEHIND
-						reg += f'SectorRegion({s_name}, 50, {s_name}.heading+math.pi, math.atan(2/5))'
-					if d.type.value == 7:
-						# HASINFRONT
-						reg += f'SectorRegion({s_name}, 50, {s_name}.heading, math.atan(2/5))'
-					posCstrs.remove(d)
-					
-					if addIntersect:
-						reg += ")"
-			
-				if reg:
-					reg = f'in {reg}, '
-
-				# assign color
-				col = self.objects[i].color
-				if type(col) is Color:
-					col = [col.r, col.g, col.b]
-				f.write(f'{ind_to_name[i]} = Car {reg}with color{col}\n')
-
-			if posCstrs:
-				raise Error('Remaining position constraints!!')
-
-			f.write('\n')
-
-			### handle VISIBILITY constraints
-			for c in canSeeCstrs:
-				f.write(f'require {ind_to_name[c.src]} can see {ind_to_name[c.tgt]}\n')
-
-			### handle remaining DISTANCE constraints
-			for c in distCstrs:
-				src = ind_to_name[c.src]
-				tgt = ind_to_name[c.tgt]					
-				if c.type.value == 8:
-					f.write(f'require (distance from {src} to {tgt}) <= 10 \n')
-				if c.type.value == 9:
-					f.write(f'require 10 <= (distance from {src} to {tgt}) <= 20 \n')
-				if c.type.value == 10:
-					f.write(f'require 20 <= (distance from {src} to {tgt}) <= 50 \n')
-
-		print(f'  Saved reg-req config file at  {filePath}')
-		return [str(c) for c in removedCstrs]
 
 
 class Scenario:
@@ -823,6 +151,7 @@ class Scenario:
 
 		self.handleIntersection(params)
 		self.actorIdsWithManeuver = {}
+		self.actorIdsSnappedToWayPoint = params.get('snapToWaypoint') if 'snapToWaypoint' in params else []
 
 	def  handleIntersection(self, params):
 		intersection_id = params.get('intersectiontesting')
@@ -830,7 +159,7 @@ class Scenario:
 			self.testedIntersection = None
 		else:
 			intersectionsWithId = list(filter(lambda x: x.id == intersection_id, self.network.intersections))
-			assert len(intersectionsWithId) == 1
+			assert len(intersectionsWithId) == 1, f"Invalid intersection id <{intersection_id}>. Select among the following ids {[x.id for x in self.network.intersections]}"
 			intersection =  intersectionsWithId[0]
 			self.testedIntersection = intersection
 			self.maneuverToLanes = {ManeuverType.RIGHT_TURN:[],
@@ -999,7 +328,7 @@ class Scenario:
 					aggFit = sortedFitness[i]
 					j = aggFit[-1]
 						
-					utils.fillSamplePostMHS(self, all_res[j])
+					utils.fillSample(self, all_res[j])
 					found = False
 					while not found:
 						try:
@@ -1025,7 +354,7 @@ class Scenario:
 							print(f'--Solution {i}--')
 							print(f'x = {tuple([round(e, 1) for e in all_res[i]])}')
 							print(f'f = {tuple([round(e, 1) for e in all_fit[i]])}')
-					utils.fillSamplePostMHS(self, all_res[i])
+					utils.fillSample(self, all_res[i])
 					found = False
 					while not found:
 						try:
@@ -1224,7 +553,7 @@ class Scenario:
 						hist_sol_f = [hist_sol_f]
 
 					for sol_id, historicSol in enumerate(hist_sol_x):
-						utils.fillSamplePostMHS(self, historicSol)
+						utils.fillSample(self, historicSol)
 						historicFs.append(hist_sol_f[sol_id])
 						found = False
 						while not found:

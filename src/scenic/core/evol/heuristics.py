@@ -3,6 +3,7 @@ from scenic.core.regions import EmptyRegion, PolygonalRegion, PolylineRegion
 from scenic.domains.driving.roads import Intersection, Lane, LaneSection, ManeuverType, _toVector
 from queue import Queue
 import scenic.core.evol.heuristics_utils as heu_utils
+import scenic.core.map.map_utils_definitive as map_utils
 
 MAXPATHLENGTH = 50
 ALLOWEDABSTRACTEDGETYPES = {'rd_straight', 'rd_lc_r', 'rd_lc_l', 'is_left', 'is_right', 'is_straight'}
@@ -221,7 +222,7 @@ def getAbstractPathGraph(actor, target_maneuver, scenario=None):
 
 def name2maneuverType(maneuverName):
     if maneuverName not in MANEUVERNAME2TYPE:
-        raise Exception(f'Unhandled maneuver type <{maneuverName}>')
+        raise Exception(f'Unhandled maneuver type <{maneuverName}>. Can only handle {MANEUVERNAME2TYPE.keys()}')
 
     return MANEUVERNAME2TYPE[maneuverName]
 
@@ -307,3 +308,34 @@ def heuristic_doingManeuver(actor, maneuver_name, scenario):
     heu_val = heu_utils.dist_center_to_container(actor, targetRegion)
 
     return heu_val
+
+
+###############################################
+def heuristic_collidingPaths(a1, a2, checkIfCollisionIsAhead=False): 
+
+    # TODO do a more fluid fitness value
+    # (based on whether a maneuver is associated to a given actor)
+    # (based on whether an object is snapped to Waypoint)
+
+    reg1 = a1.currentLane
+    reg2 = a2.currentLane
+
+    collision_reg, heu_val = map_utils.find_colliding_region(reg1, reg2)
+
+    if heu_val != 0:
+        return heu_val
+
+    # CASE 3: paths are colliding
+    if not checkIfCollisionIsAhead:
+        return 0
+    else:
+        # do some checks with the centerline
+        heu_val = 0
+
+        heu_val += 0 if  map_utils.is_collision_ahead(a1, collision_reg) else 0.5
+        heu_val += 0 if  map_utils.is_collision_ahead(a2, collision_reg) else 0.5
+
+        return heu_val
+
+# do timed without ahead? TODO
+

@@ -1,9 +1,11 @@
 
-from scenic.core.evol.map_utils import addAbstractPathsToMap, showLaneSections, visualizeAbstractGraphs
+from scenic.core.map.map_utils_archive import addAbstractPathsToMap
+from scenic.core.map.map_visualisation_utils import  showLaneSections, showPairwiseCollidingRegions, visualizeAbstractGraphs, zoomToIntersection
 from scenic.domains.driving.roads import _toVector, Intersection, Lane
 import matplotlib.pyplot as plt
 import networkx as nx
 from queue import Queue
+import scenic.core.printer.utils_concrete as printer_util
 
 PATHLENGTH = 0 # Adjustable
 
@@ -148,15 +150,23 @@ def findRoadInIntersection(actor, scene):
     assert len(current_connectingRoad) == 1, f'INVALID HEADING FOR {actor} ({len(current_connectingRoad)})'
     return current_connectingRoad[0]
 
+def findConnectingRoadByUid(uid, scene):
+    n = scene.workspace.network
+    return n.elements[uid]
+
 
 def handle_paths(scene, params, map_plt, includeLongPathToIntersection):
     # We are given moment-before-collision positions and orientations of each actor
 
     actor2graph = {}
     actor2nodes = {}
+    all_roads = []
     for actor in scene.objects:
         # 1. Determine current connectingRoad of each actor
-        currentRoad = findRoadInIntersection(actor, scene)
+        # currentRoad1 = findRoadInIntersection(actor, scene)
+        # currentRoad = actor.currentLane # NOT WORKING
+        currentRoad = findConnectingRoadByUid(actor.currentLane.uid, scene)
+        all_roads.append(currentRoad)
 
         if includeLongPathToIntersection:
             # 2. Create Graph of possible paths
@@ -175,11 +185,6 @@ def handle_paths(scene, params, map_plt, includeLongPathToIntersection):
             # 2 Get next road segment (target segment) and previous segment (source segment)
             actorPath = getPrevAndNext(currentRoad)
             actor2nodes[actor] = actorPath
-
-    if params['save_path']:
-        # TODO
-        # Pending what Balazs says is needed
-        print
         
     if params['view_path']:
 
@@ -189,12 +194,10 @@ def handle_paths(scene, params, map_plt, includeLongPathToIntersection):
         # Add dedicated path (not for now)
         # addAbstractPathsToMap(actor2path, actor2targetRegion, '-', map_plt)
 
+        # recompute and show collision regions
+        showPairwiseCollidingRegions(all_roads, plt)
+
         showLaneSections(scene, plt) # TODO will probably  end up as default
         # map_utils.highlightSpecificElement(self, plt, )
-        plt.show(block=True) # SHOWS THE FULL MAP # TODO TENTATIVE/TEMPORARY
+        zoomToIntersection(scene, plt)
         # visualizeAbstractGraphs(scene.egoObject, actor2graph, True)
-        exit
-        return
-
-    exit()
-    return 

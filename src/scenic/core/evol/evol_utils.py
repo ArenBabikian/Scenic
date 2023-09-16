@@ -15,20 +15,22 @@ from scenic.core.evol.geneticModAlgo import NSGA2MOD, NSGA3MOD, GAMOD
 import scenic.core.evol.heuristics as heu_utils
 from scenic.domains.driving.roads import _toVector
 
-def getMapBoundaries(params, num_obj):
+def getMapBoundaries(scenario, num_obj):
 
-    # TODO dynamically determine map borders based on coordinates
-    # TODO particularly relevant for intersections being tested
+    map_name = os.path.basename(scenario.params.get('map'))
+    bounds = [] # [loX, loY, hiX, hiY]
+    #if we are testing a specific intersection
+    if scenario.testedIntersection != None:
+        intersection = scenario.testedIntersection
+        aabb = intersection.getAABB()
+        bounds = [aabb[0][0], aabb[1][0], aabb[0][1], aabb[1][1]]
 
-    map_name = os.path.basename(params.get('map'))
-    bounds = []
-    # [loX, loY, hiX, hiY]
-    if map_name == "town02.xodr":
+    # if we are testing the entire map
+    # TODO we might be able to get rid of this entire by checking getAABB() of the network
+    elif map_name == "town02.xodr":
         bounds = [-15, -315, 200, -98]
-    if map_name == "town05.xodr":
-        # TENTATIVELY focus only on an intersection
+    elif map_name == "town05.xodr":
         bounds = [-31, -72, 71, 78]
-        bounds = [16, -13, 43, 13] # inside the intersection
     elif map_name == "town10HD.xodr":
         bounds = [-126, -151, 121, 80]
     elif map_name == "tram05.xodr":
@@ -152,21 +154,33 @@ def findClosestWaypoint(scenario, point, assignedManeuver=None):
 
     curDistToClosestPoint = float('inf')
     closestPoint = point
-    m, h = None, 0
+    m_region, h = None, 0
 
     for i, lane in enumerate(all_possible_lanes):
-        m = all_possible_maneuvers[i].type
+        man_type = all_possible_maneuvers[i].type
         cl = lane.centerline
         d = cl.distanceTo(point)
         # Assign best point
-        if d < curDistToClosestPoint and (assignedManeuver == None or assignedManeuver == m):
+        if d < curDistToClosestPoint and (assignedManeuver == None or assignedManeuver == man_type):
+            # position
             curDistToClosestPoint = d
             proj = cl.project(point)
             closestPoint = Vector(proj.x, proj.y)
+            # heading
             h_raw = lane.orientation[closestPoint]
             h = 0 if h_raw == None else h_raw
+            # maneuver
+            m_region = all_possible_maneuvers[i].connectingLane
+            
 
-    return closestPoint, m, h
+    return closestPoint, m_region, h
+
+
+def deriveLanePortionAhead(point, currentLane):
+    if currentLane == None:
+        return None
+    
+    # TODO
 
 
 def fillSample(scenario, coords):
@@ -184,8 +198,9 @@ def fillSample(scenario, coords):
             # (places position to closest waypoint, and assigns corresponding heading. If not on a lane, returns same point and heading 0)
             #     WAYPOINT,     MANEUVER
             # (places position to closest waypoint on lane which allows corresponding maneuevr, and assigns corresponding heading)
-            v, maneuver, heading = findClosestWaypoint(scenario, v, assignedManeuver)
+            v, currentLane, heading = findClosestWaypoint(scenario, v, assignedManeuver)
         else:
+            print('NO WAYPOINT')
             # (keep point as is)
             if assignedManeuver != None:
 
@@ -193,19 +208,33 @@ def fillSample(scenario, coords):
                 # (Default heading if in a positin where the assigned maneuever is not possible. Otherwise, assign the correct heading)
 
                 all_possible_maneuvers = scenario.testedIntersection.maneuversAt(v)
+                # lane_ifAssignedManeuverIsNotPossible = None if len(all_possible_maneuvers) == 0 \
+                #     else all_possible_maneuvers[0].connectingLane # MAY SAVE SOME TIME
                 all_possible_maneuvers[:] = [m for m in all_possible_maneuvers if m.type == assignedManeuver]
                 all_possible_orientations = [m.connectingLane.orientation[v] for m in all_possible_maneuvers]
+                all_possible_maneuver_regions = [m.connectingLane for m in all_possible_maneuvers]
 
-                heading  = scenario.network._defaultRoadDirection(v) if len(all_possible_orientations) == 0 \
-                    else all_possible_orientations[0]
+                if len(all_possible_orientations) == 0:
+                    # disect the implemntation of `scenario.network._defaultRoadDirection(v)`
+                    # currentLane = lane_ifAssignedManeuverIsNotPossible # MAY SAVE SOME TIME
+                    currentLane = scenario.network.roadAt(v)
+                    heading =  0 if currentLane is None else currentLane.orientation[v]
+                else:
+                    heading = all_possible_orientations[0]
+                    currentLane = all_possible_maneuver_regions[0]
 
             else:
                 # NOT WAYPOINT, NOT MANEUVER 
                 # (keep point as is, assigns default heading at point)
-                heading = scenario.network._defaultRoadDirection(v)
+                # currentLane = lane_ifAssignedManeuverIsNotPossible # MAY SAVE SOME TIME
+                currentLane = scenario.network.roadAt(v)
+                heading = 0 if currentLane is None else currentLane.orientation[v]
 
         vi.position = v
         vi.heading = heading
+        vi.currentLane = currentLane
+
+        currentLaneAhead = deriveLanePortionAhead(v, currentLane)
 
 
 def getHeuristic(scenario, x, constraints, con2id, exp):
@@ -229,44 +258,55 @@ def getHeuristic(scenario, x, constraints, con2id, exp):
             ### How far is the farthest corner of vi from a valid region that can contain it?
             container = scenario.network.drivableRegion
             heu_val = vi.containedHeuristic(container)
-        if c.type == Cstr_type.ONREGIONTYPE:
+        elif c.type == Cstr_type.ONREGIONTYPE:
             container = type2region(scenario, c.tgt, vi)
             heu_val = vi.containedHeuristic(container)
 
-        if c.type == Cstr_type.NOCOLLISION:
+        elif c.type == Cstr_type.NOCOLLISION:
             ### Are vi and vj intersecting?
             if vi.intersects(vj):
                 heu_val = 10
-        if c.type == Cstr_type.NOTONSAMEROAD:
+        elif c.type == Cstr_type.NOTONSAMEROAD:
             heu_val = heu_utils.heuristic_notOnSameRoad(scenario, vi, vj)
 
-        if c.type == Cstr_type.CANSEE:
+        elif c.type == Cstr_type.CANSEE:
             ### How far is vj from being visible wrt. to vi?
             heu_val = vi.canSeeHeuristic(vj)
 
-        if c.type == Cstr_type.HASTOLEFT:
+        elif c.type == Cstr_type.HASTOLEFT:
             heu_val = vi.toLeftHeuristic(vj)
-        if c.type == Cstr_type.HASTORIGHT:
+        elif c.type == Cstr_type.HASTORIGHT:
             heu_val = vi.toRightHeuristic(vj)
-        if c.type == Cstr_type.HASBEHIND:
+        elif c.type == Cstr_type.HASBEHIND:
             heu_val = vi.behindHeuristic(vj)
-        if c.type == Cstr_type.HASINFRONT:
+        elif c.type == Cstr_type.HASINFRONT:
             heu_val = vi.inFrontHeuristic(vj)
 
-        if c.type == Cstr_type.DISTCLOSE:
+        elif c.type == Cstr_type.DISTCLOSE:
             heu_val = vi.distCloseHeuristic(vj)
-        if c.type == Cstr_type.DISTMED:
+        elif c.type == Cstr_type.DISTMED:
             heu_val = vi.distMedHeuristic(vj)
-        if c.type == Cstr_type.DISTFAR:
+        elif c.type == Cstr_type.DISTFAR:
             heu_val = vi.distFarHeuristic(vj)
 
-        if c.type == Cstr_type.COLLIDESATMANEUVER:
+        elif c.type == Cstr_type.DOINGMANEUVER:
+            maneuver_name = c.tgt
+            heu_val = heu_utils.heuristic_doingManeuver(vi, maneuver_name, scenario)
+
+        elif c.type == Cstr_type.COLLIDINGPATHS:
+            heu_val = heu_utils.heuristic_collidingPaths(vi, vj)
+        elif c.type == Cstr_type.COLLIDINGPATHSAHEAD:
+            heu_val = heu_utils.heuristic_collidingPaths(vi, vj, checkIfCollisionIsAhead=True)
+        elif c.type == Cstr_type.COLLIDINGPATHSAHEADTIMED:
+            exit('not implemented')
+            heu_val = heu_utils.heuristic_collidingPaths(vi, vj, scenario)
+
+        elif c.type == Cstr_type.OLDCOLLIDESATMANEUVER:
             maneuver_name = c.tgt
             heu_val = heu_utils.heuristic_collidesAtManeuver(vi, maneuver_name, scenario)
 
-        if c.type == Cstr_type.DOINGMANEUVER:
-            maneuver_name = c.tgt
-            heu_val = heu_utils.heuristic_doingManeuver(vi, maneuver_name, scenario)
+        else:
+            exit(f'Constraint type {c.type} unhandled')
 
         obj_funcs[con2id[c_id]] += heu_val
 
@@ -281,7 +321,7 @@ def getProblem(scenario, constraints):
     tot_var = len(objects)*2
 
     # MAP BOUNDARIES
-    loBd, hiBd = getMapBoundaries(scenario.params, len(objects))
+    loBd, hiBd = getMapBoundaries(scenario, len(objects))
 
     # HANDLE CONSTRAINT CATEGORIZATION
     con2id, exp = handleConstraints(scenario, constraints)

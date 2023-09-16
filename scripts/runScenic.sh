@@ -8,7 +8,7 @@ PATHTOCONFIGFILE='measurements/data/tram05/2actors/2-0/d-nsga.scenic'
 PATHTOCONFIGFILE='examplesResearch/mapAbstraction/intersection.scenic' # town10HD
 # PATHTOCONFIGFILE='examplesResearch/mapAbstraction/testing.scenic' # town10HD
 PATHTOCONFIGFILE='examplesResearch/mapAbstraction/simpler_test.scenic' # town10HD
-PATHTOCONFIGFILE='examplesResearch/mapAbstraction/_mbc-simple.scenic' # town10HD
+PATHTOCONFIGFILE='examplesResearch/mapAbstraction/_mbc-simple-test.scenic' # town10HD
 USENSGA='True'
 # # PATHTOCONFIGFILE='examplesResearch/other/explore_map.scenic'
 # PATHTOCONFIGFILE='examplesResearch/mapAbstraction/exact-rd.scenic'
@@ -26,12 +26,12 @@ cmd="poetry run scenic \
 -p evol-restart-time -1 \
 -p evol-history shallow \
 -p no-validation True \
--p outputWS meas-temp \
+-p outputWS meas-Armenia \
 -p outputDir _output \
 -p viewImgs True \
--p saveImgs False \
--p saveFiles False \
--p viewPaths True \
+-p saveImgs True \
+-p saveFiles True \
+-p showPaths True \
 -p savePaths True \
 -p saveStats False \
 -p map maps/${MAPNAME}.xodr \
