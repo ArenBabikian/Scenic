@@ -49,7 +49,7 @@ def findPointInLane(lane):
     return start, end
 
 
-def savePathXml(scene, trajectories, path, longPaths=False):
+def old_savePathXml(scene, trajectories, path, longPaths=False):
     filePath = f'{path}/paths.xml'
 
     if longPaths:
@@ -65,16 +65,35 @@ def savePathXml(scene, trajectories, path, longPaths=False):
                 _, e = findPointInLane(trajectories[a][2])
                 f.write(f'{str(a)} >>> start{s}{sh}, current{c}, end{e}\n')
 
-def savePathXml(scene, filePath):
 
+def saveScenarioToXml(scene, filePath):
 
-    content = getScenarioDesc(scene)
     with open(filePath, "w") as f:
-        f.writelines(content)
-    print(f'  Saved path xml file at        {filePath}')
+        f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
+        f.write("<routes>\n")
+
+        scenario_description = getScenarioDesc(scene, 0)
+        f.writelines(scenario_description)
+        
+        f.write("</routes>\n")
+    print(f'  Saved dynamic scenario at     {filePath}')
 
 
-def getScenarioDesc(scene):
+def saveAllScenariosToXml(list_of_scenes, filePath):
+
+    with open(filePath, "w") as f:
+        f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
+        f.write("<routes>\n")
+
+        for i, scene in enumerate(list_of_scenes):
+            scenario_description = getScenarioDesc(scene, i)
+            f.writelines(scenario_description)
+        
+        f.write("</routes>\n")
+    print(f'  Saved all scenarios at        {filePath}')
+
+
+def getScenarioDesc(scene, route_id):
     '''
     <?xml version='1.0' encoding='UTF-8'?>
     <routes>
@@ -87,11 +106,8 @@ def getScenarioDesc(scene):
     </routes>
     '''
     # SETUP
-    route_id = 0 #TODO
-
     map_name = Path(scene.params.get('map')).stem
     town = FILE2TOWNNAME[map_name]
-
     intersection_id = scene.params.get('intersectiontesting')
 
     # Compute Timeout
@@ -100,11 +116,7 @@ def getScenarioDesc(scene):
     timeout = int(SECONDS_GIVEN_PER_METERS * route_length + INITIAL_SECONDS_DELAY)
 
     sc = []
-
-    sc.append("<?xml version='1.0' encoding='UTF-8'?>\n")
-    sc.append("<routes>\n")
     sc.append(f"    <route id='{route_id}' town='{town}' intersection_id='{intersection_id}' timeout='{timeout}'>\n")
-
     ego = scene.egoObject
     # Actor initializations
     for o in scene.objects:
@@ -140,9 +152,5 @@ def getScenarioDesc(scene):
     # WetNoon = WeatherParameters(cloudiness=20.000000, cloudiness=20.000000, precipitation=0.000000, precipitation_deposits=50.000000, wind_intensity=0.350000, sun_azimuth_angle=0.000000, sun_altitude_angle=75.000000, fog_density=0.000000, fog_distance=0.000000, fog_falloff=0.000000, wetness=0.000000)
     # WetSunset = WeatherParameters(cloudiness=20.000000, cloudiness=20.000000, precipitation=0.000000, precipitation_deposits=50.000000, wind_intensity=0.350000, sun_azimuth_angle=0.000000, sun_altitude_angle=15.000000, fog_density=0.000000, fog_distance=0.000000, fog_falloff=0.000000, wetness=0.000000)
 
-
-
-
     sc.append("    </route>\n")
-    sc.append("</routes>\n")
     return sc

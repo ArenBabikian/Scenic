@@ -5,20 +5,23 @@ from scenic.core.distributions import Samplable
 from scenic.core.evol.evol_utils import fillSample
 from scenic.core.map.map_utils_definitive import find_colliding_region
 from scenic.core.lazy_eval import needsLazyEvaluation
-from scenic.core.printer.utils_concrete import EGO_DIST_BEFORE_JUNC, savePathXml
-from scenic.core.regions import EmptyRegion, PolylineRegion
+from scenic.core.printer.utils_concrete import EGO_DIST_BEFORE_JUNC, saveAllScenariosToXml, saveScenarioToXml
+from scenic.core.regions import EmptyRegion
 from scenic.core.scenarios import Scene
 from scenic.core.vectors import Vector
 
 import shapely.geometry
 import shapely.ops
 import shapely.prepared
-from scenic.domains.driving.roads import ManeuverType
+from scenic.domains.driving.roads import Intersection, ManeuverType
 
 from scenic.figures.util import mk
 
 
 THRESHOLD = 1e-10
+LANE_WIDTH = 3.5
+CAR_LENGTH = 5
+ACCEL_TIME = 1
 
 SPEED_IN_JUNCTION = 3
 SPEED_OUT_JUNCTION = 4
@@ -91,10 +94,11 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
 
     print(f'We evaluate {len(all_tuples)} {global_depth}-tuples. {len(all_colliding_tuples)} of them are colliding.')
 
-    ############################
-    # GENERATE INITIAL POSITIONS
+    ######################################
+    # GENERATE SCENES + FURTHER VALIDATION
 
-    for i, colliding_tuple in enumerate(all_colliding_tuples[:]):
+    all_scenes = []
+    for i_sc, colliding_tuple in enumerate(all_colliding_tuples[:]):
         # HERE we have a tuple of colliding paths
         ego_man = colliding_tuple[0]
         ego_reg = ego_man.connectingLane
@@ -106,19 +110,31 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
         cl_starting = ego_starting_reg.centerline
         ego_strating_point = cl_starting.pointAlongBy(-EGO_DIST_BEFORE_JUNC)
 
-        # print(cl.length)
-        # print(cl.pointAlongBy(-10))
-        # print(cl.uniformPointInner())
-        # p = Vector(-52.64595333171398,-95.00531088611216)
-        # p_n = cl.project(p)
-        # print(p)
-        # print(p_n)
-        # print(cl.distanceTo(p_n))
-        # print(cl.containsPoint(p_n))
-        # exit()
-
         setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man.type)
         collision_reg = None
+
+        # HANDLE NON-EGO ACTORS
+        ranked_non_ego_by_dist_for_ego = []
+
+        for other_i, other_man in enumerate(colliding_tuple[1:]):
+            # HERE we have a pair of lanes that we are dealing with
+            other_reg = other_man.connectingLane
+
+            # Step 1: Find the COLLISION REGION
+            collision_reg, _ = find_colliding_region(ego_reg, other_reg)
+            assert collision_reg != EmptyRegion('')
+
+            # Step 2 (EGO): Find EGO distances to relevant points (distance is INSIDE junction)
+            d_e_entering, d_e_middle, d_e_exitting = find_dist_to_coll_reg(collision_reg, ego_reg)
+            
+            # Step 4 (OTHER): Find OTHER distances to relevant points (distance is INSIDE junction)
+            d_o_entering, d_o_middle, d_o_exitting = find_dist_to_coll_reg(collision_reg, other_reg)
+
+            ranked_non_ego_by_dist_for_ego.append({'id':other_i+1, 'dist_to_for_ego':d_e_entering, 'dist_in_for_non':d_o_exitting-d_o_entering})
+
+        ranked_non_ego_by_dist_for_ego.sort(key=lambda x:x['dist_to_for_ego'])
+
+        # KEEP GOING
 
         for other_i, other_man in enumerate(colliding_tuple[1:]):
             # HERE we have a pair of lanes that we are dealing with
@@ -139,9 +155,38 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
             # Step 4 (OTHER): Find OTHER distances to relevant points (distance is INSIDE junction)
             d_o_entering, d_o_middle, d_o_exitting = find_dist_to_coll_reg(collision_reg, other_reg)
 
-            # Step 5 (OTHER): Find OTHER position from required time
+            # STEP 5 (OTHER): is there another collision for ego on the way to this collision region
+            time_to_add = 0
+            for i_cur, stats_cur in enumerate(ranked_non_ego_by_dist_for_ego):
+                if stats_cur['id'] == other_i+1:
+                    # Reached the current collision. Finish handling time_to_add
+                    break
+                i_next = i_cur+1
+                if i_next == len(ranked_non_ego_by_dist_for_ego):
+                    # This should never happen. 
+                    # TODO This only becomes relevant for timeout calculation
+                    exit('Pas Fort Aren')
+                    # we have reached the final actor, we must add time for the current non_ego
+                    time_to_add += stats_cur['dist_in_for_non'] / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
+                    time_to_add += ACCEL_TIME # Accel times
+                else:
+                    stats_next = ranked_non_ego_by_dist_for_ego[i_next]
+                    if stats_next['dist_to_for_ego'] < stats_cur['dist_to_for_ego'] + LANE_WIDTH:
+                        # collision regions are almost overlapping. Ego handles this as one possible collision
+                        # We only add time for the further vehicle behavior
+                        print(f'WARNING: For Scenario {i_sc}, actors {stats_cur["id"]} and {stats_next["id"]} have overlapping collision regions')
+                        break 
+                    else:
+                        time_to_add += (stats_cur['dist_in_for_non'] + CAR_LENGTH) / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
+                        time_to_add += ACCEL_TIME # Accel times
+                        print(f'INNNNNNNNN for Scenario {i_sc}. adding {time_to_add}s')
+
+            # time_to_add = 0
+            t_e_to_relevant += time_to_add
+
+            # Step 6 (OTHER): Find OTHER position from required time
             d_o_relevant = d_o_entering # TODO
-            other_starting_point, other_starting_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg)
+            other_starting_point, other_starting_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg, intersection)
 
             # Step 6 (OTHER): Set up other actor
             setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type)
@@ -150,9 +195,40 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
         save_dir = mk(dirPath)
         scene = create_dummy_scene(scenario, None)
         
-        # SAVE XML
-        # savePathXml(scene, f'{save_dir}/paths.xml') # TODO temporarily removed
-        savePathXml(scene, f'{save_dir}{i}-paths.xml')
+        # FURTHER VALIDATION
+        positioning_problem = False
+        for i_ac, vi in enumerate(scene.objects):
+            for j_ac_raw, vj in enumerate(scene.objects[i_ac+1:]):
+                j_ac = i_ac+1+j_ac_raw
+
+                # VAL : non-egos should initially not overlap
+                if vi.intersects(vj):
+                    positioning_problem = True
+                    # positioning_problem = False
+                    # print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} are initially overlapping.')
+
+                # VAL : are non-ego paths overlapping?
+                if i_ac != 0:
+                    # avoid checking thiss for ego
+                    i_reg = colliding_tuple[i_ac].connectingLane
+                    j_reg = colliding_tuple[j_ac].connectingLane
+                    ij_coll_reg, _ = find_colliding_region(i_reg, j_reg)
+                    if ij_coll_reg != EmptyRegion(''):
+                        print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} have overlapping paths.')
+                        print()
+        
+        if not positioning_problem:
+            all_scenes.append(scene)
+        
+    print(f'From these {len(all_colliding_tuples)} colliding tuples, {len(all_scenes)} of them do not have initial-position problems.')
+
+    ###########################################
+    # FROM SCENES, GENERATE XMLSs and VISUALISE
+
+    for i_sc, scene in enumerate(all_scenes):
+
+        # SAVE individual XML
+        saveScenarioToXml(scene, f'{save_dir}{i_sc}-paths.xml')
         
         # VISUALISATION
         # save_dir = mk(f'{dirPath}{i}') # TODO temporarily removed
@@ -160,6 +236,9 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
                         'view_path':viewPath}
         if image_params['view_im']:
             scene.show(None, None, image_params, True,  collision_reg)
+
+    # SAVE into ONE XML
+    saveAllScenariosToXml(all_scenes, f'{save_dir}_all-paths.xml')
 
 
 def find_dist_to_coll_reg(collision_reg, actor_lane):
@@ -212,24 +291,58 @@ def find_dist_to_coll_reg(collision_reg, actor_lane):
 
 
 def find_time_to_relevant(d_in, d_out):
-    return d_in*SPEED_IN_JUNCTION + d_out*SPEED_OUT_JUNCTION
+    return d_in / SPEED_IN_JUNCTION + d_out / SPEED_OUT_JUNCTION
 
 
-def find_init_position(t_total, d_in_junction, lane):
+def find_init_position(t_total, d_in_junction, lane, testedIntersection):
 
-    t_for_full_in_junction = d_in_junction*SPEED_IN_JUNCTION
+    t_for_full_in_junction = d_in_junction / SPEED_IN_JUNCTION
     if t_for_full_in_junction >= t_total:
-        # vehicle will start inside the intersection
-        d_req_in_junction = t_total / SPEED_IN_JUNCTION
+        # VEHICLE WILL START INIDE THE INTERSECTION
+        d_req_in_junction = t_total * SPEED_IN_JUNCTION
         return lane.centerline.pointAlongBy(d_in_junction-d_req_in_junction), lane
     else:
-        # vehicle will start before the intersection
+        # VEHICLE WILL START BEFRE THE INTERSECTION
         t_before_junc = t_total-t_for_full_in_junction
-        d_before_junc = t_before_junc / SPEED_OUT_JUNCTION
+        d_before_junc = t_before_junc * SPEED_OUT_JUNCTION
 
         lane_before_junc = lane._predecessor
         reg_before_junc = lane_before_junc.sections[-1]
-        return reg_before_junc.centerline.pointAlongBy(-d_before_junc), lane_before_junc
+
+        if d_before_junc <= reg_before_junc.centerline.length:
+            return reg_before_junc.centerline.pointAlongBy(-d_before_junc), lane_before_junc
+        else:
+            # VEHICLE NEEDS TO START 2 ELEMENTS BEFORE INTERSECTION
+            d_before_before_junc = d_before_junc - reg_before_junc.centerline.length
+
+            if len(lane_before_junc.sections) > 1:
+                exit('NOT IMPLEMENTED 1')
+
+            lane_before_before_junc = lane_before_junc._predecessor
+            if lane_before_before_junc == None:
+                # this means that the before_before is a junction
+
+                road_before_junc = lane_before_junc.road
+                road_before_before_junc = road_before_junc._predecessor # this is an intersection
+                if road_before_before_junc == testedIntersection:
+                    road_before_before_junc = road_before_junc._successor
+                assert type(road_before_before_junc) == Intersection
+
+                # find the preceding straight road
+                condition = lambda man: man.type == ManeuverType.STRAIGHT and man.endLane == lane_before_junc
+                all_before_befores = [m.connectingLane for m in filter(condition, road_before_before_junc.maneuvers)]
+                # for m in road_before_before_junc.maneuvers:
+                #     print(m)
+                assert len(all_before_befores) == 1
+
+                lane_before_before_junc = all_before_befores[0]
+
+            # COMPUTE DISTANCE IN BEFORE BEFORE ELEMENT
+            if d_before_before_junc > lane_before_before_junc.centerline.length:
+                exit('NOT IMPLEMENTED 2')
+            
+            real_reg_before_before_junc = lane_before_before_junc.sections[-1]
+            return real_reg_before_before_junc.centerline.pointAlongBy(-d_before_before_junc), lane_before_before_junc
 
 
 def cleanedMultiLineString(ls):

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from scenic.formats.opendrive import xodr_parser
 from src.scenic.formats.opendrive.xodr_parser import Lane, Poly3
 
-colors = ['#000000',  '#0000EE', '#444444',]
+colors = ['#000000',  '#0000EE', '#0000EE', '#0000EE']
 
 class TwoWaySegment:
     def __init__(self, segment_region):
