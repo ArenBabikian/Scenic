@@ -226,8 +226,14 @@ try:
 
 
         # Static Analysis
+        if params.get('static-element-at') != None:
+            # TODO this is very temporary
+            pt = json.loads(params.get('static-element-at'))
+            elem = scenario.network.elementAt(pt)
+            print(elem)
+            exit()
         if params.get('static-analysis') == 'True':
-            doStaticAnalysis(scenario, p)
+            doStaticAnalysis(scenario, p, view_imgs, view_paths)
             exit()
 
         # Scenario generation

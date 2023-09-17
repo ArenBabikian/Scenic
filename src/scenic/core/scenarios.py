@@ -57,7 +57,7 @@ class Scene:
 		self.behaviorNamespaces = behaviorNamespaces
 		self.dynamicScenario = dynamicScenario
 
-	def show(self, zoom=None, dirPath=None, params=None, block=True, centerline=None):
+	def show(self, zoom=None, dirPath=None, params=None, block=True, region_to_show=None):
 		"""Render a schematic of the scene for debugging."""
 		import matplotlib.pyplot as plt
 		fig = plt.figure()
@@ -70,8 +70,8 @@ class Scene:
 			# print(self.workspace.network.nominalDirectionsAt(obj.position))
 			# print(obj.heading)
 
-		if centerline is not None:
-			centerline.show(plt, color='k')
+		if region_to_show is not None:
+			region_to_show.show(plt, color='k')
 
 		if params.get('view_path'):
 			import scenic.core.map.map_backwards_utils as map_utils
@@ -80,7 +80,7 @@ class Scene:
 			map_utils.handle_paths(self, params, plt, includeLongPathToIntersection=False)
 
 		# zoom in if requested
-		if zoom != None:
+		if zoom != None and zoom != 0:
 			if self.params.get('intersectiontesting') != None:
 				zoomToIntersection(self, plt)
 			else:

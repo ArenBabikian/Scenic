@@ -1,10 +1,15 @@
 import subprocess
 import sys
 
-intersections = {'town05':[207, 53]
-        } # zalaFullcrop
+intersections = {'town05':[2240],
+                 'town07':[169],
+                 'tram05-mod':[176]}
+# 'town05':[207] # Original one where testing was done
 
 actor_configs = [1, 2, 3, 4]
+
+view_im, view_path = True, True
+# view_im, view_path = False, False
 
 for m in intersections:
 
@@ -19,13 +24,12 @@ for m in intersections:
 
             # command.extend(['-p', 'no-validation', 'True'])
 
-            # command.extend(['-p', 'saveImgs', 'True'])
-            # command.extend(['-p', 'saveFiles', 'True'])
-            # command.extend(['-p', 'savePaths', 'True'])
-
             command.extend(['-p', 'static-analysis', 'True'])
             command.extend(['-p', 'static-num-actors', str(config)]) # TODO This may be removed down the line
             command.extend(['-p', 'intersectiontesting', f'{intersection}'])
+            
+            command.extend(['-p', 'viewImgs', str(view_im)])
+            command.extend(['-p', 'showPaths', str(view_path)])
 
             command.extend(['-p', 'map', f'maps/{m}.xodr'])
             command.append(f'fse/config/dummy{config}.scenic')
@@ -33,6 +37,6 @@ for m in intersections:
             
             p.wait()
             print()
-            exit()
+
             
 

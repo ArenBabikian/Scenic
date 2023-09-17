@@ -6,7 +6,9 @@ from scenic.simulators.carla.utils.utils import scenicToCarlaLocation, scenicToC
 from scenic.simulators.utils.colors import Color
 from pathlib import Path
 
-FILE2TOWNNAME = {'town05':'Town05'}
+FILE2TOWNNAME = {'town05':'Town05',
+                 'town07':'Town07',
+                 'tram05-mod':'Krisztina'}
 EGO_DIST_BEFORE_JUNC = 5
 SECONDS_GIVEN_PER_METERS = 0.8
 INITIAL_SECONDS_DELAY = 5.0
@@ -115,7 +117,7 @@ def getScenarioDesc(scene):
 
         else:
             # TODO speed is hard coded for now...
-            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{3}' maneuver='{man}' model='vehicle.tesla.model3'/>\n")
+            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{'transfuser'}' maneuver='{man}' model='vehicle.tesla.model3'/>\n")
 
     # sc.append("        <weather id='ClearSunset' cloudiness='20.000000' precipitation='0.000000' precipitation_deposits='50.000000' wind_intensity='0.350000' sun_azimuth_angle='90.000000' sun_altitude_angle='75.000000' fog_density='0.000000' fog_distance='0.000000' fog_falloff='0.000000' wetness='0.000000'/>\n")
     # Below iis the default weather for Town05

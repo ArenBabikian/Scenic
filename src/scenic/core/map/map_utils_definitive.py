@@ -22,9 +22,10 @@ def find_colliding_region(reg1, reg2):
     
     # CASE 2: overlap is a line
     aabb = collision_reg.getAABB()
-    aabbArea = (aabb[0][1] - aabb[0][0]) * (aabb[1][1] - aabb[1][0])
+    areaOverapprox = (aabb[0][1] - aabb[0][0]) * (aabb[1][1] - aabb[1][0])
+    areaOverapprox = sum(collision_reg.cumulativeTriangleAreas) # better area approximation
 
-    if aabbArea < SIZETHRESHOLD:
+    if areaOverapprox < SIZETHRESHOLD:
         # print('Adjacent)')
         return EmptyRegion(''), 1
     

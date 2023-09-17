@@ -20,7 +20,6 @@ from scenic.figures.util import mk
 
 THRESHOLD = 1e-10
 
-
 SPEED_IN_JUNCTION = 3
 SPEED_OUT_JUNCTION = 4
 
@@ -28,7 +27,7 @@ MANTYPE2ID = {ManeuverType.LEFT_TURN:'left',
               ManeuverType.RIGHT_TURN:'right',
               ManeuverType.STRAIGHT:'straight'}
 
-def doStaticAnalysis(scenario, dirPath):
+def doStaticAnalysis(scenario, dirPath, viewIm, viewPath):
 
     all_colliding_tuples = []
     all_tuples = []
@@ -90,12 +89,11 @@ def doStaticAnalysis(scenario, dirPath):
 
     recursiveForLoop(all_possible_maneuvers, global_depth, [])
 
-    # print(all_colliding_tuples[0])
-    # exit()
-
     print(f'We evaluate {len(all_tuples)} {global_depth}-tuples. {len(all_colliding_tuples)} of them are colliding.')
 
+    ############################
     # GENERATE INITIAL POSITIONS
+
     for i, colliding_tuple in enumerate(all_colliding_tuples[:]):
         # HERE we have a tuple of colliding paths
         ego_man = colliding_tuple[0]
@@ -120,6 +118,7 @@ def doStaticAnalysis(scenario, dirPath):
         # exit()
 
         setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man.type)
+        collision_reg = None
 
         for other_i, other_man in enumerate(colliding_tuple[1:]):
             # HERE we have a pair of lanes that we are dealing with
@@ -143,7 +142,7 @@ def doStaticAnalysis(scenario, dirPath):
             # Step 5 (OTHER): Find OTHER position from required time
             d_o_relevant = d_o_entering # TODO
             other_starting_point, other_starting_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg)
-            
+
             # Step 6 (OTHER): Set up other actor
             setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type)
 
@@ -157,9 +156,8 @@ def doStaticAnalysis(scenario, dirPath):
         
         # VISUALISATION
         # save_dir = mk(f'{dirPath}{i}') # TODO temporarily removed
-        image_params = {'save_im':False,
-                        'view_im':False,
-                        'view_path':True}
+        image_params = {'view_im':viewIm,
+                        'view_path':viewPath}
         if image_params['view_im']:
             scene.show(None, None, image_params, True,  collision_reg)
 
@@ -267,7 +265,7 @@ def cleanedMultiLineString(ls):
                 cur_lane.extend(l_next.coords[1:])
             else:
                 all_segs.append(shapely.geometry.LineString(cur_lane))
-                cur_lane = l_cur
+                cur_lane = list(l_cur.coords)
         
         all_segs.append(shapely.geometry.LineString(cur_lane))  
         new_mls = shapely.geometry.MultiLineString( all_segs )
