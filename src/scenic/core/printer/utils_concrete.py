@@ -9,9 +9,6 @@ from pathlib import Path
 FILE2TOWNNAME = {'town05':'Town05',
                  'town07':'Town07',
                  'tram05-mod':'Krisztina'}
-EGO_DIST_BEFORE_JUNC = 5
-SECONDS_GIVEN_PER_METERS = 0.8
-INITIAL_SECONDS_DELAY = 5.0
 
 #########################
 # EXACT SCENE
@@ -66,34 +63,35 @@ def old_savePathXml(scene, trajectories, path, longPaths=False):
                 f.write(f'{str(a)} >>> start{s}{sh}, current{c}, end{e}\n')
 
 
-def saveScenarioToXml(scene, filePath):
+def saveScenarioToXml(scene, filePath, timeout):
 
     with open(filePath, "w") as f:
         f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
         f.write("<routes>\n")
 
-        scenario_description = getScenarioDesc(scene, 0)
+        scenario_description = getScenarioDesc(scene, 0, timeout)
         f.writelines(scenario_description)
         
         f.write("</routes>\n")
     print(f'  Saved dynamic scenario at     {filePath}')
 
 
-def saveAllScenariosToXml(list_of_scenes, filePath):
+def saveAllScenariosToXml(list_of_scenes, filePath, all_timeouts):
 
     with open(filePath, "w") as f:
         f.write("<?xml version='1.0' encoding='UTF-8'?>\n")
         f.write("<routes>\n")
 
         for i, scene in enumerate(list_of_scenes):
-            scenario_description = getScenarioDesc(scene, i)
+            timeout = all_timeouts[i]
+            scenario_description = getScenarioDesc(scene, i, timeout)
             f.writelines(scenario_description)
         
         f.write("</routes>\n")
     print(f'  Saved all scenarios at        {filePath}')
 
 
-def getScenarioDesc(scene, route_id):
+def getScenarioDesc(scene, route_id, timeout):
     '''
     <?xml version='1.0' encoding='UTF-8'?>
     <routes>
@@ -109,11 +107,6 @@ def getScenarioDesc(scene, route_id):
     map_name = Path(scene.params.get('map')).stem
     town = FILE2TOWNNAME[map_name]
     intersection_id = scene.params.get('intersectiontesting')
-
-    # Compute Timeout
-    dist_in_junc = scene.objects[0].currentLane.centerline.length
-    route_length = EGO_DIST_BEFORE_JUNC+dist_in_junc+EGO_DIST_BEFORE_JUNC
-    timeout = int(SECONDS_GIVEN_PER_METERS * route_length + INITIAL_SECONDS_DELAY)
 
     sc = []
     sc.append(f"    <route id='{route_id}' town='{town}' intersection_id='{intersection_id}' timeout='{timeout}'>\n")

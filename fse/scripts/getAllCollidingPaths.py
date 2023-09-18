@@ -10,6 +10,7 @@ actor_configs = [1, 2, 3, 4]
 
 view_im, view_path = True, True
 # view_im, view_path = False, False
+save_path = True
 
 for m in intersections:
 
@@ -30,6 +31,7 @@ for m in intersections:
             
             command.extend(['-p', 'viewImgs', str(view_im)])
             command.extend(['-p', 'showPaths', str(view_path)])
+            command.extend(['-p', 'savePaths', str(save_path)])
 
             command.extend(['-p', 'map', f'maps/{m}.xodr'])
             command.append(f'fse/config/dummy{config}.scenic')

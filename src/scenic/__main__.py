@@ -233,7 +233,7 @@ try:
             print(elem)
             exit()
         if params.get('static-analysis') == 'True':
-            doStaticAnalysis(scenario, p, view_imgs, view_paths)
+            doStaticAnalysis(scenario, p, view_imgs, view_paths, save_paths)
             exit()
 
         # Scenario generation
