@@ -121,7 +121,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
         cl_starting = ego_starting_reg.centerline
         ego_strating_point = cl_starting.pointAlongBy(-EGO_DIST_BEFORE_JUNC)
 
-        setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man.type)
+        setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man.type, None, None)
 
         # INITIAL MEASUREMENTS TO SEE WHICH COLLISION HAPPENS WHEN
         collision_reg = None
@@ -172,10 +172,14 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             d_o_entering, d_o_middle, d_o_exitting = find_dist_to_coll_reg(collision_reg, other_reg)
 
             # STEP 5 (OTHER): is there another collision for ego on the way to this collision region
-            time_to_add = 0
+            time_to_add_to_ego = 0
+            # time_to_add_to_ego = [0 for _ in range(global_depth)]
+            seen_collisinos = []
             for i_cur, stats_cur in enumerate(ranked_non_ego_by_dist_for_ego):
+                # This goes through all non-egos (that collide with ego, which is all non-ego)
+                # in order, from closest to ego_start, to furthest fromm ego_start
                 if stats_cur['id'] == other_i+1:
-                    # Reached the current collision. Finish handling time_to_add
+                    # Reached the current collision. Finish handling time_to_add_to_ego
                     break
                 i_next = i_cur+1
                 if i_next == len(ranked_non_ego_by_dist_for_ego):
@@ -183,30 +187,47 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
                     # TODO This only becomes relevant for timeout calculation
                     exit('Pas Fort Aren')
                     # we have reached the final actor, we must add time for the current non_ego
-                    time_to_add += stats_cur['dist_in_for_non'] / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
-                    time_to_add += ACCEL_TIME # Accel times
+                    time_to_add_to_ego += stats_cur['dist_in_for_non'] / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
+                    time_to_add_to_ego += ACCEL_TIME # Accel times
                 else:
                     stats_next = ranked_non_ego_by_dist_for_ego[i_next]
                     if stats_next['dist_to_for_ego'] < stats_cur['dist_to_for_ego'] + LANE_WIDTH:
+                        # TWO NON-EGO VEHICLES ARE COLLIDING ON THE PATH OF EGO
+                        # Solution:
+                        # nonego_a passes first
+                        # non_ego_b (who waited for non_ego_a) passes second
+                        # ego (who waited for non_ego_a and non_ego_b) passes third
                         # collision regions are almost overlapping. Ego handles this as one possible collision
                         # We only add time for the further vehicle behavior
                         print(f'NOTE:    For Scenario {i_sc}, actors {stats_cur["id"]} and {stats_next["id"]} have overlapping collision regions')
+
+
+
+                        # colliding_pair = (stats_cur["id"], stats_next["id"])
+                        # if colliding_pair not in seen_collisinos:
+                        #     return
+
+
+                        
+                        # TODO Handle overlaops between ego and non-ego HERE
+                        # change non-eg opath to make one of the
+                        
                         break 
                     else:
-                        time_to_add += (stats_cur['dist_in_for_non'] + CAR_LENGTH) / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
-                        time_to_add += ACCEL_TIME # Accel times
+                        time_to_add_to_ego += (stats_cur['dist_in_for_non'] + CAR_LENGTH) / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
+                        time_to_add_to_ego += ACCEL_TIME # Accel times
 
-            # time_to_add = 0
-            t_e_to_relevant += time_to_add
-            total_added_time += time_to_add
+            # time_to_add_to_ego = 0
+            t_e_to_relevant += time_to_add_to_ego
+            total_added_time += time_to_add_to_ego
 
             # Step 6 (OTHER): Find OTHER position from required time
             # NOTE we select NON_EGO_MIDDLE point
             d_o_relevant = d_o_middle
-            other_starting_point, other_starting_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg, intersection)
+            other_starting_point, other_starting_reg, other_pre_junc_point, other_pre_junc_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg, intersection)
 
             # Step 6 (OTHER): Set up other actor
-            setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type)
+            setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type, other_pre_junc_point, other_pre_junc_reg)
 
         # CREATE SCENE
         save_dir = mk(dirPath)
@@ -221,7 +242,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
                 # VAL : non-egos should initially not overlap
                 if vi.intersects(vj):
                     positioning_problem = True
-                    # print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} are initially overlapping.')
+                    print(f'WARNING: SCENARIO {i_sc} VOIDED, actors {i_ac} and {j_ac} are initially overlapping.')
 
                 # VAL : are non-ego paths overlapping?
                 if i_ac != 0:
@@ -229,8 +250,8 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
                     i_reg = colliding_tuple[i_ac].connectingLane
                     j_reg = colliding_tuple[j_ac].connectingLane
                     ij_coll_reg, _ = find_colliding_region(i_reg, j_reg)
-                    if ij_coll_reg != EmptyRegion(''):
-                        print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} have overlapping paths.')
+                    # if ij_coll_reg != EmptyRegion(''):
+                    #     print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} have overlapping paths.')
         
         # ADD SCENE TO DEFINITIVE LIST
         if not positioning_problem:
@@ -333,14 +354,24 @@ def find_time_to_relevant(d_in, d_out):
 
 
 def find_init_position(t_total, d_in_junction, lane, testedIntersection):
+    '''
+    Returns (initial position, initial lane, point before junction (if inital point is in junc), lane before junction (if inital point is in junc)
+    '''
 
     t_for_full_in_junction = d_in_junction / SPEED_IN_JUNCTION
     if t_for_full_in_junction >= t_total:
         # VEHICLE WILL START INIDE THE INTERSECTION
         d_req_in_junction = t_total * SPEED_IN_JUNCTION
-        return lane.centerline.pointAlongBy(d_in_junction-d_req_in_junction), lane
+        starting_pos = lane.centerline.pointAlongBy(d_in_junction-d_req_in_junction)
+
+        lane_before_junc = lane._predecessor
+        reg_before_junc = lane_before_junc.sections[-1]
+        pre_junc_pos = reg_before_junc.centerline.pointAlongBy(-1)
+        
+        return starting_pos, lane, pre_junc_pos, lane_before_junc
     else:
         # VEHICLE WILL START BEFRE THE INTERSECTION
+        # TODO do this recursively
         t_before_junc = t_total-t_for_full_in_junction
         d_before_junc = t_before_junc * SPEED_OUT_JUNCTION
 
@@ -348,7 +379,8 @@ def find_init_position(t_total, d_in_junction, lane, testedIntersection):
         reg_before_junc = lane_before_junc.sections[-1]
 
         if d_before_junc <= reg_before_junc.centerline.length:
-            return reg_before_junc.centerline.pointAlongBy(-d_before_junc), lane_before_junc
+            starting_pos = reg_before_junc.centerline.pointAlongBy(-d_before_junc)
+            return starting_pos, lane_before_junc, None, None
         else:
             # VEHICLE NEEDS TO START 2 ELEMENTS BEFORE INTERSECTION
             d_before_before_junc = d_before_junc - reg_before_junc.centerline.length
@@ -371,7 +403,7 @@ def find_init_position(t_total, d_in_junction, lane, testedIntersection):
                 all_before_befores = [m.connectingLane for m in filter(condition, road_before_before_junc.maneuvers)]
                 # for m in road_before_before_junc.maneuvers:
                 #     print(m)
-                assert len(all_before_befores) == 1
+                assert len(all_before_befores) == 1, print(f'found {len(all_before_befores)} lanes')
 
                 lane_before_before_junc = all_before_befores[0]
 
@@ -380,7 +412,8 @@ def find_init_position(t_total, d_in_junction, lane, testedIntersection):
                 exit('NOT IMPLEMENTED 2')
             
             real_reg_before_before_junc = lane_before_before_junc.sections[-1]
-            return real_reg_before_before_junc.centerline.pointAlongBy(-d_before_before_junc), lane_before_before_junc
+            starting_pos = real_reg_before_before_junc.centerline.pointAlongBy(-d_before_before_junc)
+            return starting_pos, lane_before_before_junc, None, None
 
 
 def cleanedMultiLineString(ls):
@@ -424,7 +457,7 @@ def cleanedMultiLineString(ls):
     return new_mls
 
 
-def setup_actor(vi, pos, lane, coll_lane, maneuver_type):
+def setup_actor(vi, pos, lane, coll_lane, maneuver_type, pre_junc_pos, pre_junc_lane):
     vec = Vector(pos[0], pos[1])
     head = lane.orientation[pos]
 
@@ -432,7 +465,9 @@ def setup_actor(vi, pos, lane, coll_lane, maneuver_type):
     vi.heading = head
     vi.currentLane = coll_lane
     vi.maneuverType = MANTYPE2ID[maneuver_type]
-    return
+    if pre_junc_pos != None:
+        vi.pre_junc_position = Vector(pre_junc_pos[0], pre_junc_pos[1])
+        vi.pre_junc_heading = pre_junc_lane.orientation[pre_junc_pos]
 
 
 def create_dummy_scene(scenario, positions):

@@ -1,6 +1,7 @@
 
 import networkx as nx
 import matplotlib.pyplot as plt
+from scenic.core.regions import EmptyRegion
 
 
 def visualizeAbstractGraphs(actor, graphMap, addLabels):
@@ -35,7 +36,10 @@ def showLaneSections(scene, map_plt):
 def showPairwiseCollidingRegions(all_roads, map_plt):
     for i, roadi in enumerate(all_roads):
         for roadj in all_roads[i+1:]:
-            collidingRegion = roadi.intersect(roadj)
+            try:
+                collidingRegion = roadi.intersect(roadj)
+            except:
+                collidingRegion = EmptyRegion('')
             collidingRegion.show(map_plt, style='-', color='y')
 
 

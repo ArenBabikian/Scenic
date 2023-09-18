@@ -258,6 +258,8 @@ class Vehicle(DrivingObject):
     currentLane: None
     currentLaneAhead: None
     maneuverType: None
+    pre_junc_position: None
+    pre_junc_heading: None
 
 class Car(Vehicle):
     """A car."""

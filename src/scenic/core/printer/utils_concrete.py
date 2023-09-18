@@ -97,8 +97,8 @@ def getScenarioDesc(scene, route_id, timeout):
     <routes>
         <route id="0" town="Town05" intersection_id="1574" timeout="20">
                 <waypoint x="-50.85" y="65.75" z="0.0" maneuver='left'/>
-                <other_actor x="-10.33" y="88.02" z="0.0" yaw="180" speed="15" maneuver='left' model="vehicle.tesla.model3"/>
-                <other_actor x="-68.11" y="94.96" z="0.0" yaw="0" speed="20" maneuver='right' model="vehicle.tesla.model3"/>
+                <other_actor x="-10.33" y="88.02" z="0.0" yaw="180" speed="15" maneuver='left' model="vehicle.tesla.model3" pre_x='0' pre_y="0"/>
+                <other_actor x="-68.11" y="94.96" z="0.0" yaw="0" speed="20" maneuver='right' model="vehicle.tesla.model3" pre_x='0' pre_y="0"/>
                 <weather id="ClearSunset" cloudiness="20.000000" precipitation="0.000000" precipitation_deposits="50.000000" wind_intensity="0.350000" sun_azimuth_angle="90.000000" sun_altitude_angle="75.000000" fog_density="0.000000" fog_distance="0.000000" fog_falloff="0.000000" wetness="0.000000"/>
         </route>
     </routes>
@@ -119,15 +119,20 @@ def getScenarioDesc(scene, route_id, timeout):
 
         if o is ego:
             sc.append(f"        <waypoint x='{pos.x}' y='{pos.y}' z='0.0' maneuver='{man}'/>\n")
-
         else:
             # TODO speed is hard coded for now...
-            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{'transfuser'}' maneuver='{man}' model='vehicle.tesla.model3'/>\n")
+            if o.pre_junc_position == None:
+                pre_junc_pos = pos
+                pre_junc_rot = rot
+            else:
+                pre_junc_pos = scenicToCarlaLocation(o.pre_junc_position, 0.0)
+                pre_junc_rot = scenicToCarlaRotation(o.pre_junc_heading)
+
+            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{'transfuser'}' maneuver='{man}' model='vehicle.tesla.model3' pre_x='{pre_junc_pos.x}' pre_y='{pre_junc_pos.y}' pre_yaw='{pre_junc_rot.yaw}'/>\n")
 
     # sc.append("        <weather id='ClearSunset' cloudiness='20.000000' precipitation='0.000000' precipitation_deposits='50.000000' wind_intensity='0.350000' sun_azimuth_angle='90.000000' sun_altitude_angle='75.000000' fog_density='0.000000' fog_distance='0.000000' fog_falloff='0.000000' wetness='0.000000'/>\n")
     # Below iis the default weather for Town05
     sc.append("        <weather id='Custom' cloudiness='10.000000' precipitation='0.000000' precipitation_deposits='0.000000' wind_intensity='5.000000' sun_azimuth_angle='170.000000' sun_altitude_angle='30.000000' fog_density='10.000000' fog_distance='75.000000' fog_falloff='0.900000' wetness='0.000000'/>\n")
-
     # CARLA WEATHER PRESETS
     # ClearNoon = WeatherParameters(cloudiness=15.000000, cloudiness=15.000000, precipitation=0.000000, precipitation_deposits=0.000000, wind_intensity=0.350000, sun_azimuth_angle=0.000000, sun_altitude_angle=75.000000, fog_density=0.000000, fog_distance=0.000000, fog_falloff=0.000000, wetness=0.000000)
     # ClearSunset = WeatherParameters(cloudiness=15.000000, cloudiness=15.000000, precipitation=0.000000, precipitation_deposits=0.000000, wind_intensity=0.350000, sun_azimuth_angle=0.000000, sun_altitude_angle=15.000000, fog_density=0.000000, fog_distance=0.000000, fog_falloff=0.000000, wetness=0.000000)
