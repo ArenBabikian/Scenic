@@ -80,7 +80,6 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
                 if len(tuple) > 1 and tuple[-1][1] >= maneuver_id:
                     # CONSTRAINT 3: All non-ego paths must be distinct (and no permutations)
                     continue 
-                # TODO? CONSTRAINT 4: Nonego cars should not be starting on the same road
 
                 tuple.append((man, maneuver_id))
                 recursiveForLoop(maneuvers, depth-1, tuple)
@@ -127,7 +126,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
         collision_reg = None
         ranked_non_ego_by_dist_for_ego = []
         for other_i, other_man in enumerate(colliding_tuple[1:]):
-            # HERE we have a pair of lanes that we are dealing with
+            # HERE we have a tuple of lanes that we are dealing with
             other_reg = other_man.connectingLane
 
             # Step 1: Find the COLLISION REGION
@@ -144,15 +143,44 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             # (1) id of corresponding non_ego vehicle
             # (2) distance for ego from start of intersection to start of collision zone (where it woill wait)
             # (3) distance the non-ego will traverse while ego is waiting
-            ranked_non_ego_by_dist_for_ego.append({'id':other_i+1, 'dist_to_for_ego':d_e_en, 'dist_in_for_non':d_o_ex-d_o_mi})
+            ranked_non_ego_by_dist_for_ego.append({'id':other_i+1, 'dist_to_for_ego':d_e_en, 'dist_in_for_non':d_o_ex-d_o_mi, 'time_to_add':0})
 
         ranked_non_ego_by_dist_for_ego.sort(key=lambda x:x['dist_to_for_ego'])
 
+        def calculate_time_for_man(dist_in_collision_region):
+            # TODO potentially improve this
+            # TODO potentially modify the calculation if collision regions are overlapping
+            time_for_prev_man = (dist_in_collision_region + CAR_LENGTH) / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
+            return time_for_prev_man + ACCEL_TIME
+
+
+        # DETERMINE HOW MUCH TIME TO ADD TO ENSURE ALL THE COLLISIONS HAPPEN...
+        # ...and that non-egos wont collide with each other, at least not  on the path of ego
+        for i_cur, stats_cur in enumerate(ranked_non_ego_by_dist_for_ego):
+            if i_cur == 0:
+                continue
+
+            i_prev = i_cur-1
+            stats_prev = ranked_non_ego_by_dist_for_ego[i_prev]
+            prev_time_to_add = stats_prev['time_to_add']
+
+            time_to_add_to_non_ego = calculate_time_for_man(stats_prev['dist_in_for_non'])
+            new_time_to_add = prev_time_to_add + time_to_add_to_non_ego
+            stats_cur['time_to_add'] = new_time_to_add
+
+        # how much time to add to the ego timeout measurement
+        ego_time_to_add = 0
+        if len(ranked_non_ego_by_dist_for_ego) >= 1:
+            stats_last = ranked_non_ego_by_dist_for_ego[-1]
+            last_time_to_add = stats_last['time_to_add']
+
+            time_to_add_for_last_man = calculate_time_for_man(stats_last['dist_in_for_non'])
+            ego_time_to_add = last_time_to_add + time_to_add_for_last_man
+
         # HANDLE NON-EGO ACTORS
         collision_reg = None
-        total_added_time = 0
         for other_i, other_man in enumerate(colliding_tuple[1:]):
-            # HERE we have a pair of lanes that we are dealing with
+            # HERE we have a non_ego vehicle we are focussing on
             other_reg = other_man.connectingLane
 
             # Step 1: Find the COLLISION REGION
@@ -164,69 +192,28 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             d_e_entering, d_e_middle, d_e_exitting = find_dist_to_coll_reg(collision_reg, ego_reg)
 
             # Step 3 (EGO): Find EGO time to the interesting point
-            d_e_relevant = d_e_entering # TODO
-            # TODO be dynamic in EGO_DIST_BEFORE_JUNC
+            d_e_relevant = d_e_entering
             t_e_to_relevant = find_time_to_relevant(d_e_relevant, EGO_DIST_BEFORE_JUNC)
 
-            # Step 4 (OTHER): Find OTHER distances to relevant points (distance is INSIDE junction)
+            # NOTE: the non_ego should reach the point_of_interest at the same time as ego reaches the point of interest (i.e. in t_e_to_relevant time) 
+            # STEP 4 (OTHER) : find time to add due to other collision regions on the way 
+            time_to_add_list = [ stats['time_to_add'] for stats in filter(lambda non_ego_stats: non_ego_stats['id'] == other_i+1, ranked_non_ego_by_dist_for_ego)]
+            assert len(time_to_add_list) == 1
+            time_to_add_new = time_to_add_list[0] # to consider delays caused by previously occured collisions
+            t_o_to_relevant = t_e_to_relevant + time_to_add_new
+
+            # Step 5 (OTHER): Find OTHER distances to relevant points (distance is INSIDE junction)
             d_o_entering, d_o_middle, d_o_exitting = find_dist_to_coll_reg(collision_reg, other_reg)
 
-            # STEP 5 (OTHER): is there another collision for ego on the way to this collision region
-            time_to_add_to_ego = 0
-            # time_to_add_to_ego = [0 for _ in range(global_depth)]
-            seen_collisinos = []
-            for i_cur, stats_cur in enumerate(ranked_non_ego_by_dist_for_ego):
-                # This goes through all non-egos (that collide with ego, which is all non-ego)
-                # in order, from closest to ego_start, to furthest fromm ego_start
-                if stats_cur['id'] == other_i+1:
-                    # Reached the current collision. Finish handling time_to_add_to_ego
-                    break
-                i_next = i_cur+1
-                if i_next == len(ranked_non_ego_by_dist_for_ego):
-                    # This should never happen. 
-                    # TODO This only becomes relevant for timeout calculation
-                    exit('Pas Fort Aren')
-                    # we have reached the final actor, we must add time for the current non_ego
-                    time_to_add_to_ego += stats_cur['dist_in_for_non'] / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
-                    time_to_add_to_ego += ACCEL_TIME # Accel times
-                else:
-                    stats_next = ranked_non_ego_by_dist_for_ego[i_next]
-                    if stats_next['dist_to_for_ego'] < stats_cur['dist_to_for_ego'] + LANE_WIDTH:
-                        # TWO NON-EGO VEHICLES ARE COLLIDING ON THE PATH OF EGO
-                        # Solution:
-                        # nonego_a passes first
-                        # non_ego_b (who waited for non_ego_a) passes second
-                        # ego (who waited for non_ego_a and non_ego_b) passes third
-                        # collision regions are almost overlapping. Ego handles this as one possible collision
-                        # We only add time for the further vehicle behavior
-                        print(f'NOTE:    For Scenario {i_sc}, actors {stats_cur["id"]} and {stats_next["id"]} have overlapping collision regions')
+            # Step 6 (OTHER) : Select relevant point
+            # NOTE we select NON_EGO_MIDDLE point, unless NON_EGO is performing a right turn, in which case, we select NON_EGO_EXITTING
+            # TODO maybe only do this if ego is going straight?
+            d_o_relevant = d_o_exitting if other_man.type == ManeuverType.RIGHT_TURN else d_o_middle
 
+            # Step 7 (OTHER) : Find OTHER position from required time
+            other_starting_point, other_starting_reg, other_pre_junc_point, other_pre_junc_reg = find_init_position(t_o_to_relevant, d_o_relevant, other_reg, intersection)
 
-
-                        # colliding_pair = (stats_cur["id"], stats_next["id"])
-                        # if colliding_pair not in seen_collisinos:
-                        #     return
-
-
-                        
-                        # TODO Handle overlaops between ego and non-ego HERE
-                        # change non-eg opath to make one of the
-                        
-                        break 
-                    else:
-                        time_to_add_to_ego += (stats_cur['dist_in_for_non'] + CAR_LENGTH) / SPEED_IN_JUNCTION # time for non-ego to finish maneuver (ego decels during this time)
-                        time_to_add_to_ego += ACCEL_TIME # Accel times
-
-            # time_to_add_to_ego = 0
-            t_e_to_relevant += time_to_add_to_ego
-            total_added_time += time_to_add_to_ego
-
-            # Step 6 (OTHER): Find OTHER position from required time
-            # NOTE we select NON_EGO_MIDDLE point
-            d_o_relevant = d_o_middle
-            other_starting_point, other_starting_reg, other_pre_junc_point, other_pre_junc_reg = find_init_position(t_e_to_relevant, d_o_relevant, other_reg, intersection)
-
-            # Step 6 (OTHER): Set up other actor
+            # Step 7 (OTHER): Set up other actor
             setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type, other_pre_junc_point, other_pre_junc_reg)
 
         # CREATE SCENE
@@ -258,7 +245,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             all_scenes.append(scene)
 
         # HANDLE TIMEOUT
-        timeout = calculate_timeout(ego_reg, total_added_time)
+        timeout = calculate_timeout(ego_reg, ego_time_to_add)
         all_timeouts.append(timeout)
 
     print(f'From these {len(all_colliding_tuples)} colliding tuples, {len(all_scenes)} of them do not have initial-position problems.')
@@ -272,7 +259,6 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             saveScenarioToXml(scene, f'{save_dir}{i_sc}-paths.xml', all_timeouts[i_sc])
         
         # VISUALISATION
-        # save_dir = mk(f'{dirPath}{i}') # TODO temporarily removed
         image_params = {'view_im':viewIm,
                         'view_path':viewPath}
         if image_params['view_im']:
@@ -283,28 +269,25 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
         saveAllScenariosToXml(all_scenes, f'{save_dir}_all-paths.xml', all_timeouts)
 
 
-def calculate_timeout(ego_reg, total_added_time):
-
+def calculate_timeout(ego_reg, t_added_for_collisions):
     # Archive
     # dist_in_junc = ego_reg.centerline.length
     # route_length = EGO_DIST_BEFORE_JUNC+dist_in_junc+EGO_DIST_BEFORE_JUNC
     # timeout = int(SECONDS_GIVEN_PER_METERS * route_length + INITIAL_SECONDS_DELAY)
 
     dist_in_junc = ego_reg.centerline.length
-    given_t_in_junc = TIME_MULTIPLER * dist_in_junc / SPEED_IN_JUNCTION
+    t_in_junc = dist_in_junc / SPEED_IN_JUNCTION
     dist_out_junction = 2*EGO_DIST_BEFORE_JUNC
-    given_t_out_junc = TIME_MULTIPLER * dist_out_junction / SPEED_OUT_JUNCTION
-    first_potential_collision = TIME_MULTIPLER * EXPECTED_COLLISION_TIME
-    added_for_further_collisions = TIME_MULTIPLER*total_added_time
+    t_out_junc = dist_out_junction / SPEED_OUT_JUNCTION
 
-    return int(INITIAL_SECONDS_DELAY + given_t_in_junc + given_t_out_junc + first_potential_collision + added_for_further_collisions)
+    return int(INITIAL_SECONDS_DELAY + TIME_MULTIPLER * (t_in_junc + t_out_junc  + t_added_for_collisions))
 
 
 def find_dist_to_coll_reg(collision_reg, actor_lane):
     cl = actor_lane.centerline
 
     # get centerline in 
-    cl_InColl = cl.intersect(collision_reg) # TODO might do an optimizatin by checking through points for first point in the region
+    cl_InColl = cl.intersect(collision_reg)
     cl_len_inColl = cl_InColl.length
 
     # get relevant points
