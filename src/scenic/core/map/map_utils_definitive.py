@@ -7,7 +7,7 @@ from scenic.core.vectors import Vector
 # COLLISION
 ####################
 
-def find_colliding_region(reg1, reg2):
+def find_colliding_region(reg1, reg2, handle_centerlines=False):
     """Rerturns the collision region, if any and a possible heuristic value"""
     SIZETHRESHOLD = 2*4.5 # size of a car
 
@@ -28,6 +28,14 @@ def find_colliding_region(reg1, reg2):
     if areaOverapprox < SIZETHRESHOLD:
         # print('Adjacent)')
         return EmptyRegion(''), 1
+    
+    if handle_centerlines:
+        cl1 = reg1.centerline
+        cl2 = reg2.centerline
+        cl1_collision = cl1.intersect(collision_reg)
+        cl2_collision = cl2.intersect(collision_reg)
+        if isinstance(cl1_collision, EmptyRegion) and isinstance(cl2_collision, EmptyRegion):
+            return collision_reg, 1
     
     return collision_reg, 0
 

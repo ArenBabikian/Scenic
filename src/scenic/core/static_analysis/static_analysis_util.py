@@ -22,7 +22,7 @@ THRESHOLD = 1e-10
 LANE_WIDTH = 3.5
 CAR_LENGTH = 5
 
-ACCEL_TIME = 1
+ACCEL_TIME = 1 # TODO potentially improve
 COLLISION_TIME_PENALTY = 10
 
 # timeout
@@ -91,7 +91,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             for man, reg_id in tuple[1:]:
                 non_ego_region = man.connectingLane
 
-                _, local_heu = find_colliding_region(ego_region, non_ego_region)
+                _, local_heu = find_colliding_region(ego_region, non_ego_region, handle_centerlines=True)
                 heu_val += local_heu
 
             if heu_val == 0:
@@ -108,7 +108,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
 
     all_scenes = []
     all_timeouts = []
-    for i_sc, colliding_tuple in enumerate(all_colliding_tuples[:]):
+    for i_sc, colliding_tuple in enumerate(all_colliding_tuples[31:]):
         # HERE we have a tuple of colliding paths
         ego_man = colliding_tuple[0]
         ego_reg = ego_man.connectingLane
@@ -130,7 +130,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             other_reg = other_man.connectingLane
 
             # Step 1: Find the COLLISION REGION
-            collision_reg, _ = find_colliding_region(ego_reg, other_reg)
+            collision_reg, _ = find_colliding_region(ego_reg, other_reg, handle_centerlines=True)
             assert collision_reg != EmptyRegion('')
 
             # Step 2 (EGO): Find EGO distances to relevant points (distance is INSIDE junction)
@@ -184,7 +184,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             other_reg = other_man.connectingLane
 
             # Step 1: Find the COLLISION REGION
-            collision_reg, _ = find_colliding_region(ego_reg, other_reg)
+            collision_reg, _ = find_colliding_region(ego_reg, other_reg, handle_centerlines=True)
             assert collision_reg != EmptyRegion('')
 
             # Step 2 (EGO): Find EGO distances to relevant points (distance is INSIDE junction)
@@ -217,7 +217,8 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type, other_pre_junc_point, other_pre_junc_reg)
 
         # CREATE SCENE
-        save_dir = mk(dirPath)
+        if savePaths:
+            save_dir = mk(dirPath)
         scene = create_dummy_scene(scenario, None)
         
         # FURTHER VALIDATION
@@ -236,7 +237,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
                     # avoid checking thiss for ego
                     i_reg = colliding_tuple[i_ac].connectingLane
                     j_reg = colliding_tuple[j_ac].connectingLane
-                    ij_coll_reg, _ = find_colliding_region(i_reg, j_reg)
+                    ij_coll_reg, _ = find_colliding_region(i_reg, j_reg, handle_centerlines=True)
                     # if ij_coll_reg != EmptyRegion(''):
                     #     print(f'WARNING: For Scenario {i_sc}, actors {i_ac} and {j_ac} have overlapping paths.')
         
@@ -254,8 +255,8 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
     # FROM SCENES, GENERATE XMLSs and VISUALISE
     for i_sc, scene in enumerate(all_scenes):
 
-        # SAVE individual XML
-        if savePaths:
+        # SAVE individual XML, TEMPORARILY REMOVED
+        if savePaths and False:
             saveScenarioToXml(scene, f'{save_dir}{i_sc}-paths.xml', all_timeouts[i_sc])
         
         # VISUALISATION
@@ -266,7 +267,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
 
     # SAVE into ONE XML
     if savePaths:
-        saveAllScenariosToXml(all_scenes, f'{save_dir}_all-paths.xml', all_timeouts)
+        saveAllScenariosToXml(all_scenes, f'{save_dir}_{global_depth}actors-all-paths.xml', all_timeouts)
 
 
 def calculate_timeout(ego_reg, t_added_for_collisions):

@@ -6,7 +6,12 @@ from scenic.simulators.carla.utils.utils import scenicToCarlaLocation, scenicToC
 from scenic.simulators.utils.colors import Color
 from pathlib import Path
 
-FILE2TOWNNAME = {'town05':'Town05',
+FILE2TOWNNAME = {'town01':'Town01',
+                 'town02':'Town02',
+                 'town03':'Town03',
+                 'town04':'Town04',
+                 'town05':'Town05',
+                 'town06':'Town06',
                  'town07':'Town07',
                  'tram05-mod':'Krisztina'}
 
@@ -108,8 +113,10 @@ def getScenarioDesc(scene, route_id, timeout):
     town = FILE2TOWNNAME[map_name]
     intersection_id = scene.params.get('intersectiontesting')
 
+    route_name = f'scen_{town}_{intersection_id}_{len(scene.objects)}ac_{route_id}'
+
     sc = []
-    sc.append(f"    <route id='{route_id}' town='{town}' intersection_id='{intersection_id}' timeout='{timeout}'>\n")
+    sc.append(f"    <route id='{route_name}' town='{town}' intersection_id='{intersection_id}' timeout='{timeout}'>\n")
     ego = scene.egoObject
     # Actor initializations
     for o in scene.objects:
