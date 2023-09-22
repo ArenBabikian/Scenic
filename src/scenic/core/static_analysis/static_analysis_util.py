@@ -45,8 +45,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
     all_colliding_tuples = []
     all_tuples = []
 
-    global_depth = int(scenario.params.get('static-num-actors'))
-    # global_depth = 4
+    global_depth = len(scenario.objects)
     intersection = scenario.testedIntersection
     
     all_possible_maneuvers = intersection.maneuvers
@@ -108,7 +107,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
 
     all_scenes = []
     all_timeouts = []
-    for i_sc, colliding_tuple in enumerate(all_colliding_tuples[31:]):
+    for i_sc, colliding_tuple in enumerate(all_colliding_tuples[:]):
         # HERE we have a tuple of colliding paths
         ego_man = colliding_tuple[0]
         ego_reg = ego_man.connectingLane
