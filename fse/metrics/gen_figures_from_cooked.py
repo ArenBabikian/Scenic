@@ -12,18 +12,19 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
     with open(cooked_measurements_path) as j:
         cooked_measurements = json.load(j)
 
-    included_sizes = [3]
-
     # SEMANTICS
     # >> ego-related measurements:
     #   semantics are the same regardless of the number of non-ego actors
     # >> non-ego-related measurements:
     #   for 2-actor scenarios:
-    #     there is 1 non-ego, s the metric is whether that one is satisfying the criterion (e.g. if that one has the specified maneuver type)
+    #     there is 1 non-ego, so the metric is whether that one is satisfying the criterion (e.g. if that one has the specified maneuver type)
     #   for 3/4-actor scenarios:
-    #     ...TODO
-
-
+    #     if any of the non-egos is satisfying the criterion
+    # >> relationship measurements:
+    #   for 2-actor scenarios:
+    #     if the non-ego satisfies the positional relation constraint
+    #   for 3/4-actor scenarios:
+    #     if any of the non-egos satisfy the positional relatio constraint WRT the EGO
 
     # DATA DICTIONARIES
     # EGO
@@ -80,22 +81,29 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
                 add_data_to_map(data_ego____start___lane, map_ego____start___lane, num_collisions)
                 add_data_to_map(data_ego____end_____lane, map_ego____end_____lane, num_collisions)
 
-                # NON-EGO
-                data_nonego_specific_man = abs_scen_info['actors'][1]['maneuver']['id']
-                data_nonego_type_____man = abs_scen_info['actors'][1]['maneuver']['type']
-                data_nonego_start___lane = abs_scen_info['actors'][1]['maneuver']['start_lane_id']
-                data_nonego_end_____lane = abs_scen_info['actors'][1]['maneuver']['end_lane_id']
+                # iterate through NON-EGOs
+                for nonego_actor in abs_scen_info['actors'][1:]:
+                    data_nonego_specific_man = nonego_actor['maneuver']['id']
+                    data_nonego_type_____man = nonego_actor['maneuver']['type']
+                    data_nonego_start___lane = nonego_actor['maneuver']['start_lane_id']
+                    data_nonego_end_____lane = nonego_actor['maneuver']['end_lane_id']
+                    add_data_to_map(data_nonego_specific_man, map_nonego_specific_man, num_collisions)
+                    add_data_to_map(data_nonego_type_____man, map_nonego_type_____man, num_collisions)
+                    add_data_to_map(data_nonego_start___lane, map_nonego_start___lane, num_collisions)
+                    add_data_to_map(data_nonego_end_____lane, map_nonego_end_____lane, num_collisions)
 
-                add_data_to_map(data_nonego_specific_man, map_nonego_specific_man, num_collisions)
-                add_data_to_map(data_nonego_type_____man, map_nonego_type_____man, num_collisions)
-                add_data_to_map(data_nonego_start___lane, map_nonego_start___lane, num_collisions)
-                add_data_to_map(data_nonego_end_____lane, map_nonego_end_____lane, num_collisions)
+                # iterate through INITIAL RELATIONS, only relative to ego
+                all_initial_relations_from_ego = abs_scen_info['initial_relations']['0']
+                for target in all_initial_relations_from_ego:
+                    data_init__relationship = all_initial_relations_from_ego[target]
+                    add_data_to_map(data_init__relationship, map_init__relationship, num_collisions)
 
-                # RELATIONSHIP
-                data_init__relationship = abs_scen_info['initial_relations']['0']['1']
-                data_final_relationship = abs_scen_info['final_relations']['0']['1']
-                add_data_to_map(data_init__relationship, map_init__relationship, num_collisions)
-                add_data_to_map(data_final_relationship, map_final_relationship, num_collisions)
+                # iterate through FINAL RELATIONS, only relative to ego
+                all_final_relations_from_ego = abs_scen_info['final_relations']['0']
+                for target in all_final_relations_from_ego:
+                    data_final_relationship = all_final_relations_from_ego[target]
+                    add_data_to_map(data_final_relationship, map_final_relationship, num_collisions)
+
 
     all_relevant_maps = {'ego____specific' : map_ego____specific_man,
                          'ego________type' : map_ego____type_____man,
@@ -111,11 +119,7 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
                          'rel_______final' : map_final_relationship
     }
 
-    for map_id in all_relevant_maps:
-        print('---------------------')
-        print(f'<<<{map_id}>>>')
-        for x in all_relevant_maps[map_id]:
-            print(f'{x} : {all_relevant_maps[map_id][x]}')
+    return all_relevant_maps
     
 
 def add_data_to_map(data, data2metric, num_collisions):
@@ -129,10 +133,20 @@ def main():
     data_path = "fse/data-sim/Town05_2240" # Attila, modify this
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
-    included_sizes = [3]
+    included_sizes = [2, 3, 4]
     
     # Get the list of file contents
     data = gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes)
+
+    # PRINT DATA
+    print('_______________________________________')
+    print(F'AGGREGATE RESULTS FOR {included_sizes}')
+
+    for map_id in data:
+        print('---------------------')
+        print(f'<<<{map_id}>>>')
+        for x in data[map_id]:
+            print(f'{x} : {data[map_id][x]}')
 
     # Save the list as a JSON file
     # with open(out_path, "w") as json_file:
