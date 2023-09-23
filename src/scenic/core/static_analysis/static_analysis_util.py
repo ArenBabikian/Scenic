@@ -274,7 +274,7 @@ def doStaticAnalysis(scenario, dirPath):
 
         # ADD ABSTRACT SCENARIO
         if saveAbsScenarios:
-            addSpecifcAbstractScenario(scene, abstractScenarioDetails, i_sc)
+            addSpecifcAbstractScenario(scene, abstractScenarioDetails, i_sc, ranked_non_ego_by_dist_for_ego)
 
     # SAVE into ONE XML
     if savePaths:
@@ -339,10 +339,11 @@ def initializeAbstractScenarioDetails(scenario):
                                }
 
 
-def addSpecifcAbstractScenario(scene, abstractScenarioDetails, scenario_id):
+def addSpecifcAbstractScenario(scene, abstractScenarioDetails, scenario_id, ordered_list_of_encounters):
         scenario_dict = {'scenario_id' : scenario_id,
                             'actors' : [],
                             'initial_relations' : {},
+                            'encounter_order' : [e["id"] for e in ordered_list_of_encounters],
                             'final_relations' : {}}
         # MANEUVERS
         for i_o, o in enumerate(scene.objects):
