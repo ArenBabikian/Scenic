@@ -5,6 +5,7 @@ import scenic.core.printer.utils as util
 from scenic.simulators.carla.utils.utils import scenicToCarlaLocation, scenicToCarlaRotation
 from scenic.simulators.utils.colors import Color
 from pathlib import Path
+from scenic.domains.driving.roads import ManeuverType
 
 FILE2TOWNNAME = {'town01':'Town01',
                  'town02':'Town02',
@@ -14,6 +15,10 @@ FILE2TOWNNAME = {'town01':'Town01',
                  'town06':'Town06',
                  'town07':'Town07',
                  'tram05-mod':'Krisztina'}
+
+MANTYPE2ID = {ManeuverType.LEFT_TURN:'left',
+              ManeuverType.RIGHT_TURN:'right',
+              ManeuverType.STRAIGHT:'straight'}
 
 #########################
 # EXACT SCENE
@@ -122,7 +127,7 @@ def getScenarioDesc(scene, route_id, timeout):
     for o in scene.objects:
         pos = scenicToCarlaLocation(o.position, 0.0)
         rot = scenicToCarlaRotation(o.heading)
-        man = o.maneuverType
+        man = MANTYPE2ID[o.maneuver.type]
 
         if o is ego:
             sc.append(f"        <waypoint x='{pos.x}' y='{pos.y}' z='0.0' maneuver='{man}'/>\n")

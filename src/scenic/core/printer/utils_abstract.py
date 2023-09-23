@@ -4,7 +4,14 @@ import random
 from scenic.core.evol.constraints import Cstr_type
 from scenic.simulators.utils.colors import Color
 import scenic.core.printer.utils as util
+import json
 
+#########################
+# EVOL DYNAMIC JSON ABSTRACT SCENARIO
+def saveJsonAbstractScenario(scenario_spec, savepath):
+    with open(savepath, 'w') as f:
+        json.dump(scenario_spec, f, indent=2)
+    print(f'  Saved abstract scenarios at   {savepath}')
 
 
 #########################

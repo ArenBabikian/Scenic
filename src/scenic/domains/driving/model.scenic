@@ -257,7 +257,7 @@ class Vehicle(DrivingObject):
     color: Color.defaultCarColor()
     currentLane: None
     currentLaneAhead: None
-    maneuverType: None
+    maneuver: None
     pre_junc_position: None
     pre_junc_heading: None
 

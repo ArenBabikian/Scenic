@@ -5,7 +5,8 @@ from scenic.core.distributions import Samplable
 from scenic.core.evol.evol_utils import fillSample
 from scenic.core.map.map_utils_definitive import find_colliding_region
 from scenic.core.lazy_eval import needsLazyEvaluation
-from scenic.core.printer.utils_concrete import saveAllScenariosToXml, saveScenarioToXml
+from scenic.core.printer.utils_abstract import saveJsonAbstractScenario
+from scenic.core.printer.utils_concrete import MANTYPE2ID, saveAllScenariosToXml, saveScenarioToXml
 from scenic.core.regions import EmptyRegion
 from scenic.core.scenarios import Scene
 from scenic.core.vectors import Vector
@@ -16,6 +17,7 @@ import shapely.prepared
 from scenic.domains.driving.roads import Intersection, ManeuverType
 
 from scenic.figures.util import mk
+from pathlib import Path
 
 
 THRESHOLD = 1e-10
@@ -36,12 +38,15 @@ SPEED_OUT_JUNCTION = 4
 
 TIME_MULTIPLER = 1.5
 
-MANTYPE2ID = {ManeuverType.LEFT_TURN:'left',
-              ManeuverType.RIGHT_TURN:'right',
-              ManeuverType.STRAIGHT:'straight'}
+def doStaticAnalysis(scenario, dirPath):
+    # Handle params
+    params = scenario.params
+    viewIm = params.get('viewImgs') == 'True'
+    viewPath = params.get('showPaths') == 'True'
+    savePaths = params.get('savePaths') == 'True'
+    saveAbsScenarios = params.get('static-saveAbsScenarios') == 'True'
 
-def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
-
+    # Get started
     all_colliding_tuples = []
     all_tuples = []
 
@@ -50,6 +55,9 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
     
     all_possible_maneuvers = intersection.maneuvers
     # all_possible_lanes = [(m.connectingLane, m.startLane) for m in all_possible_maneuvers]
+
+    # SET UP ABSTRACT SCENARIOS
+    abstractScenarioDetails = initializeAbstractScenarioDetails(scenario)
 
     print('-----------------------')
     print(f'There are {len(all_possible_maneuvers)} lanes in {intersection.uid}')
@@ -119,7 +127,7 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
         cl_starting = ego_starting_reg.centerline
         ego_strating_point = cl_starting.pointAlongBy(-EGO_DIST_BEFORE_JUNC)
 
-        setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man.type, None, None)
+        setup_actor(scenario.objects[0], ego_strating_point, ego_reg, ego_reg, ego_man, None, None)
 
         # INITIAL MEASUREMENTS TO SEE WHICH COLLISION HAPPENS WHEN
         collision_reg = None
@@ -213,10 +221,10 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
             other_starting_point, other_starting_reg, other_pre_junc_point, other_pre_junc_reg = find_init_position(t_o_to_relevant, d_o_relevant, other_reg, intersection)
 
             # Step 7 (OTHER): Set up other actor
-            setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man.type, other_pre_junc_point, other_pre_junc_reg)
+            setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man, other_pre_junc_point, other_pre_junc_reg)
 
         # CREATE SCENE
-        if savePaths:
+        if savePaths or saveAbsScenarios:
             save_dir = mk(dirPath)
         scene = create_dummy_scene(scenario, None)
         
@@ -264,9 +272,110 @@ def doStaticAnalysis(scenario, dirPath, viewIm, viewPath, savePaths):
         if image_params['view_im']:
             scene.show(None, None, image_params, True,  collision_reg)
 
+        # ADD ABSTRACT SCENARIO
+        if saveAbsScenarios:
+            addSpecifcAbstractScenario(scene, abstractScenarioDetails, i_sc)
+
     # SAVE into ONE XML
     if savePaths:
         saveAllScenariosToXml(all_scenes, f'{save_dir}_{global_depth}actors-all-paths.xml', all_timeouts)
+
+    # SAVE ABSTRACT SCENARIOS
+    if saveAbsScenarios:
+        saveJsonAbstractScenario(abstractScenarioDetails, f'{save_dir}_{global_depth}actors-abs-scenarios.json')
+
+
+def initializeAbstractScenarioDetails(scenario):
+    # initializations
+    global_depth = len(scenario.objects)
+    intersection = scenario.testedIntersection
+    all_possible_maneuvers = intersection.maneuvers
+
+        # SET UP ABSTRACT SCENARIOS
+    maneuver_ids = [m.connectingLane.uid for m in all_possible_maneuvers]
+
+    MANTYPE2REL = {ManeuverType.LEFT_TURN:'left',
+                ManeuverType.RIGHT_TURN:'right',
+                ManeuverType.STRAIGHT:'ahead'}
+
+    # define relationships between roads
+    road_pair_relations = {}
+    for m in all_possible_maneuvers:
+        road_pair = (m.startLane.road.uid, m.endLane.road.uid)
+        if road_pair not in road_pair_relations:
+            road_pair_relations[road_pair] = MANTYPE2REL[m.type]
+        else:
+            assert road_pair_relations[road_pair] == MANTYPE2REL[m.type]
+
+    # determine relationships between lanes
+    def get_relationship_map(lane_collection):
+        relationships = {}
+        for l1 in lane_collection:
+            uid_l1 = l1.uid
+            rd_l1 = l1.road.uid
+            relationships[uid_l1] = {}
+            for l2 in lane_collection:
+                uid_l2 = l2.uid
+                rd_l2 = l2.road.uid
+                lane_pair = (uid_l1, uid_l2)
+                if l1 == l2:
+                    relation = 'same'
+                elif rd_l1 == rd_l2:
+                    relation = 'adjacent'
+                else:
+                    relation = road_pair_relations[(rd_l1, rd_l2)]
+                relationships[uid_l1][uid_l2] = relation
+                # rela = {'pair':lane_pair, 'relation':relation}
+        return relationships
+
+    lane_relationships = get_relationship_map(intersection.incomingLanes)
+    lane_relationships.update(get_relationship_map(intersection.outgoingLanes))
+    return {'map_name' : Path(scenario.params.get('map')).stem,
+                               'junction_id' : intersection.uid,
+                               'num_actors' : global_depth,
+                               'all_maneuvers' : maneuver_ids,
+                               'lane_relationships' : lane_relationships,
+                               'all_scenarios' : []
+                               }
+
+
+def addSpecifcAbstractScenario(scene, abstractScenarioDetails, scenario_id):
+        scenario_dict = {'scenario_id' : scenario_id,
+                            'actors' : [],
+                            'initial_relations' : {},
+                            'final_relations' : {}}
+        # MANEUVERS
+        for i_o, o in enumerate(scene.objects):
+            m = o.maneuver
+            maneuver_desc = {'id' :m.connectingLane.uid,
+                                'type':MANTYPE2ID[m.type],
+                                'start_lane_id':m.startLane.uid,
+                                'end_lane_id':m.endLane.uid
+                                }
+            actor_spec = {'id' : i_o,
+                            'maneuver' : maneuver_desc
+                            }
+            scenario_dict['actors'].append(actor_spec)
+
+        # RELATIONS
+        for i_o1, o1 in enumerate(scene.objects):
+            startLane1 = o1.maneuver.startLane.uid
+            endLane1 = o1.maneuver.endLane.uid
+            scenario_dict['initial_relations'][i_o1] = {}
+            scenario_dict['final_relations'][i_o1] = {}
+            for i_o2, o2 in enumerate(scene.objects):
+                if o1 == o2:
+                    continue
+                startLane2 = o2.maneuver.startLane.uid
+                endLane2 = o2.maneuver.endLane.uid
+
+                start_relation = abstractScenarioDetails['lane_relationships'][startLane1][startLane2]
+                scenario_dict['initial_relations'][i_o1][i_o2] = start_relation
+
+                end_relation = abstractScenarioDetails['lane_relationships'][endLane1][endLane2]
+                scenario_dict['final_relations'][i_o1][i_o2] = end_relation
+
+        abstractScenarioDetails['all_scenarios'].append(scenario_dict)
 
 
 def calculate_timeout(ego_reg, t_added_for_collisions):
@@ -440,14 +549,14 @@ def cleanedMultiLineString(ls):
     return new_mls
 
 
-def setup_actor(vi, pos, lane, coll_lane, maneuver_type, pre_junc_pos, pre_junc_lane):
+def setup_actor(vi, pos, lane, coll_lane, maneuver, pre_junc_pos, pre_junc_lane):
     vec = Vector(pos[0], pos[1])
     head = lane.orientation[pos]
 
     vi.position = vec
     vi.heading = head
     vi.currentLane = coll_lane
-    vi.maneuverType = MANTYPE2ID[maneuver_type]
+    vi.maneuver = maneuver
     if pre_junc_pos != None:
         vi.pre_junc_position = Vector(pre_junc_pos[0], pre_junc_pos[1])
         vi.pre_junc_heading = pre_junc_lane.orientation[pre_junc_pos]
