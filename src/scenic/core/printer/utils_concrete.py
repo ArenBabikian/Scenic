@@ -130,7 +130,7 @@ def getScenarioDesc(scene, route_id, timeout):
         man = MANTYPE2ID[o.maneuver.type]
 
         if o is ego:
-            sc.append(f"        <waypoint x='{pos.x}' y='{pos.y}' z='0.0' maneuver='{man}'/>\n")
+            sc.append(f"        <waypoint x='{pos.x}' y='{pos.y}' z='0.0' maneuver='{man}' color='(17,37,103)'/>\n")
         else:
             # TODO speed is hard coded for now...
             if o.pre_junc_position == None:
@@ -140,7 +140,7 @@ def getScenarioDesc(scene, route_id, timeout):
                 pre_junc_pos = scenicToCarlaLocation(o.pre_junc_position, 0.0)
                 pre_junc_rot = scenicToCarlaRotation(o.pre_junc_heading)
 
-            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{'transfuser'}' maneuver='{man}' model='vehicle.tesla.model3' pre_x='{pre_junc_pos.x}' pre_y='{pre_junc_pos.y}' pre_yaw='{pre_junc_rot.yaw}'/>\n")
+            sc.append(f"        <other_actor x='{pos.x}' y='{pos.y}' z='0.0'  yaw='{rot.yaw}' speed='{'transfuser'}' maneuver='{man}' model='vehicle.tesla.model3' color='75,87,173' pre_x='{pre_junc_pos.x}' pre_y='{pre_junc_pos.y}' pre_yaw='{pre_junc_rot.yaw}'/>\n")
 
     # sc.append("        <weather id='ClearSunset' cloudiness='20.000000' precipitation='0.000000' precipitation_deposits='50.000000' wind_intensity='0.350000' sun_azimuth_angle='90.000000' sun_altitude_angle='75.000000' fog_density='0.000000' fog_distance='0.000000' fog_falloff='0.000000' wetness='0.000000'/>\n")
     # Below iis the default weather for Town05
