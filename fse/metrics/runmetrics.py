@@ -1,5 +1,8 @@
 
 
+from scenic.simulators.carla.utils.utils import carlaToScenicHeading, carlaToScenicPosition
+from utils_geometric import closestDistanceBetweenRectangles
+from scenic.core.regions import RectangularRegion
 from scenic.simulators.carla.misc import compute_distance
 from tools.metrics_log import MetricsLog
 
@@ -192,8 +195,34 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         collisions = log.get_actor_collisions(ego_id)
 
         # (B) Near-miss info
-        # TODO Attila?
+        # TODO include which other vehicle there was a near-miss
+        near_misses = [0 for _ in other_vehicle_paths]
+        # iterate through all scenes
+        for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
+            other_vehicle_path = other_vehicle_paths[other_vehicle_id]
 
+            for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
+                other_tr_at_i = other_vehicle_path['transforms'][frame_i]
+
+                # EGO
+                ego_vec = carlaToScenicPosition(ego_tr_at_i.location)
+                ego_head = carlaToScenicHeading(ego_tr_at_i.rotation)
+                ego_region = RectangularRegion(ego_vec, ego_head, 2, 4.5)
+
+                # OTHER
+                other_vec = carlaToScenicPosition(other_tr_at_i.location)
+                other_head = carlaToScenicHeading(other_tr_at_i.rotation)
+                other_region = RectangularRegion(other_vec, other_head, 2, 4.5)
+
+                distance_between_ego_and_other = closestDistanceBetweenRectangles(ego_region, other_region)
+
+                DISTANCE_THRESHOLD = 1.0
+                if distance_between_ego_and_other < DISTANCE_THRESHOLD:
+                    # found a near-miss situation with the current other vehicle
+                    near_misses[normalized_id] = 1
+
+                    # move on to the next other vehicle
+                    break
 
         # TODO TODO TODO TODO TODO TODO TODO TODO
         # check somehow that non-egos are not colliding with eavh other, which invalisdates the scenario
@@ -208,7 +237,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                             'runtime_system_time': record_info['meta']['duration_system'],
                                             'collided with' : collisions,
                                             'num_preventative_maneuver' : -1,
-                                            'near_mmiss_with' : []
+                                            'near_miss_with' : near_misses
                                }
 
         # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES

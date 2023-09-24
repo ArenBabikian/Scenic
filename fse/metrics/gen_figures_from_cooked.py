@@ -65,9 +65,13 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
 
                 # GATHERED INFO ABOUT THE REP
                 rep_info = all_reps_for_scenario_spec[rep_id]
-                # print(rep_info)
                 num_collisions = len(rep_info['collided with'])
                 assert num_collisions < 2
+
+                near_miss_occurance = 1 if sum(rep_info['near_miss_with']) else 0
+
+                stats_to_add = {'collisions':num_collisions, 'near-miss':near_miss_occurance}
+                
 
                 # GATHER SPECIFIC INFO (2 actors only, for now)
                 # EGO
@@ -76,10 +80,10 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
                 data_ego____start___lane = abs_scen_info['actors'][0]['maneuver']['start_lane_id']
                 data_ego____end_____lane = abs_scen_info['actors'][0]['maneuver']['end_lane_id']
 
-                add_data_to_map(data_ego____specific_man, map_ego____specific_man, num_collisions)
-                add_data_to_map(data_ego____type_____man, map_ego____type_____man, num_collisions)
-                add_data_to_map(data_ego____start___lane, map_ego____start___lane, num_collisions)
-                add_data_to_map(data_ego____end_____lane, map_ego____end_____lane, num_collisions)
+                add_data_to_map(data_ego____specific_man, map_ego____specific_man, stats_to_add)
+                add_data_to_map(data_ego____type_____man, map_ego____type_____man, stats_to_add)
+                add_data_to_map(data_ego____start___lane, map_ego____start___lane, stats_to_add)
+                add_data_to_map(data_ego____end_____lane, map_ego____end_____lane, stats_to_add)
 
                 # iterate through NON-EGOs
                 for nonego_actor in abs_scen_info['actors'][1:]:
@@ -87,22 +91,22 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
                     data_nonego_type_____man = nonego_actor['maneuver']['type']
                     data_nonego_start___lane = nonego_actor['maneuver']['start_lane_id']
                     data_nonego_end_____lane = nonego_actor['maneuver']['end_lane_id']
-                    add_data_to_map(data_nonego_specific_man, map_nonego_specific_man, num_collisions)
-                    add_data_to_map(data_nonego_type_____man, map_nonego_type_____man, num_collisions)
-                    add_data_to_map(data_nonego_start___lane, map_nonego_start___lane, num_collisions)
-                    add_data_to_map(data_nonego_end_____lane, map_nonego_end_____lane, num_collisions)
+                    add_data_to_map(data_nonego_specific_man, map_nonego_specific_man, stats_to_add)
+                    add_data_to_map(data_nonego_type_____man, map_nonego_type_____man, stats_to_add)
+                    add_data_to_map(data_nonego_start___lane, map_nonego_start___lane, stats_to_add)
+                    add_data_to_map(data_nonego_end_____lane, map_nonego_end_____lane, stats_to_add)
 
                 # iterate through INITIAL RELATIONS, only relative to ego
                 all_initial_relations_from_ego = abs_scen_info['initial_relations']['0']
                 for target in all_initial_relations_from_ego:
                     data_init__relationship = all_initial_relations_from_ego[target]
-                    add_data_to_map(data_init__relationship, map_init__relationship, num_collisions)
+                    add_data_to_map(data_init__relationship, map_init__relationship, stats_to_add)
 
                 # iterate through FINAL RELATIONS, only relative to ego
                 all_final_relations_from_ego = abs_scen_info['final_relations']['0']
                 for target in all_final_relations_from_ego:
                     data_final_relationship = all_final_relations_from_ego[target]
-                    add_data_to_map(data_final_relationship, map_final_relationship, num_collisions)
+                    add_data_to_map(data_final_relationship, map_final_relationship, stats_to_add)
 
 
     all_relevant_maps = {'ego____specific' : map_ego____specific_man,
@@ -122,11 +126,12 @@ def gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes):
     return all_relevant_maps
     
 
-def add_data_to_map(data, data2metric, num_collisions):
+def add_data_to_map(data, data2metric, stats_to_add):
     if data not in data2metric:
-        data2metric[data] = {'attempts' : 0, 'collisions' : 0}
+        data2metric[data] = {'attempts' : 0, 'collisions' : 0, '>0-near-miss-occured' : 0}
     data2metric[data]['attempts'] += 1
-    data2metric[data]['collisions'] += num_collisions
+    data2metric[data]['collisions'] += stats_to_add['collisions']
+    data2metric[data]['>0-near-miss-occured'] += stats_to_add['near-miss']
 
 
 def main():
