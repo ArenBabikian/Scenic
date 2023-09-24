@@ -1,10 +1,14 @@
 
 
+from scenic.simulators.carla.misc import compute_distance
 from tools.metrics_log import MetricsLog
 
 import os
 import json
 import re
+import numpy as np
+import math
+import carla
 
 def validate_dir(d):
     if not os.path.exists(d):
@@ -191,28 +195,12 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         # TODO Attila?
 
 
-        # MAP scen_desc -> 
-
-
+        # TODO TODO TODO TODO TODO TODO TODO TODO
+        # check somehow that non-egos are not colliding with eavh other, which invalisdates the scenario
 
 
         # (B) Compare gt_ego_path to current_ego_path
 
-        
-
-        # TODO SEPERATE CASE FOR 2 ACTOR vs. FOR 3/4-actor
-
-        # in this scenario execution...
-        # TODO does the ego perform preventative maneuvers?
-        # TODO does the ego get into a crash?
-        # TODO is there a near-miss situation? with which vehicle?
-
-        # we compare with `gt_ego_path`
-
-        # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES
-        if num_actors == 2:
-            # TODO do some more analysis
-            a =1
 
         # ###### (6) SAVE THE COOKED DATA
         # BIG TODOs HERE
@@ -220,8 +208,61 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                             'runtime_system_time': record_info['meta']['duration_system'],
                                             'collided with' : collisions,
                                             'num_preventative_maneuver' : -1,
-                                            'near_mmiss_with' : [],
+                                            'near_mmiss_with' : []
                                }
+
+        # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES
+        if num_actors == 2:
+            concrete_relative_statistics_sequence = {'distances':[],
+                                                     'ego_to_other_angles':[],
+                                                     'other_to_ego_angles':[]
+                                                     }
+            # Save the relative positions and heading angles  between the ego and the non-ego at each frame
+
+            assert len(other_vehicle_paths.values()) == 1
+            nonego_path = list(other_vehicle_paths.values())[0]
+
+            assert len(current_ego_path['transforms']) == len(nonego_path['transforms'])
+
+            for frame_i, ego_transform_at_i in enumerate(current_ego_path['transforms']):
+                nonego_transform_at_i = nonego_path['transforms'][frame_i]
+
+                ego_loc = ego_transform_at_i.location
+                ego_rot = ego_transform_at_i.rotation
+                nonego_loc = nonego_transform_at_i.location
+                nonego_rot = nonego_transform_at_i.rotation
+
+                def viewAngleToPoint(point, base, heading):
+                    x, y = base.x, base.y
+                    ox, oy = point.x, point.y
+                    h = math.radians(heading.yaw)
+                    angle= math.atan2(oy - y, ox - x) - (h + (math.pi / 2.0))
+
+                    while angle > math.pi:
+                        angle -= math.tau
+                    while angle < -math.pi:
+                        angle += math.tau
+                    assert -math.pi <= angle <= math.pi
+                    return math.degrees(angle)
+
+                # DISTANCE
+                distance = compute_distance(ego_loc, nonego_loc)
+                concrete_relative_statistics_sequence['distances'].append(distance)
+
+                # EGO-OTHER ANGLE
+                # where is other in the vision plane of ego?
+                # (0 = other is ahead, +/-180 = other is behind)
+                a1 = viewAngleToPoint(nonego_loc, ego_loc, ego_rot)
+                concrete_relative_statistics_sequence['ego_to_other_angles'].append(a1)
+                # TODO get corners, then get angle range
+
+                # OTHER-EGO ANGLLE.
+                # What part of the other vehicle is ego seeing?
+                # (0 = front of other, +/-180 = back of other)
+                a2 = viewAngleToPoint(ego_loc, nonego_loc, nonego_rot)
+                concrete_relative_statistics_sequence['other_to_ego_angles'].append(a2)
+
+            data_for_this_scenario_execution['relative_stats'] = concrete_relative_statistics_sequence
 
         if scenario_instance_id not in data_for_figures['scenarios'][num_actors]:
             data_for_figures['scenarios'][num_actors][scenario_instance_id] = {}
