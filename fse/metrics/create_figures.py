@@ -8,6 +8,7 @@ FILE_FORMAT = 'png'
 def agg_attempt_collision_near_miss(data):
     d = {}
     d['attempts'] = data['num_collisions'].count()
+    d['preventative-meausere'] = (data['num_preventative_maneuvers'] > 0).sum()
     d['collisions'] = data['num_collisions'].sum()
     d['>0-near-miss-occured'] = data['near_miss_occurance'].sum()
     return pd.Series(d)
@@ -19,7 +20,7 @@ def create_bar_chart(df, groupby, title, width, height, output_path):
     fig, ax = plt.subplots(figsize=(width, height))
     # Extracting data for plotting
     categories = df_agg.index
-    attributes = ['attempts', 'collisions', '>0-near-miss-occured']
+    attributes = ['attempts', 'preventative-meausere', 'collisions', '>0-near-miss-occured']
     data = df_agg[attributes].values
 
     # Set the bar width
@@ -27,17 +28,16 @@ def create_bar_chart(df, groupby, title, width, height, output_path):
 
     # Create positions for bars
     x = range(len(categories))
-    x_attempts = x
-    x_collisions = [i + bar_width for i in x]
-    x_near_miss = [i + 2 * bar_width for i in x]
+    x_positions = []
+    for i in range(len(attributes)):
+        x_positions.append([j + i * bar_width for j in x])
 
     # Create the bars
-    plt.bar(x_attempts, data[:, 0], width=bar_width, label='attempts')
-    plt.bar(x_collisions, data[:, 1], width=bar_width, label='collisions')
-    plt.bar(x_near_miss, data[:, 2], width=bar_width, label='>0-near-miss-occured')
+    for i in range(len(attributes)):
+        plt.bar(x_positions[i], data[:, i], width=bar_width, label=attributes[i])
 
     # Set x-axis labels
-    plt.xticks([i + bar_width for i in x], categories)
+    plt.xticks([i + (len(attributes) - 1) / 2 * bar_width for i in x], categories)
 
     # Set the title and legend
     plt.title(title)
