@@ -211,7 +211,21 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         record_info = record_infos[0]
 
         # (B) Preventative Measures per frame
-        # TODO Attila
+        PREVENTITIVE_THRESHOLD = 5
+        matching_points_per_frame = np.zeros(len(gt_ego_path['transforms']))
+        # matching_points_per_frame = np.array([0] * len(gt_ego_path['transforms']))
+
+        # find closest point on gt_ego_path to current_ego_path at all frames
+        for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
+            # find closest point on gt_ego_path to ego_tr_at_i
+            distances = [ego_tr_at_i.location.distance(gt_tr.location) for gt_tr in gt_ego_path['transforms']]
+            closest_point_id = np.argmin(distances)
+            matching_points_per_frame[closest_point_id] += 1
+        
+        # count number of frames in gt_ego_path, which have more matching points, than the previous frame + PREVENTITIVE_THRESHOLD
+        # this indicates a slow down in the ego vehicle
+        number_of_preventitive_maneuvers = len(np.where(matching_points_per_frame[:-1] <= matching_points_per_frame[1:] - PREVENTITIVE_THRESHOLD)[0])
+            
 
         # we compare with `gt_ego_path`
         all_max_distances = []
@@ -275,7 +289,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                             'deviation_from_median_gt' : deviation_from_median_gt,
                                             'deviation_from_median_gt_ratio' : deviation_from_median_gt_ratio,
                                             'collided with' : collisions,
-                                            'num_preventative_maneuver' : -1,
+                                            'num_preventative_maneuver' : number_of_preventitive_maneuvers,
                                             'near_miss_with' : near_misses
                                }
 
