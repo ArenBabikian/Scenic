@@ -134,14 +134,115 @@ def add_data_to_map(data, data2metric, stats_to_add):
     data2metric[data]['>0-near-miss-occured'] += stats_to_add['near-miss']
 
 
+def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
+    # Validate and get started
+    validate_dir(abs_scenario_dir)
+    validate_path(cooked_measurements_path)
+    with open(cooked_measurements_path) as j:
+        cooked_measurements = json.load(j)
+
+
+    data_for_actor_df = []
+    data_for_relationship_df = []
+    dict_for_actor_df = {}
+    dict_for_actor_df['actors'] = data_for_actor_df
+    dict_for_relationship_df = {}
+    dict_for_relationship_df['relationships'] = data_for_relationship_df
+
+
+    
+    all_scenarios = cooked_measurements['scenarios']
+    for num_actors in all_scenarios:
+        if int(num_actors) not in included_sizes:
+            continue
+
+        # ABSTRACT
+        with open(f'{abs_scenario_dir}/_{num_actors}actors-abs-scenarios.json') as j:
+            abs_scenarios_json = json.load(j)
+
+        all_scenarios_at_size = all_scenarios[num_actors]
+        for scenario_spec_id in all_scenarios_at_size:
+            all_reps_for_scenario_spec = all_scenarios_at_size[scenario_spec_id]
+
+            # ABSTRACT INFO ABOUT THE REP
+            scen_descs = list(filter(lambda scen : scen['scenario_id'] == int(scenario_spec_id), abs_scenarios_json['all_scenarios']))
+            assert len(scen_descs) == 1
+            abs_scen_info = scen_descs[0]
+
+            for rep_id  in all_reps_for_scenario_spec:
+
+                # GATHERED INFO ABOUT THE REP
+                rep_info = all_reps_for_scenario_spec[rep_id]
+                num_collisions = len(rep_info['collided with'])
+                assert num_collisions < 2
+
+                near_miss_occurance = 1 if sum(rep_info['near_miss_with']) else 0
+                num_preventative_maneuver = rep_info['num_preventative_maneuver']
+                
+
+                # GATHER SPECIFIC INFO (2 actors only, for now)
+                # EGO
+                scen_base = {}
+                scen_base['num_actors'] = num_actors
+                scen_base['scenario_spec_id'] = scenario_spec_id
+                scen_base['rep_id'] = rep_id
+                scen_base['num_collisions'] = num_collisions
+                scen_base['num_preventative_maneuvers'] = num_preventative_maneuver
+                scen_base['near_miss_occurance'] = near_miss_occurance
+
+                data_to_add = {}
+                data_to_add.update(scen_base)
+                data_to_add['ego'] = True
+                data_to_add['maneuver'] = abs_scen_info['actors'][0]['maneuver']
+                data_for_actor_df.append(data_to_add)
+
+                # iterate through NON-EGOs
+                for nonego_actor in abs_scen_info['actors'][1:]:
+                    data_to_add = {}
+                    data_to_add.update(scen_base)
+                    data_to_add['ego'] = False
+                    data_to_add['maneuver'] = nonego_actor['maneuver']
+                    data_for_actor_df.append(data_to_add)
+
+                # iterate through INITIAL RELATIONS, only relative to ego
+                all_initial_relations_from_ego = abs_scen_info['initial_relations']['0']
+                for target in all_initial_relations_from_ego:
+                    relation_to_add = {}
+                    relation_to_add.update(scen_base)
+                    relation_to_add['relative_to'] = 0
+                    relation_to_add['target'] = target
+                    relation_to_add['time'] = 'initial'
+                    relation_to_add['relationship'] = all_initial_relations_from_ego[target]
+                    data_for_relationship_df.append(relation_to_add)
+
+                # iterate through FINAL RELATIONS, only relative to ego
+                all_final_relations_from_ego = abs_scen_info['final_relations']['0']
+                for target in all_final_relations_from_ego:
+                    relation_to_add = {}
+                    relation_to_add.update(scen_base)
+                    relation_to_add['relative_to'] = 0
+                    relation_to_add['target'] = target
+                    relation_to_add['time'] = 'final'
+                    relation_to_add['relationship'] = all_final_relations_from_ego[target]
+                    data_for_relationship_df.append(relation_to_add)
+    return dict_for_actor_df, dict_for_relationship_df
+
+
+
 def main():
     data_path = "fse/data-sim/Town05_2240" # Attila, modify this
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     included_sizes = [2, 3, 4]
+    out_path = "fse/metrics/Town05_2240"
     
     # Get the list of file contents
     data = gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes)
+    data_actor, data_relationship = to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes)
+
+    os.makedirs(out_path, exist_ok=True)
+    json.dump(data_actor, open(f'{out_path}/data_actor.json', 'w'), indent=4)
+    json.dump(data_relationship, open(f'{out_path}/data_relationship.json', 'w'), indent=4)
 
     # PRINT DATA
     print('_______________________________________')
