@@ -105,13 +105,34 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         all_runs = details['runs']
         assert len(all_runs) == 10
 
-        # TODO aggregation, medoid selection
-        agg_run_data = all_runs[0] # TEMPORARY TODO
-
         # TODO also, try to make some measurements as to how varied the ego paths are, like a % or something
 
+
+        # Calculate the maximum distance between the runs at each timestep
+        all_max_distances = []
+        max_distances_per_run = {}
+
+        for run1 in all_runs:
+            for run2 in all_runs:
+                distances = [ego.location.distance(current.location) for ego, current in zip(all_runs[run1]['transforms'], all_runs[run2]['transforms'])]
+                all_max_distances.append(max(distances))
+                if run1 not in max_distances_per_run:
+                    max_distances_per_run[run1] = []
+                max_distances_per_run[run1].append(max(distances))
+        
+        # Maximum distance between all the groundtruth paths
+        groundtruth_paths[man_id]['max_distance'] = max(all_max_distances)
+
+        # Find the ID with the lowest maximum value
+        # medoid selection
+        min_max_id = min(max_distances_per_run, key=lambda k: max(max_distances_per_run[k]))
+
+        # Get the lowest maximum value
+        min_max_value = max(max_distances_per_run[min_max_id])
+
         # Save aggregate path
-        groundtruth_paths[man_id]['aggregate_path'] = agg_run_data
+        groundtruth_paths[man_id]['aggregate_path'] = all_runs[min_max_id]
+        groundtruth_paths[man_id]['meadian_path_max_distance'] = min_max_value
 
     ###############################################################
     # STEP 2 : Handle 2-3-4 actor scenario data
@@ -151,6 +172,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         # ###### (3) GET GROUNDTRUTH EGO PATH
         ego_maneuver_id = scen_desc['actors'][0]['maneuver']['id']
         gt_ego_path = groundtruth_paths[ego_maneuver_id]['aggregate_path']
+        gt_max_distance = groundtruth_paths[ego_maneuver_id]['max_distance']
+        gt_meadian_path_max_distance = groundtruth_paths[ego_maneuver_id]['meadian_path_max_distance']
 
         # ###### (4) GET CURRENT EGO PATH (from the current run)
         with open(file_path, 'r') as file:
@@ -189,6 +212,18 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
         # (B) Preventative Measures per frame
         # TODO Attila
+
+        # we compare with `gt_ego_path`
+        all_max_distances = []
+        for ego_path in groundtruth_paths[ego_maneuver_id]['runs'].values():
+            distances = [ego.location.distance(current.location) for ego, current in zip(ego_path['transforms'], current_ego_path['transforms'])]
+            all_max_distances.append(max(distances))
+        deviation_from_closest_gt = min(all_max_distances)
+        deviation_from_closest_gt_ratio = deviation_from_closest_gt / gt_max_distance
+
+        # Max deviation from gt_ego_path
+        deviation_from_median_gt = max([ego.location.distance(current.location) for ego, current in zip(gt_ego_path['transforms'], current_ego_path['transforms'])])
+        deviation_from_median_gt_ratio = deviation_from_median_gt / gt_meadian_path_max_distance
 
         # (B) Collision info
         # Note, there is at most 1 collision during a run
@@ -235,6 +270,10 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         # BIG TODOs HERE
         data_for_this_scenario_execution = {'runtime_in_game':record_info['meta']['duration_game'],
                                             'runtime_system_time': record_info['meta']['duration_system'],
+                                            'deviation_from_closest_gt' : deviation_from_closest_gt,
+                                            'deviation_from_closest_gt_ratio' : deviation_from_closest_gt_ratio,
+                                            'deviation_from_median_gt' : deviation_from_median_gt,
+                                            'deviation_from_median_gt_ratio' : deviation_from_median_gt_ratio,
                                             'collided with' : collisions,
                                             'num_preventative_maneuver' : -1,
                                             'near_miss_with' : near_misses
