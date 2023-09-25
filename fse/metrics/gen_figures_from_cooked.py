@@ -234,7 +234,7 @@ def main():
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     included_sizes = [2, 3, 4]
-    out_path = "fse/metrics/Town05_2240"
+    out_path = "fse/data-sim/Town05_2240"
     
     # Get the list of file contents
     data = gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes)
