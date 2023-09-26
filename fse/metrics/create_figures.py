@@ -8,19 +8,19 @@ FILE_FORMAT = 'png'
 def agg_attempt_collision_near_miss(data):
     d = {}
     d['attempts'] = data['num_collisions'].count()
-    d['preventative-meausere'] = (data['num_preventative_maneuvers'] > 0).sum()
-    d['collisions'] = data['num_collisions'].sum()
-    d['>0-near-miss-occured'] = data['near_miss_occurance'].sum()
+    d['near miss'] = data['near_miss_occurance'].sum()
+    d['collision'] = data['num_collisions'].sum()
+    d['preventative meausere'] = (data['num_preventative_maneuvers'] > 0).sum()
     return pd.Series(d)
 
 
-def create_bar_chart(df, groupby, title, width, height, output_path):
+def create_bar_chart(df, groupby, title, xlabel, width, height, output_path):
     df_agg = df.groupby([groupby]).apply(agg_attempt_collision_near_miss)
     # Set up the figure and axis
     fig, ax = plt.subplots(figsize=(width, height))
     # Extracting data for plotting
     categories = df_agg.index
-    attributes = ['attempts', 'preventative-meausere', 'collisions', '>0-near-miss-occured']
+    attributes = ['attempts', 'near miss', 'collision', 'preventative meausere']
     data = df_agg[attributes].values
 
     # Set the bar width
@@ -42,6 +42,9 @@ def create_bar_chart(df, groupby, title, width, height, output_path):
     # Set the title and legend
     plt.title(title)
     plt.legend()
+
+    # Add axis titles
+    ax.set_xlabel(xlabel)
 
     # Show the plot
     plt.tight_layout()
@@ -148,20 +151,21 @@ def main():
     df_coords = pd.read_csv(f'{input_path}/path_coords.csv')
 
     plot_types = [
-        (df_actor[df_actor['ego']],                                  'maneuver.id',               'ego____specific Ego attempts per maneuver'                           ),
-        (df_actor[df_actor['ego']],                                  'maneuver.type',             'ego________type Ego attempts per maneuver type'                      ),
-        (df_actor[df_actor['ego']],                                  'maneuver.start_lane_id',    'ego_______start Ego attempts per start lane'                         ),
-        (df_actor[df_actor['ego']],                                  'maneuver.end_lane_id',      'ego_________end Ego attempts per end lane'                           ),
-        (df_actor[~df_actor['ego']],                                 'maneuver.id',               'nonego_specific Ego attempts per maneuver'                           ),
-        (df_actor[~df_actor['ego']],                                 'maneuver.type',             'nonego_____type Ego attempts per maneuver type'                      ),
-        (df_actor[~df_actor['ego']],                                 'maneuver.start_lane_id',    'nonego____start Ego attempts per start lane'                         ),
-        (df_actor[~df_actor['ego']],                                 'maneuver.end_lane_id',      'nonego______end Ego attempts per end lane'                           ),
-        (df_relationships[df_relationships['time'] == 'initial'],    'relationship',              'rel________init Relationship attempts per relationship (initial)'    ),
-        (df_relationships[df_relationships['time'] == 'final'],      'relationship',              'rel_______final Relationship attempts per relationship (final)'      ),
+        (df_actor[df_actor['ego']],                               'maneuver.id',            'ego____specific Ego attempts per maneuver'                        , 'Maneuver id'),
+        (df_actor[df_actor['ego']],                               'maneuver.type',          'ego________type Ego attempts per maneuver type'                   , 'Maneuver type'),
+        (df_actor[df_actor['ego']],                               'maneuver.start_lane_id', 'ego_______start Ego attempts per start lane'                      , 'Start lane'),
+        (df_actor[df_actor['ego']],                               'maneuver.end_lane_id',   'ego_________end Ego attempts per end lane'                        , 'End lane'),
+        (df_actor[~df_actor['ego']],                              'maneuver.id',            'nonego_specific Ego attempts per maneuver'                        , 'Maneuver id'),
+        (df_actor[~df_actor['ego']],                              'maneuver.type',          'nonego_____type Ego attempts per maneuver type'                   , 'Maneuver type'),
+        (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'nonego____start Ego attempts per start lane'                      , 'Start lane'),
+        (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'nonego______end Ego attempts per end lane'                        , 'End lane'),
+        (df_relationships[df_relationships['time'] == 'initial'], 'relationship',           'rel________init Relationship attempts per relationship (initial)' , 'Initial relationship'),
+        (df_relationships[df_relationships['time'] == 'final'],   'relationship',           'rel_______final Relationship attempts per relationship (final)'   , 'Final relationship'),
+        (df_actor[df_actor['ego']],                               'num_actors',             'Ego attempts per number of actors'                                , 'Number of actors'),
     ]
 
-    for df, groupby, title in plot_types:
-        create_bar_chart(df=df, groupby=groupby, title=title, width=8, height=4, output_path=output_path)
+    for df, groupby, title, xlabel in plot_types:
+        create_bar_chart(df=df, groupby=groupby, title=title, xlabel=xlabel, width=8, height=4, output_path=output_path)
     
     # iterate through man_id values in df_coords
     for man_id in df_coords['man_id'].unique():
