@@ -52,6 +52,7 @@ def create_bar_chart(df, groupby, title, xlabel, width, height, output_path):
 
     # Save the plot
     plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
+    df_agg.to_csv(f'{output_path}/{title}.csv')
 
 
 def create_coordinates_chart(df, man_id, title, width, height, output_path, fix_scale=False):
