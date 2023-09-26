@@ -51,6 +51,91 @@ def create_bar_chart(df, groupby, title, width, height, output_path):
     plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
 
 
+def create_coordinates_chart(df, man_id, title, width, height, output_path, fix_scale=False):
+    # Filter the DataFrame based on the condition 'man_id'
+    filtered_df = df[df['man_id'] == man_id]
+
+    # Set up the figure and axis
+    fig, ax = plt.subplots(figsize=(width, height))
+    if fix_scale:
+        ax.set_aspect('equal', adjustable='box')
+
+    # Define discrete colors for each unique 'num_actors' value
+    unique_num_actors = filtered_df['num_actors'].unique()
+    colors = plt.cm.tab10.colors[:len(unique_num_actors)]
+
+    # Create a legend handler map for dot markers
+    legend_handles = []
+    for num_actor, color in zip(unique_num_actors, colors):
+        legend_handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=f'num_actors={num_actor}'))
+
+    # Create the scatter plot with discrete colors
+    for num_actor, color in zip(unique_num_actors, colors):
+        subset_df = filtered_df[filtered_df['num_actors'] == num_actor]
+        ax.scatter(subset_df['x'], subset_df['y'], label=f'num_actors={num_actor}', color=color, alpha=0.2, s=5)
+
+    # Set the title
+    ax.set_title(title)
+
+    # Add the legend with dot markers
+    ax.legend(handles=legend_handles)
+
+    if fix_scale and ('80' in man_id or '81' in man_id):
+        # Adjust the y-axis limits to cover more area
+        ax.set_ylim(bottom=min(filtered_df['y']) - 5, top=max(filtered_df['y']) + 10)  # You can adjust the padding as needed
+
+    # Add axis titles
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
+    
+    plt.tight_layout()
+
+    # Show the plot
+    # plt.show()
+
+    # Save the plot
+    plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
+
+
+# Function to create coordinates chart
+def create_coordinates_composite_chart(df, man_id, title, ax, fix_scale=False):
+    # Filter the DataFrame based on the condition 'man_id'
+    filtered_df = df[df['man_id'] == man_id]
+
+    if fix_scale:
+        ax.set_aspect('equal', adjustable='box')
+
+    # Define discrete colors for each unique 'num_actors' value
+    unique_num_actors = filtered_df['num_actors'].unique()
+    colors = plt.cm.tab10.colors[:len(unique_num_actors)]
+
+    # Create a legend handler map for dot markers
+    legend_handles = []
+    for num_actor, color in zip(unique_num_actors, colors):
+        legend_handles.append(plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=f'num_actors={num_actor}'))
+
+    # Create the scatter plot with discrete colors
+    for num_actor, color in zip(unique_num_actors, colors):
+        subset_df = filtered_df[filtered_df['num_actors'] == num_actor]
+        ax.scatter(subset_df['x'], subset_df['y'], label=f'num_actors={num_actor}', color=color, alpha=0.2, s=5)
+
+    # Set the title
+    ax.set_title(title)
+
+    # Add the legend with dot markers
+    ax.legend(handles=legend_handles)
+
+    if fix_scale and ('80' in man_id or '81' in man_id):
+        # Adjust the y-axis limits to cover more area
+        ax.set_ylim(bottom=min(filtered_df['y']) - 5, top=max(filtered_df['y']) + 10)  # You can adjust the padding as needed
+
+    # Add axis titles
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
+    
+    plt.tight_layout()
+
+
 def main():
     input_path = 'fse/data-sim/Town05_2240'
     json_data_actor = json.load(open(f'{input_path}/data_actor.json', 'rb'))
@@ -59,6 +144,8 @@ def main():
     json_data_relationship = json.load(open(f'{input_path}/data_relationship.json', 'rb'))
     df_relationships = pd.json_normalize(json_data_relationship, record_path=['relationships'])
     output_path = 'fse/figures'
+
+    df_coords = pd.read_csv(f'{input_path}/path_coords.csv')
 
     plot_types = [
         (df_actor[df_actor['ego']],                                  'maneuver.id',               'ego____specific Ego attempts per maneuver'                           ),
@@ -74,7 +161,32 @@ def main():
     ]
 
     for df, groupby, title in plot_types:
-        create_bar_chart(df, groupby, title, 8, 4, output_path)
+        create_bar_chart(df=df, groupby=groupby, title=title, width=8, height=4, output_path=output_path)
+    
+    # iterate through man_id values in df_coords
+    for man_id in df_coords['man_id'].unique():
+        create_coordinates_chart(df=df_coords, man_id=man_id, title=f'Coordinates of paths for maneuver {man_id}', 
+                                 width=8, height=8, output_path=output_path, fix_scale=True)
+
+    # Create a 4x2 grid of subplots
+    fig, axs = plt.subplots(2, 4, figsize=(16, 16))
+
+    # Choose the order of man_id values for subplots
+    man_id_order = ['road2241_lane0', 'road2242_lane0', 'road2282_lane0', 'road2292_lane0', 'road2280_lane0', 'road2281_lane1', 'road2281_lane0', 'road2280_lane1']
+
+    # Create subplots for each man_id
+    for i, man_id in enumerate(man_id_order):
+        row, col = divmod(i, 4)  # Calculate the row and column for the subplot
+        create_coordinates_composite_chart(df=df_coords, man_id=man_id, title=f'{man_id}', ax=axs[row, col], fix_scale=True)
+
+    # Adjust spacing between subplots
+    plt.tight_layout()
+
+    # Show the plot
+    # plt.show()
+
+    # Save the plot
+    plt.savefig(f'{output_path}/Coordinates.{FILE_FORMAT}')
 
 if __name__ == "__main__":
     main()

@@ -12,6 +12,7 @@ import re
 import numpy as np
 import math
 import carla
+import csv
 
 def validate_dir(d):
     if not os.path.exists(d):
@@ -51,6 +52,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         abs_scenarios_json = json.load(j)
     
     groundtruth_paths = {mid : {'runs' : {}, 'aggregate_path' : []} for mid in abs_scenarios_json['all_maneuvers']}
+
+    all_paths_coordinates = []
 
     # get measurements data
     for filename in only_1_actor_scenarios[:]:
@@ -134,6 +137,28 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         groundtruth_paths[man_id]['aggregate_path'] = all_runs[min_max_id]
         groundtruth_paths[man_id]['meadian_path_max_distance'] = min_max_value
 
+        # Save the coordinates of the aggregate path
+        for rep_id in all_runs:
+            for frame_i, ego_tr_at_i in enumerate(all_runs[rep_id]['transforms']):
+                coord = {}
+                coord['town'] = town
+                coord['junction_id'] = junc_id
+                coord['num_actors'] = num_actors
+                coord['scenario_instance_id'] = scenario_instance_id
+                coord['rep_id'] = rep_id
+                coord['aggregate'] = True if rep_id == min_max_id else False
+                coord['man_id'] = man_id
+                coord['actor_id'] = 0
+                coord['frame'] = frame_i
+                coord['x'] = ego_tr_at_i.location.x
+                coord['y'] = ego_tr_at_i.location.y
+                coord['z'] = ego_tr_at_i.location.z
+                coord['pitch'] = ego_tr_at_i.rotation.pitch
+                coord['yaw'] = ego_tr_at_i.rotation.yaw
+                coord['roll'] = ego_tr_at_i.rotation.roll
+
+                all_paths_coordinates.append(coord)
+
     ###############################################################
     # STEP 2 : Handle 2-3-4 actor scenario data
     more_actors_scenarios = list(filter(lambda x: '_1ac_' not in x, sorted_files))
@@ -215,12 +240,33 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         matching_points_per_frame = np.zeros(len(gt_ego_path['transforms']))
         # matching_points_per_frame = np.array([0] * len(gt_ego_path['transforms']))
 
+        current_path_coordinates = []
         # find closest point on gt_ego_path to current_ego_path at all frames
+        # also save coordinates of the path
         for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
             # find closest point on gt_ego_path to ego_tr_at_i
             distances = [ego_tr_at_i.location.distance(gt_tr.location) for gt_tr in gt_ego_path['transforms']]
             closest_point_id = np.argmin(distances)
             matching_points_per_frame[closest_point_id] += 1
+            
+            coord = {}
+            coord['town'] = town
+            coord['junction_id'] = junc_id
+            coord['num_actors'] = num_actors
+            coord['scenario_instance_id'] = scenario_instance_id
+            coord['rep_id'] = rep_id
+            coord['aggregate'] = False
+            coord['man_id'] = ego_maneuver_id
+            coord['actor_id'] = 0
+            coord['frame'] = frame_i
+            coord['x'] = ego_tr_at_i.location.x
+            coord['y'] = ego_tr_at_i.location.y
+            coord['z'] = ego_tr_at_i.location.z
+            coord['pitch'] = ego_tr_at_i.rotation.pitch
+            coord['yaw'] = ego_tr_at_i.rotation.yaw
+            coord['roll'] = ego_tr_at_i.rotation.roll
+
+            all_paths_coordinates.append(coord)
         
         # count number of frames in gt_ego_path, which have more matching points, than the previous frame + PREVENTITIVE_THRESHOLD
         # this indicates a slow down in the ego vehicle
@@ -350,7 +396,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
             data_for_figures['scenarios'][num_actors][scenario_instance_id] = {}
         data_for_figures['scenarios'][num_actors][scenario_instance_id][rep_id] = data_for_this_scenario_execution
 
-    return data_for_figures
+    return data_for_figures, all_paths_coordinates
 
 
 def main():
@@ -360,14 +406,36 @@ def main():
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     measurements_dat_path = f'{data_path}/log/measurements.json'
     out_path = f'{data_path}/cooked_measurements.json'
+    coords_out_path = f'{data_path}/path_coords.json'
     
     # Get the list of file contents
-    file_contents_list = iterate_text_files_in_folder(sim_data_dir, abs_scenario_dir, measurements_dat_path)
+    file_contents_list, paths_coordinates = iterate_text_files_in_folder(sim_data_dir, abs_scenario_dir, measurements_dat_path)
 
     # Save the list as a JSON file
     with open(out_path, "w") as json_file:
         json.dump(file_contents_list, json_file, indent=4)
     print(f'Saved cooked measurments at     {out_path}')
+
+    # Save the coordinates as a JSON file
+    with open(coords_out_path, "w") as json_file:
+        json.dump(paths_coordinates, json_file, indent=4)
+    print(f'Saved coordinates at     {coords_out_path}')
+
+    # Save the coordinates as a CSV file
+    # Define the fields/columns for the CSV file
+    fields = ['town', 'junction_id', 'num_actors', 'scenario_instance_id', 'rep_id', 'aggregate', 'man_id', 'actor_id', 'frame', 'x', 'y', 'z', 'pitch', 'yaw', 'roll']
+
+    # Open the CSV file with write permission
+    with open(coords_out_path.replace('.json', '.csv'), "w", newline="") as csvfile:
+        # Create a CSV writer using the field/column names
+        writer = csv.DictWriter(csvfile, fieldnames=fields)
+        
+        # Write the header row (column names)
+        writer.writeheader()
+        
+        # Write the data
+        for row in paths_coordinates:
+            writer.writerow(row)
 
 if __name__ == "__main__":
     main()
