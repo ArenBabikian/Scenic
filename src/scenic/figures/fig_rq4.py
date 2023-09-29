@@ -40,11 +40,12 @@ def figRQ4():
     # DATA GATHERING
     allData = {}
     for mhsc in mhsConfigs:
-        data = {'rt':[], 'sr':[]}
+        data = {'rt':[], 'sr':[], 'srps':[]}
         for config in configurations:
             rt_con_data = []
             num_attempts = 0 #obs
             num_successes = 0 #obs
+            srps_for_config = []
 
             for i in range(10):
                 # docker\results\RQ4\zalaFullcrop\4actors\0-0\d-nsga\nsga2-categImpo\_measurementstats.json
@@ -55,17 +56,21 @@ def figRQ4():
                     
                     json_res = json_data['results']
                     num_attempts += len(json_res)
+                    sr_per_scene = 0
 
                     for r in json_res:
                         if r['success']:
                             # rt_con_data.append(r['time']) # TEMP RMed
                             num_successes += 1
                             rt_con_data.append(r['time'])
+                            sr_per_scene += 20
+                    srps_for_config.append(sr_per_scene)
 
             succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
 
             data['rt'].append(rt_con_data)
             data['sr'].append(succ_rate)
+            data['srps'].append(srps_for_config)
         allData[mhsc] = data
 
     # print(allData)
@@ -276,7 +281,44 @@ def figRQ4():
         print(f'Saved figure at {save_path}')
         plt.clf()
 
+    def f3():
+
+        #FIGURE 3
+        adjustSize(s=12)
+        ratio = 0.4
+        n_groups = len(configurations)
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 1/(len(mhsConfigs)+1)
+
+        for i, mhsc in enumerate(mhsConfigs):
+            color = '#2F9E00'
+            color = colors[i]
+            ax.boxplot(allData[mhsc]['srps'],
+                       positions=index+i*bar_width,
+                       widths=bar_width,
+                       patch_artist=True,
+                       boxprops=dict(facecolor=colors[i],color='k'),
+                       capprops=dict(color='k'),
+                       whiskerprops=dict(color=colors[i]),
+                       flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+                       medianprops=dict(color='k'))   
+        x_left, x_right = ax.get_xlim()
+        y_low, y_high = ax.get_ylim()
+        ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio) 
+        
+        plt.xlabel('Scene size')
+        plt.xticks(index + (-0.5+len(mhsConfigs)/2.0)*bar_width, tuple(configurations))
+        plt.ylabel('Success Rate (%)')
+        save_path = f'{out_dir}/{m}-srps.pdf'
+        plt.savefig(save_path, bbox_inches='tight')
+
+        print(f'Saved figure at {save_path}')
+        plt.clf()
+
+
     f1()
     f2()
+    f3()
 
 figRQ4()

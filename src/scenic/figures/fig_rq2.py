@@ -196,6 +196,145 @@ def figRQ21(stat_sig=True, noPartial=True):
                     print(('~~~~' if pvaluerm>thresh else '    ') + f'nsga*{approach}-rm: (pvalue={pvaluerm}) (oddsrat={oddsratio})')
             print(">>>End Statistical Significance<<<")
 
+##########################
+# FIGURE RQ2.1.x: Success Rate Comparison with distribution
+##########################
+def figRQ21x():
+    fig1_out_dir = mk(f'{out_dir}/RQ2.1.distribution')
+
+    # DATA GATHERING
+    data = {}
+    for m in maps:
+        fig1_data = {}
+
+        for approach in approaches:
+            ns_data = []
+            sr_data = []
+            srps_data = []
+            ns_rm_data = []
+            sr_rm_data = []
+            num_at_data = []
+            for config in configurations:
+                num_attempts = 0
+                num_successes = 0
+                sr_per_scene = []
+                num_rm_successes = 0
+
+                for i in num_scenes:
+                    if approach != 'nsga':
+                        json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/_measurementstats.json'
+                    else:                        
+                        json_path = f'{src_dir}/{m}/{config}/{i}-0/d-{approach}/nsga2-actors/_measurementstats.json'
+                    if os.path.exists(json_path):
+                        with open(json_path) as f:
+                            json_data = json.load(f)
+                        
+                        json_res = json_data['results']
+                        num_attempts += len(json_res)
+                        num_successes_for_scene = 0
+
+                        for r in json_res:
+                            if r['success']:
+                                num_successes += 1
+                                if approach == 'nsga':
+                                    num_successes_for_scene += (100/len(num_scenes))
+                                if approach != 'nsga' and  r['CON_sat_%_rm'] == 1:
+                                    num_rm_successes += 1
+                                    num_successes_for_scene += (100/len(num_scenes))
+                        sr_per_scene.append(num_successes_for_scene)
+
+                ns_data.append(num_successes)
+                succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
+                sr_data.append(succ_rate)                
+                srps_data.append(sr_per_scene)
+                ns_rm_data.append(num_rm_successes)
+                succ_rm_rate = 100*(-0.1 if num_attempts == 0 else num_rm_successes / num_attempts)
+                sr_rm_data.append(succ_rm_rate)
+                num_at_data.append(num_attempts)
+
+            fig1_data[approach] = {'sr':sr_data, 'srps':srps_data, 'ns':ns_data, 'at':num_at_data, 'srrm':sr_rm_data, 'nsrm':ns_rm_data}
+
+        data[m] = fig1_data
+    # FIGURE CREATION
+    
+    # import pprint 
+    # pp = pprint.PrettyPrinter(indent=2)
+    # pp.pprint(data)
+
+    adjustSize()
+    for m in maps:
+
+        n_groups = len(configurations)
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 0.2
+
+        bps = []
+
+        for i in range(len(approaches)):
+            approach = approaches[i]
+            name = names_app[i]
+            pos = index+i*bar_width
+
+            vals = data[m][approach]['srps']
+            if len(vals[2]) == 0:
+                median = 'NA'
+            else:
+                median = statistics.median(vals[2])
+            # print(f'{m}|{approach} = [median={median}]')
+            # means = [statistics.mean(x) for x in vals]
+            # plt.bar(pos, means, bar_width, color=colors[i], alpha=1 if approach == 'nsga' else opacity, label=approach)
+            bps.append(plt.boxplot(vals, positions=pos, widths=bar_width,
+                patch_artist=True,
+                boxprops=dict(facecolor=colors[i],color='k'),
+                capprops=dict(color='k'),
+                whiskerprops=dict(color=colors[i]),
+                flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+                medianprops=dict(color='k'),
+                labels=[approach, approach, approach]))
+
+            # # vals = data[m][approach]['rt']
+            # medians = [statistics.median(x) for x in vals]
+            # plt.scatter(pos, medians, color='k', alpha=1 if approach == 'nsga' else opacity, label=approach)
+
+            # # #print number of successes
+            # # attempts = data[m][approach]['at']
+            # # successes = data[m][approach]['su']
+            # # for j, v in enumerate(successes):
+            # #     ax.text(pos[j], means[j]+math.log(2), str(v), ha='center', fontweight='bold')
+
+            # if approach == 'nsga':
+            #     vals = data[m][approach]['sr']
+            #     plt.bar(pos, vals, bar_width, 
+            #         # color=colors[i], 
+            #         color=colors[i],
+            #         # alpha=1 if approach == 'nsga' else opacity, 
+            #         label=name, 
+            #         edgecolor=colors[i], 
+            #         hatch='//')
+
+            # # PRINT w/ RM SAT
+            # if approach != 'nsga':
+            #     vals_rm = data[m][approach]['srrm']
+            #     plt.bar(pos, vals_rm, bar_width, color=colors[i], alpha=1, label=name)
+                
+            #     # print success ratio
+            #     # for i, v in enumerate(vals_rm):
+            #     #     ax.text(pos[i], max(0, vals_rm[i])+1, str(round(v)), ha='center', fontweight='bold')
+
+        plt.xlabel('Scene size')
+        plt.ylabel('Success rate (%)')
+        plt.ylim(0, 105)
+        # plt.title(m)
+        plt.xticks(index + 1.5*bar_width, ('2 actors', '3 actors', '4 actors'))
+        # plt.legend()
+        plt.tight_layout()
+        # plt.show()
+        save_path = f'{fig1_out_dir}/{m}.pdf'
+        plt.savefig(save_path)
+
+        print(f'Saved figure at {save_path}')
+
 
 ##########################
 # FIGURE RQ2.2: Runtime Analysis
@@ -532,5 +671,6 @@ def fig2_helper(n_groups, data, config, max_val, bar_width, index, fig2_out_dir,
 
 
 figRQ21(True, True)
+figRQ21x()
 figRQ22(True)
 figRQ23()
