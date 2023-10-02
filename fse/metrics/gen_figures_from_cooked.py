@@ -183,6 +183,8 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
                 # GATHER SPECIFIC INFO (2 actors only, for now)
                 # EGO
                 scen_base = {}
+                scen_base['map_name'] = cooked_measurements['map_name']
+                scen_base['junction_id'] = cooked_measurements['junction_id']
                 scen_base['num_actors'] = num_actors
                 scen_base['scenario_spec_id'] = scenario_spec_id
                 scen_base['rep_id'] = rep_id
@@ -230,11 +232,12 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
 
 
 def main():
-    data_path = "fse/data-sim/Town05_2240" # Attila, modify this
+    map_junction = 'Town04_916'
+    data_path = f"fse/data-sim/{map_junction}" # Attila, modify this
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     included_sizes = [2, 3, 4]
-    out_path = "fse/data-sim/Town05_2240"
+    out_path = f"fse/data-sim/{map_junction}"
     
     # Get the list of file contents
     data = gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes)

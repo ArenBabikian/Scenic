@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import json
 import matplotlib.pyplot as plt
@@ -52,7 +53,13 @@ def create_bar_chart(df, groupby, title, xlabel, width, height, output_path):
 
     # Save the plot
     plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
-    df_agg.to_csv(f'{output_path}/{title}.csv')
+    os.makedirs(f'{output_path}/csv', exist_ok=True)
+    df_agg.to_csv(f'{output_path}/csv/{title}.csv')
+
+    os.makedirs(f'{output_path}/latex', exist_ok=True)
+    with open(f'{output_path}/latex/{title}.tex', 'w') as f:
+        f.write(df_agg.to_latex())
+    plt.close()
 
 
 def create_coordinates_chart(df, man_id, title, width, height, output_path, fix_scale=False):
@@ -99,6 +106,7 @@ def create_coordinates_chart(df, man_id, title, width, height, output_path, fix_
 
     # Save the plot
     plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
+    plt.close()
 
 
 # Function to create coordinates chart
@@ -141,15 +149,30 @@ def create_coordinates_composite_chart(df, man_id, title, ax, fix_scale=False):
 
 
 def main():
-    input_path = 'fse/data-sim/Town05_2240'
-    json_data_actor = json.load(open(f'{input_path}/data_actor.json', 'rb'))
-    df_actor = pd.json_normalize(json_data_actor, record_path=['actors'])
-
-    json_data_relationship = json.load(open(f'{input_path}/data_relationship.json', 'rb'))
-    df_relationships = pd.json_normalize(json_data_relationship, record_path=['relationships'])
+    input_path = 'fse/data-sim'
     output_path = 'fse/figures'
+    os.makedirs(output_path, exist_ok=True)
 
-    df_coords = pd.read_csv(f'{input_path}/path_coords.csv')
+    map_junction_names = ['Town04_916', 'Town05_2240']
+    actor_df_list = []
+    relationship_list = []
+    coordinatess_list = []
+    for map_junction_name in map_junction_names:
+        json_data_actor = json.load(open(f'{input_path}/{map_junction_name}/data_actor.json', 'rb'))
+        df_act = pd.json_normalize(json_data_actor, record_path=['actors'])
+        actor_df_list.append(df_act)
+
+        json_data_relationship = json.load(open(f'{input_path}/{map_junction_name}/data_relationship.json', 'rb'))
+        df_rel = pd.json_normalize(json_data_relationship, record_path=['relationships'])
+        relationship_list.append(df_rel)
+
+        dc_coord = pd.read_csv(f'{input_path}/{map_junction_name}/path_coords.csv')
+        coordinatess_list.append(dc_coord)
+
+    df_actor = pd.concat(actor_df_list)
+    df_relationship = pd.concat(relationship_list)
+    df_coordinates = pd.concat(coordinatess_list)
+    
 
     plot_types = [
         (df_actor[df_actor['ego']],                               'maneuver.id',            'ego____specific Ego attempts per maneuver'                        , 'Maneuver id'),
@@ -160,8 +183,8 @@ def main():
         (df_actor[~df_actor['ego']],                              'maneuver.type',          'nonego_____type Ego attempts per maneuver type'                   , 'Maneuver type'),
         (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'nonego____start Ego attempts per start lane'                      , 'Start lane'),
         (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'nonego______end Ego attempts per end lane'                        , 'End lane'),
-        (df_relationships[df_relationships['time'] == 'initial'], 'relationship',           'rel________init Relationship attempts per relationship (initial)' , 'Initial relationship'),
-        (df_relationships[df_relationships['time'] == 'final'],   'relationship',           'rel_______final Relationship attempts per relationship (final)'   , 'Final relationship'),
+        (df_relationship[df_relationship['time'] == 'initial'], 'relationship',           'rel________init Relationship attempts per relationship (initial)' , 'Initial relationship'),
+        (df_relationship[df_relationship['time'] == 'final'],   'relationship',           'rel_______final Relationship attempts per relationship (final)'   , 'Final relationship'),
         (df_actor[df_actor['ego']],                               'num_actors',             'Ego attempts per number of actors'                                , 'Number of actors'),
     ]
 
@@ -169,29 +192,9 @@ def main():
         create_bar_chart(df=df, groupby=groupby, title=title, xlabel=xlabel, width=8, height=4, output_path=output_path)
     
     # iterate through man_id values in df_coords
-    for man_id in df_coords['man_id'].unique():
-        create_coordinates_chart(df=df_coords, man_id=man_id, title=f'Coordinates of paths for maneuver {man_id}', 
+    for man_id in df_coordinates['man_id'].unique():
+        create_coordinates_chart(df=df_coordinates, man_id=man_id, title=f'Coordinates of paths for maneuver {man_id}', 
                                  width=8, height=8, output_path=output_path, fix_scale=True)
-
-    # Create a 4x2 grid of subplots
-    fig, axs = plt.subplots(2, 4, figsize=(16, 16))
-
-    # Choose the order of man_id values for subplots
-    man_id_order = ['road2241_lane0', 'road2242_lane0', 'road2282_lane0', 'road2292_lane0', 'road2280_lane0', 'road2281_lane1', 'road2281_lane0', 'road2280_lane1']
-
-    # Create subplots for each man_id
-    for i, man_id in enumerate(man_id_order):
-        row, col = divmod(i, 4)  # Calculate the row and column for the subplot
-        create_coordinates_composite_chart(df=df_coords, man_id=man_id, title=f'{man_id}', ax=axs[row, col], fix_scale=True)
-
-    # Adjust spacing between subplots
-    plt.tight_layout()
-
-    # Show the plot
-    # plt.show()
-
-    # Save the plot
-    plt.savefig(f'{output_path}/Coordinates.{FILE_FORMAT}')
 
 if __name__ == "__main__":
     main()
