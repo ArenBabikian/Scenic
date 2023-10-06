@@ -11,8 +11,9 @@ import json
 import re
 import numpy as np
 import math
-import carla
+# import carla
 import csv
+from tqdm import tqdm
 
 def validate_dir(d):
     if not os.path.exists(d):
@@ -165,7 +166,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
     # get measurements data
     data_for_figures = {'map_name' : town, 'junction_id' : junc_id, 'scenarios' : {1:{}, 2:{}, 3:{}, 4:{}}}
-    for filename in more_actors_scenarios[:]:
+    aggregate_data = {}
+    for filename in tqdm(more_actors_scenarios[:]):
 
         # validation checks
         file_path = os.path.join(data_sim_dir, filename)
@@ -235,7 +237,50 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         assert len(record_infos) == 1
         record_info = record_infos[0]
 
-        # (B) Preventative Measures per frame
+        # (B) EGO Does scenario succeed?
+        status = record_info['status']
+        
+        # (C) EGO Is there a collision?
+        # NOTE, there is at most 1 collision during a run
+        collisions = log.get_actor_collisions(ego_id)
+
+        # (D) EGO Is there a near-miss situation?
+        # TODO include which other vehicle there was a near-miss
+        near_misses = [0 for _ in other_vehicle_paths]
+        # iterate through all scenes
+        for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
+            other_vehicle_path = other_vehicle_paths[other_vehicle_id]
+
+            for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
+                other_tr_at_i = other_vehicle_path['transforms'][frame_i]
+
+                # EGO
+                ego_vec = carlaToScenicPosition(ego_tr_at_i.location)
+                ego_head = carlaToScenicHeading(ego_tr_at_i.rotation)
+                ego_region = RectangularRegion(ego_vec, ego_head, 2, 4.5)
+
+                # OTHER
+                other_vec = carlaToScenicPosition(other_tr_at_i.location)
+                other_head = carlaToScenicHeading(other_tr_at_i.rotation)
+                other_region = RectangularRegion(other_vec, other_head, 2, 4.5)
+
+                distance_between_ego_and_other = closestDistanceBetweenRectangles(ego_region, other_region)
+
+                DISTANCE_THRESHOLD = 1.0
+                if distance_between_ego_and_other < DISTANCE_THRESHOLD:
+                    # found a near-miss situation with the current other vehicle
+                    near_misses[normalized_id] = 1
+
+                    # move on to the next other vehicle
+                    break
+
+        # (E) Is the collision avoidable/preventable?
+        # TODO TODO TODO
+
+
+
+
+        # (F) Preventative Measures per frame
         PREVENTITIVE_THRESHOLD = 5
         matching_points_per_frame = np.zeros(len(gt_ego_path['transforms']))
         # matching_points_per_frame = np.array([0] * len(gt_ego_path['transforms']))
@@ -271,7 +316,6 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         # count number of frames in gt_ego_path, which have more matching points, than the previous frame + PREVENTITIVE_THRESHOLD
         # this indicates a slow down in the ego vehicle
         number_of_preventitive_maneuvers = len(np.where(matching_points_per_frame[:-1] <= matching_points_per_frame[1:] - PREVENTITIVE_THRESHOLD)[0])
-            
 
         # we compare with `gt_ego_path`
         all_max_distances = []
@@ -285,45 +329,36 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         deviation_from_median_gt = max([ego.location.distance(current.location) for ego, current in zip(gt_ego_path['transforms'], current_ego_path['transforms'])])
         deviation_from_median_gt_ratio = deviation_from_median_gt / gt_meadian_path_max_distance
 
-        # (B) Collision info
-        # Note, there is at most 1 collision during a run
-        collisions = log.get_actor_collisions(ego_id)
-
-        # (B) Near-miss info
-        # TODO include which other vehicle there was a near-miss
-        near_misses = [0 for _ in other_vehicle_paths]
-        # iterate through all scenes
-        for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
-            other_vehicle_path = other_vehicle_paths[other_vehicle_id]
-
-            for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
-                other_tr_at_i = other_vehicle_path['transforms'][frame_i]
-
-                # EGO
-                ego_vec = carlaToScenicPosition(ego_tr_at_i.location)
-                ego_head = carlaToScenicHeading(ego_tr_at_i.rotation)
-                ego_region = RectangularRegion(ego_vec, ego_head, 2, 4.5)
-
-                # OTHER
-                other_vec = carlaToScenicPosition(other_tr_at_i.location)
-                other_head = carlaToScenicHeading(other_tr_at_i.rotation)
-                other_region = RectangularRegion(other_vec, other_head, 2, 4.5)
-
-                distance_between_ego_and_other = closestDistanceBetweenRectangles(ego_region, other_region)
-
-                DISTANCE_THRESHOLD = 1.0
-                if distance_between_ego_and_other < DISTANCE_THRESHOLD:
-                    # found a near-miss situation with the current other vehicle
-                    near_misses[normalized_id] = 1
-
-                    # move on to the next other vehicle
+        # (G) NONEGO Does scenario have a nonego collision?
+        nonego_collision = False
+        for nonego_id in all_actor_ids[1:]:
+            collisions = log.get_actor_collisions(nonego_id)
+            for frame, colliding_ids in collisions.items():
+                if any(actor_id in colliding_ids for actor_id in all_actor_ids[1:]):
+                    nonego_collision = True
                     break
+            if nonego_collision:
+                break
 
-        # TODO TODO TODO TODO TODO TODO TODO TODO
-        # check somehow that non-egos are not colliding with eavh other, which invalisdates the scenario
+        # (7) Do we disregard the scenario?
+        if num_actors not in aggregate_data:
+            aggregate_data[num_actors] = {
+                'status': {
+                    'Completed': 0,
+                    'Failed': 0,
+                    'Failed - Agent timed out': 0
+                },
+                'nonego_collision': {
+                    'True': 0,
+                    'False': 0
+                },
+                'total_scenarios': 0
+            }
+        aggregate_data[num_actors]['status'][status] += 1
+        aggregate_data[num_actors]['nonego_collision'][str(nonego_collision)] += 1
+        aggregate_data[num_actors]['total_scenarios'] += 1
 
 
-        # (B) Compare gt_ego_path to current_ego_path
 
 
         # ###### (6) SAVE THE COOKED DATA
@@ -338,6 +373,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                             'num_preventative_maneuver' : number_of_preventitive_maneuvers,
                                             'near_miss_with' : near_misses
                                }
+
+                               
 
         # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES
         if num_actors == 2:
@@ -396,12 +433,21 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
             data_for_figures['scenarios'][num_actors][scenario_instance_id] = {}
         data_for_figures['scenarios'][num_actors][scenario_instance_id][rep_id] = data_for_this_scenario_execution
 
+    # (8) Print preliminary measurement info
+    for num_actors, data in aggregate_data.items():
+        print(f"Num Actors: {num_actors}")
+        print(f"Status: {data['status']}")
+        print(f"Nonego Collision: {data['nonego_collision']}")
+        print()
+    # for given size, tot_num scenarios, num_successes, num_failures, num_failures_with_nonego_collision
+
     return data_for_figures, all_paths_coordinates
 
 
 def main():
     # Set the folder path here
     data_path = "fse/data-sim/Town05_2240"
+    # data_path = "fse/data-sim/Town04_916"
     sim_data_dir = f'{data_path}/txt'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     measurements_dat_path = f'{data_path}/log/measurements.json'
@@ -419,14 +465,15 @@ def main():
     # Save the coordinates as a JSON file
     with open(coords_out_path, "w") as json_file:
         json.dump(paths_coordinates, json_file, indent=4)
-    print(f'Saved coordinates at     {coords_out_path}')
+    print(f'Saved coordinates at            {coords_out_path}')
 
     # Save the coordinates as a CSV file
     # Define the fields/columns for the CSV file
     fields = ['town', 'junction_id', 'num_actors', 'scenario_instance_id', 'rep_id', 'aggregate', 'man_id', 'actor_id', 'frame', 'x', 'y', 'z', 'pitch', 'yaw', 'roll']
 
     # Open the CSV file with write permission
-    with open(coords_out_path.replace('.json', '.csv'), "w", newline="") as csvfile:
+    csv_out_path = coords_out_path.replace('.json', '.csv')
+    with open(csv_out_path, "w", newline="") as csvfile:
         # Create a CSV writer using the field/column names
         writer = csv.DictWriter(csvfile, fieldnames=fields)
         
@@ -436,6 +483,7 @@ def main():
         # Write the data
         for row in paths_coordinates:
             writer.writerow(row)
+    print(f'Saved coordinates at            {csv_out_path}')
 
 if __name__ == "__main__":
     main()
