@@ -138,26 +138,27 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         groundtruth_paths[man_id]['meadian_path_max_distance'] = min_max_value
 
         # Save the coordinates of the aggregate path
-        for rep_id in all_runs:
-            for frame_i, ego_tr_at_i in enumerate(all_runs[rep_id]['transforms']):
-                coord = {}
-                coord['town'] = town
-                coord['junction_id'] = junc_id
-                coord['num_actors'] = num_actors
-                coord['scenario_instance_id'] = scenario_instance_id
-                coord['rep_id'] = rep_id
-                coord['aggregate'] = True if rep_id == min_max_id else False
-                coord['man_id'] = man_id
-                coord['actor_id'] = 0
-                coord['frame'] = frame_i
-                coord['x'] = ego_tr_at_i.location.x
-                coord['y'] = ego_tr_at_i.location.y
-                coord['z'] = ego_tr_at_i.location.z
-                coord['pitch'] = ego_tr_at_i.rotation.pitch
-                coord['yaw'] = ego_tr_at_i.rotation.yaw
-                coord['roll'] = ego_tr_at_i.rotation.roll
-
-                all_paths_coordinates.append(coord)
+        all_paths_coordinates.extend([
+            {
+                'town': town,
+                'junction_id': junc_id,
+                'num_actors': num_actors,
+                'scenario_instance_id': scenario_instance_id,
+                'rep_id': rep_id,
+                'aggregate': rep_id == min_max_id,
+                'man_id': man_id,
+                'actor_id': 0,
+                'frame': frame_i,
+                'x': ego_tr_at_i.location.x,
+                'y': ego_tr_at_i.location.y,
+                'z': ego_tr_at_i.location.z,
+                'pitch': ego_tr_at_i.rotation.pitch,
+                'yaw': ego_tr_at_i.rotation.yaw,
+                'roll': ego_tr_at_i.rotation.roll
+            }
+            for rep_id, run_data in all_runs.items()
+            for frame_i, ego_tr_at_i in enumerate(run_data['transforms'])
+        ])
 
     ###############################################################
     # STEP 2 : Handle 2-3-4 actor scenario data
@@ -245,8 +246,13 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         # also save coordinates of the path
         for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
             # find closest point on gt_ego_path to ego_tr_at_i
-            distances = [ego_tr_at_i.location.distance(gt_tr.location) for gt_tr in gt_ego_path['transforms']]
-            closest_point_id = np.argmin(distances)
+            # ego_location = carlaToScenicPosition(ego_tr_at_i.location)
+            # ego_rotation = carlaToScenicHeading(ego_tr_at_i.rotation)
+            distances = [gt_tr.location.distance(ego_tr_at_i.location) for gt_tr in gt_ego_path['transforms']]
+            
+            # Find the index of the closest point (min distance)
+            closest_point_id = distances.index(min(distances))
+
             matching_points_per_frame[closest_point_id] += 1
             
             coord = {}
@@ -294,6 +300,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         near_misses = [0 for _ in other_vehicle_paths]
         # iterate through all scenes
         for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
+            other_maneuver_id = scen_desc['actors'][normalized_id + 1]['maneuver']['id']
             other_vehicle_path = other_vehicle_paths[other_vehicle_id]
 
             for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
@@ -318,6 +325,25 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
                     # move on to the next other vehicle
                     break
+            
+                coord = {}
+                coord['town'] = town
+                coord['junction_id'] = junc_id
+                coord['num_actors'] = num_actors
+                coord['scenario_instance_id'] = scenario_instance_id
+                coord['rep_id'] = rep_id
+                coord['aggregate'] = False
+                coord['man_id'] = other_maneuver_id
+                coord['actor_id'] = other_vehicle_id
+                coord['frame'] = frame_i
+                coord['x'] = ego_tr_at_i.location.x
+                coord['y'] = ego_tr_at_i.location.y
+                coord['z'] = ego_tr_at_i.location.z
+                coord['pitch'] = other_tr_at_i.rotation.pitch
+                coord['yaw'] = other_tr_at_i.rotation.yaw
+                coord['roll'] = other_tr_at_i.rotation.roll
+
+                all_paths_coordinates.append(coord)
 
         # TODO TODO TODO TODO TODO TODO TODO TODO
         # check somehow that non-egos are not colliding with eavh other, which invalisdates the scenario
