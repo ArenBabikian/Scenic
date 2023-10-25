@@ -14,7 +14,8 @@
    syntax
 """
 
-from .syntax.translator import scenarioFromFile, scenarioFromString
+# TODO (problem with carla)
+# from .syntax.translator import scenarioFromFile, scenarioFromString
 
 import scenic.core.errors as _errors
 _errors.showInternalBacktrace = False
