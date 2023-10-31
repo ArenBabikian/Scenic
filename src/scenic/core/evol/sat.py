@@ -37,14 +37,13 @@ solver.add(metaconstraints)
 def convertToZ3Constraint(constraint):
     src = Const(constraint.src, SceneObject)
     tgt = Const(constraint.tgt, SceneObject)
-    if constraint.type == Cstr_type.HASTOLEFT:
-        return left(src, tgt)
-    if constraint.type == Cstr_type.HASTORIGHT:
-        return right(src, tgt)
-    if constraint.type == Cstr_type.HASBEHIND:
-        return behind(src, tgt)
-    if constraint.type == Cstr_type.HASINFRONT:
-        return front(src,tgt)
+    constraintMap = {
+            Cstr_type.HASTOLEFT: left(src, tgt),
+            Cstr_type.HASTORIGHT: right(src, tgt),
+            Cstr_type.HASBEHIND: behind(src, tgt),
+            Cstr_type.HASINFRONT: front(src, tgt)
+        }
+    return constraintMap[constraint.type]
 
 def validate_constraints(constraints):
     z3Constraints = list(map(convertToZ3Constraint, constraints))
@@ -62,6 +61,6 @@ validate_constraints([
     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
     Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
-    # Cstr(Cstr_type.HASINFRONT, 'o1', 'o2')
+    #Cstr(Cstr_type.HASINFRONT, 'o2', 'o3')
     # Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'), # conflict
 ])
