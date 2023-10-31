@@ -11,12 +11,17 @@ Bool = BoolSort()
 
 left = Function('left', SceneObject, SceneObject, Bool)
 right = Function('right', SceneObject, SceneObject, Bool)
+front = Function('front', SceneObject, SceneObject, Bool)
+behind = Function('behind', SceneObject, SceneObject, Bool)
+
 
 o1 = Const('__dummyObject1__', SceneObject)
 o2 = Const('__dummyObject2__', SceneObject)
 metaconstraints = [
     ForAll([o1, o2], Implies(left(o1, o2), Not(right(o1, o2)))),
     ForAll([o1, o2], Implies(right(o1, o2), Not(left(o1, o2)))),
+    ForAll([o1, o2], Implies(front(o1, o2), Not(behind(o1,o2))),
+    ForAll([o1, o2], Implies(behind(o1, o2), Not(front(o1,o2)))
 ]
 solver.add(metaconstraints)
 
@@ -27,6 +32,10 @@ def convertToZ3Constraint(constraint):
         return left(src, tgt)
     if constraint.type == Cstr_type.HASTORIGHT:
         return right(src, tgt)
+    if constraint.type == Cstr_type.HASBEHIND:
+        return behind(src, tgt)
+    if constraint.type == Cstr_type.HASINFRONT:
+        return front(src,tgt)
 
 def validate_constraints(constraints):
     z3Constraints = list(map(convertToZ3Constraint, constraints))
