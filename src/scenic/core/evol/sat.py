@@ -17,12 +17,21 @@ behind = Function('behind', SceneObject, SceneObject, Bool)
 
 o1 = Const('__dummyObject1__', SceneObject)
 o2 = Const('__dummyObject2__', SceneObject)
+
+posFns = [left(o1, o2), right(o1, o2), front(o1, o2), behind(o1, o2)]
+
 metaconstraints = [
-    ForAll([o1, o2], Implies(left(o1, o2), Not(right(o1, o2)))),
-    ForAll([o1, o2], Implies(right(o1, o2), Not(left(o1, o2)))),
-    ForAll([o1, o2], Implies(front(o1, o2), Not(behind(o1,o2))),
-    ForAll([o1, o2], Implies(behind(o1, o2), Not(front(o1,o2)))
+    #Each positional rule precludes the others
+    ForAll([o1, o2], Sum([If(posFns[i], 1, 0) for i in range(len(posFns))]) <= 1),
 ]
+
+
+#ForAll([o1, o2], Implies(left(o1, o2), Not(right(o1, o2)))),
+#ForAll([o1, o2], Implies(right(o1, o2), Not(left(o1, o2)))),
+#ForAll([o1, o2], Implies(front(o1, o2), Not(behind(o1,o2)))),
+#ForAll([o1, o2], Implies(behind(o1, o2), Not(front(o1,o2))))
+
+
 solver.add(metaconstraints)
 
 def convertToZ3Constraint(constraint):
@@ -53,5 +62,6 @@ validate_constraints([
     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
     Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
+    # Cstr(Cstr_type.HASINFRONT, 'o1', 'o2')
     # Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'), # conflict
 ])
