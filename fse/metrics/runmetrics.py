@@ -147,6 +147,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                 'scenario_instance_id': scenario_instance_id,
                 'rep_id': rep_id,
                 'aggregate': rep_id == min_max_id,
+                'ego' : True,
                 'man_id': man_id,
                 'actor_id': 0,
                 'frame': frame_i,
@@ -307,6 +308,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
             coord['scenario_instance_id'] = scenario_instance_id
             coord['rep_id'] = rep_id
             coord['aggregate'] = False
+            coord['ego'] = True
             coord['man_id'] = ego_maneuver_id
             coord['actor_id'] = 0
             coord['frame'] = frame_i
@@ -388,6 +390,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                 coord['scenario_instance_id'] = scenario_instance_id
                 coord['rep_id'] = rep_id
                 coord['aggregate'] = False
+                coord['ego'] = False
                 coord['man_id'] = other_maneuver_id
                 coord['actor_id'] = other_vehicle_id
                 coord['frame'] = frame_i
@@ -529,7 +532,7 @@ def main():
 
     # Save the coordinates as a CSV file
     # Define the fields/columns for the CSV file
-    fields = ['town', 'junction_id', 'num_actors', 'scenario_instance_id', 'rep_id', 'aggregate', 'man_id', 'actor_id', 'frame', 'x', 'y', 'z', 'pitch', 'yaw', 'roll']
+    fields = ['town', 'junction_id', 'num_actors', 'scenario_instance_id', 'rep_id', 'aggregate', 'ego', 'man_id', 'actor_id', 'frame', 'x', 'y', 'z', 'pitch', 'yaw', 'roll']
 
     # Open the CSV file with write permission
     csv_out_path = coords_out_path.replace('.json', '.csv')
