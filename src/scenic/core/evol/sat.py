@@ -4,8 +4,6 @@ from z3 import *
 
 # set_param(proof = True)
 
-solver = Solver()
-
 SceneObject = DeclareSort('SceneObject')
 Bool = BoolSort()
 
@@ -18,41 +16,33 @@ close = Function('close', SceneObject, SceneObject, Bool)
 med = Function('med', SceneObject, SceneObject, Bool)
 far = Function('far', SceneObject, SceneObject, Bool)
 
-o1 = Const('__dummyObject1__', SceneObject)
-o2 = Const('__dummyObject2__', SceneObject)
+constraintClasses = {
+    'positional': { left, right, front, behind },
+    'distance': { close, med, far }
+}
 
-posFns = [left(o1, o2), right(o1, o2), front(o1, o2), behind(o1, o2)]
-distFns = [close(o1, o2), med(o1, o2), far(o1, o2)]
-
-metaconstraints = [
-    #Each constraint in a set precludes the others
-    ForAll([o1, o2], Sum([If(posFns[i], 1, 0) for i in range(len(posFns))]) <= 1),
-    ForAll([o1, o2], Sum([If(distFns[i], 1, 0) for i in range(len(distFns))]) <= 1)
-]
-
-def convertToZ3Constraint(constraint):
-    src = Const(constraint.src, SceneObject)
-    tgt = Const(constraint.tgt, SceneObject)
-    constraintMap = {
-            Cstr_type.HASTOLEFT: left(src, tgt),
-            Cstr_type.HASTORIGHT: right(src, tgt),
-            Cstr_type.HASBEHIND: behind(src, tgt),
-            Cstr_type.HASINFRONT: front(src, tgt),
-            Cstr_type.DISTCLOSE: close(src, tgt),
-            Cstr_type.DISTMED: med(src, tgt),
-            Cstr_type.DISTFAR: far(src, tgt)
-        }
-    return constraintMap.get(constraint.type)
+constraintMap = {
+    Cstr_type.HASTOLEFT: left,
+    Cstr_type.HASTORIGHT: right,
+    Cstr_type.HASBEHIND: behind,
+    Cstr_type.HASINFRONT: front,
+    Cstr_type.DISTCLOSE: close,
+    Cstr_type.DISTMED: med,
+    Cstr_type.DISTFAR: far
+}
 
 def validate_constraints(constraints):
-    # satisfied constraints
-    z3Constraints = list(filter(lambda x: x is not None, map(convertToZ3Constraint, constraints)))
-    solver.reset()
-    solver.add(metaconstraints)
-    solver.add(z3Constraints)
+    solver = Solver()
+    for constraint in constraints:
+        f = constraintMap[constraint.type]
+        src = Const(constraint.src, SceneObject)
+        tgt = Const(constraint.tgt, SceneObject)
+        if f in constraintClasses['positional'] or f in constraintClasses['distance']:
+            solver.add(f(src, tgt))
+            for g in next(filter(lambda c: f in c, constraintClasses.values())).difference({f}):
+                solver.add(Not(g(src, tgt)))
     result = solver.check()
     print(str(result) + '\n')
-
 
     # if str(result) == 'sat':
     #     print(solver.model()) # Doesn't really matter
