@@ -255,6 +255,11 @@ class Vehicle(DrivingObject):
     width: 2
     length: 4.5
     color: Color.defaultCarColor()
+    currentLane: None
+    currentLaneAhead: None
+    maneuver: None
+    pre_junc_position: None
+    pre_junc_heading: None
 
 class Car(Vehicle):
     """A car."""

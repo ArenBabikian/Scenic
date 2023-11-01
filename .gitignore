@@ -138,5 +138,6 @@ out-*/
 meas-*/
 measurements
 docker*/
-examples/basic/_output
+examplesResearch/basic/_output
 .vscode/
+fse/data/

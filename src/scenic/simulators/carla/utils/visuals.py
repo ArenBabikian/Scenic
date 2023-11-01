@@ -28,6 +28,7 @@ import math
 import weakref
 import pygame
 import numpy as np
+import collections
 import carla
 from carla import ColorConverter as cc
 
@@ -202,8 +203,7 @@ class CollisionSensor(object):
         self.sensor = None
         self._history = []
         self._actor = actor
-		# TODO TEMP
-        # self._actor_mass = actor.get_physics_control().mass
+        self._actor_mass = actor.get_physics_control().mass # TEMP migt want to adjust
         self._hud = hud
         self._world = world
         bp = self._world.get_blueprint_library().find('sensor.other.collision')
@@ -217,7 +217,6 @@ class CollisionSensor(object):
         return [(c[0], c[1] / self._actor_mass) for c in self._history]
 
     def get_collision_history(self):
-        import collections
         history = collections.defaultdict(int)
         for frame, intensity in self._history:
             history[frame] += intensity
@@ -238,6 +237,11 @@ class CollisionSensor(object):
         if len(self._history) > 4000:
             self._history.pop(0)
 
+    def destroy_sensor(self):
+        if self.sensor is not None:
+            self.sensor.stop()
+            self.sensor.destroy()
+
 
 # ==============================================================================
 # -- CameraManager -------------------------------------------------------------
@@ -252,7 +256,9 @@ class CameraManager(object):
 		self.images = []
 		self._camera_transforms = [
 			carla.Transform(carla.Location(x=-5.5, z=2.8), carla.Rotation(pitch=-15)),
-			carla.Transform(carla.Location(x=1.6, z=1.2))]
+			carla.Transform(carla.Location(x=1.6, z=1.2)),
+			carla.Transform(carla.Location(x=10.0, z=25.0), carla.Rotation(pitch=-90, yaw=-90)),
+			carla.Transform(carla.Location(x=-8.0, z=6.0), carla.Rotation(pitch=-6)),]
 		self._transform_index = 1
 		self._sensors = [
 			['sensor.camera.rgb', cc.Raw, 'Camera RGB'],

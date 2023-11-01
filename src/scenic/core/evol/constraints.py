@@ -4,8 +4,10 @@ import re
 
 class Cstr_type(Enum):
 	ONROAD = 0
+	ONREGIONTYPE = 1
 
 	NOCOLLISION = 10
+	NOTONSAMEROAD = 11
 
 	CANSEE = 20
 
@@ -17,6 +19,12 @@ class Cstr_type(Enum):
 	DISTCLOSE = 40
 	DISTMED = 41
 	DISTFAR = 42
+
+	DOINGMANEUVER = 50
+
+	COLLIDINGPATHS = 60
+	COLLIDINGPATHSAHEAD = 61
+	COLLIDINGPATHSAHEADTIMED = 62
 
 	SP_NONE = 100
 	SP_SLOW = 101
@@ -31,6 +39,8 @@ class Cstr_type(Enum):
 	BE_SPEEDUP = 115
 	BE_FOLLOW_AVOID = 116
 	BE_SCENIC = 117
+	
+	OLDCOLLIDESATMANEUVER = 200
 
 
 class Cstr():
@@ -49,6 +59,12 @@ class Cstr():
 		return self.pretty()
 	
 class Cstr_util:
+
+	PRIORITY = {Cstr_type.DOINGMANEUVER: 0,
+	     Cstr_type.DISTCLOSE:1,
+		 Cstr_type.DISTMED:1,
+		 Cstr_type.DISTFAR:1}
+
 	def parseConfigConstraints(params, keyword):
 		# Parse constraints from config file
 		str_cons = params.get(keyword)
@@ -59,11 +75,21 @@ class Cstr_util:
 
 		# since last constraint also has a ";" at the end, we ignore last split
 		for con_str in list_cons[:-1]:
-			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*)\]", con_str)
+			if con_str.strip().startswith('#'):
+				# commented constraints
+				continue
+
+			res = re.search(r"\s*(\w*) : \[(\d*), (-?\d*|[a-z_]*)\]", con_str)
 			con_type = Cstr_type[res.group(1)]
 			id1 = int(res.group(2))
-			id2 = int(res.group(3))
+			try:
+				id2 = int(res.group(3))
+			except ValueError:
+				id2 = res.group(3)
 			con = Cstr(con_type, id1, id2)
 			parsed_cons.append(con)
 		
+		# Reorder according to priority
+		parsed_cons = sorted(parsed_cons, key=lambda c: c.type in Cstr_util.PRIORITY, reverse=True)
+
 		return parsed_cons

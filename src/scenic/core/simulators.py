@@ -110,8 +110,8 @@ class Simulation:
             # properties during setup
             self.updateObjects()
 
-            # Add ColisionSensors
-            self.collsensors = list(visuals.CollisionSensor(self.world, o.carlaActor) for o in self.scene.objects)
+            # # Add ColisionSensors
+            # self.collsensors = list(visuals.CollisionSensor(self.world, o.carlaActor) for o in self.scene.objects)
 
             # Record initially-recorded values
             values = dynamicScenario._evaluateRecordedExprs(RequirementType.recordInitial)
@@ -194,7 +194,20 @@ class Simulation:
                 # TODO Need to perform a check is self is instance of CarlaSimulation
                 
                 # Save image if directory is specified
-                save_images = None if 'sim-imDir' not in self.params else self.params.get('sim-imDir')
+                save_images = None
+                isRendering = self.params['render']
+                isSavingImages = 'sim-imDir' in self.params
+                if isRendering:
+                    if isSavingImages:
+                        print('WARNING: Saving images and rendering. Expect slow behavior')
+                        save_images = self.params.get('sim-imDir')
+                else:
+                    if isSavingImages:
+                        print('ERROR: Cannot save images if not rendering.')
+                        exit()
+                    else:
+                        print('WARNING: Not rendering and not saving images.')
+
                 if save_images:
                     totalNumImages = len(self.cameraManager.images)
                     if (totalNumImages > self.currentNumImages):

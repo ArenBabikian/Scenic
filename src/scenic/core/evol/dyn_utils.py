@@ -37,6 +37,7 @@ def gatherAbsCons(scene):
 def validate_cons(cons, num_obj):
 
     has_con_type = [[False, False] for _ in range(num_obj)]
+    ID2CAT={0:"SPEED", 1:"BEHAVIOR"}
 
     try:
         for c in cons:
@@ -45,7 +46,6 @@ def validate_cons(cons, num_obj):
             assert c.tgt == -1, f"ERROR: Target must be -1 for <{c}>"
 
             con_typ_cat_id = int(c.type.value/110)
-            ID2CAT={0:"SPEED", 1:"BEHAVIOR"}
             if has_con_type[c.src][con_typ_cat_id]:
                 print(f'ERROR: Duplicate dynamic constraint of type {ID2CAT[con_typ_cat_id]} for actor {c.src}')
                 exit()
@@ -62,8 +62,9 @@ def validate_cons(cons, num_obj):
                 print(f'ERROR: Missing dynamic constraint of type {ID2CAT[c]} for actor {actor_id}')
                 all_true = False
 
-    if not all_true:
-        exit()
+    # TEMPORARY
+    # if not all_true:
+    #     exit()
 
         
 # CONCRETIZATION

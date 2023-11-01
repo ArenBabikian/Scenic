@@ -413,7 +413,7 @@ class Road:
         last_lefts = None
         last_rights = None
         cur_p = None
-            
+
         for i in range(len(self.lane_secs)):
             cur_sec = self.lane_secs[i]
             cur_sec_points = []
@@ -1045,7 +1045,8 @@ class RoadMap:
                                       'connectingRamp'),
                  sidewalk_lane_types=('sidewalk',),
                  shoulder_lane_types=('shoulder', 'parking', 'stop', 'border'),
-                 elide_short_roads=False):
+                 elide_short_roads=False,
+                 segmentation_len=-1):
         self.tolerance = self.defaultTolerance if tolerance is None else tolerance
         self.roads = {}
         self.road_links = []
@@ -1058,6 +1059,7 @@ class RoadMap:
         self.sidewalk_lane_types = sidewalk_lane_types
         self.shoulder_lane_types = shoulder_lane_types
         self.elide_short_roads = elide_short_roads
+        self.segmentation_len = segmentation_len
 
     def calculate_geometry(self, num, calc_gap=False, calc_intersect=True):
         # If calc_gap=True, fills in gaps between connected roads.
@@ -1447,8 +1449,10 @@ class RoadMap:
                 else:
                     return None
 
+            # TODO check below
             last_s = float('-inf')
-            for ls_elem in lanes.iter('laneSection'):
+            lane_sections = list(lanes.iter('laneSection'))
+            for i, ls_elem in enumerate(lane_sections):
                 s = float(ls_elem.get('s'))
                 l = s - last_s
                 assert l >= 0
@@ -1459,6 +1463,12 @@ class RoadMap:
                 right = ls_elem.find('right')
                 left_lanes = {}
                 right_lanes = {}
+                
+                if  self.segmentation_len > 1:
+                    next_sec = lane_sections[i+1] if i<len(lane_sections)-1 else None
+                    import scenic.core.map.map_xodr_utils as map_utils
+                    map_utils.parse_into_segmments(self.segmentation_len, road, next_sec, s, left, right)
+                    continue
 
                 if left is not None:
                     left_lanes = self.__parse_lanes(left)

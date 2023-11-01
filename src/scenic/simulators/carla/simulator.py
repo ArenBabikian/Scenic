@@ -99,7 +99,7 @@ class CarlaSimulation(DrivingSimulation):
 			self.displayClock = pygame.time.Clock()
 			# 0 is third-person view
 			# 1 is First-person view
-			self.camTransform = 1
+			self.camTransform = 2
 			pygame.init()
 			pygame.font.init()
 			self.hud = visuals.HUD(*self.displayDim)
@@ -117,9 +117,12 @@ class CarlaSimulation(DrivingSimulation):
 
 		# Create Carla actors corresponding to Scenic objects
 		self.ego = None
+		# self.collSensors = []
 		for obj in self.objects:
 			carlaActor = self.createObjectInSimulator(obj)
 
+			# # TODO currently not working
+			# self.collSensors.append(visuals.CollisionSensor(self.world, carlaActor))
 			# Check if ego (from carla_scenic_taks.py)
 			if obj is self.objects[0]:
 				self.ego = obj
@@ -244,6 +247,8 @@ class CarlaSimulation(DrivingSimulation):
 				obj.carlaActor.destroy()
 		if self.render and self.cameraManager:
 			self.cameraManager.destroy_sensor()
+		# for c in self.collSensors:
+		# 	c.destroy_sensor()
 
 		self.client.stop_recorder()
 

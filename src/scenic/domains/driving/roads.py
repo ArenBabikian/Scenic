@@ -252,6 +252,9 @@ class NetworkElement(_ElementReferencer, PolygonalRegion):
         s += f'uid="{self.uid}">'
         return s
 
+    def __str__(self):
+        return self.__repr__()
+
 @attr.s(auto_attribs=True, kw_only=True, repr=False)
 class LinearElement(NetworkElement):
     """LinearElement()
@@ -846,7 +849,8 @@ class Network:
         pass
 
     @classmethod
-    def fromFile(cls, path, useCache:bool = True, writeCache:bool = True, **kwargs):
+    def fromFile(cls, path, useCache:bool = True, writeCache:bool = True,
+                 segmentation_len:int = -1, **kwargs):
         """Create a `Network` from a map file.
 
         This function calls an appropriate parsing routine based on the extension of the
@@ -909,6 +913,9 @@ class Network:
 
         # By default, use the pickled version if it exists and is not outdated
         pickledPath = path.with_suffix(cls.pickledExt)
+        # Handle segmentation
+        if segmentation_len > 0:
+            pickledPath = path.with_name(f'{path.stem}-{segmentation_len}{cls.pickledExt}')
         if useCache and pickledPath.exists():
             try:
                 return cls.fromPickle(pickledPath, originalDigest=digest)
@@ -918,16 +925,16 @@ class Network:
                 verbosePrint('Cached network does not match original file; ignoring it.')
 
         # Not using the pickled version; parse the original file based on its extension
-        network = handlers[ext](path, **kwargs)
+        network = handlers[ext](path, segmentation_len=segmentation_len, **kwargs)
         if writeCache:
             verbosePrint(f'Caching road network in {cls.pickledExt} file.')
-            network.dumpPickle(path.with_suffix(cls.pickledExt), digest)
+            network.dumpPickle(pickledPath, digest)
         return network
 
     @classmethod
     def fromOpenDrive(cls, path, ref_points:int = 20, tolerance:float = 0.05,
                       fill_gaps:bool = True, fill_intersections:bool = True,
-                      elide_short_roads:bool = False):
+                      elide_short_roads:bool = False, segmentation_len:int = -1):
         """Create a `Network` from an OpenDRIVE file.
 
         Args:
@@ -940,11 +947,15 @@ class Network:
                 intersections.
             elide_short_roads: Whether to attempt to fix geometry artifacts by
                 eliding roads with length less than **tolerance**.
+            segmentation_len: This is used for the abstract path planning research
+                line. It segments roads into segments of this length (to the best
+                of its abilities)
         """
         import scenic.formats.opendrive.xodr_parser as xodr_parser
         road_map = xodr_parser.RoadMap(tolerance=tolerance,
                                        fill_intersections=fill_intersections,
-                                       elide_short_roads=elide_short_roads)
+                                       elide_short_roads=elide_short_roads,
+                                       segmentation_len=segmentation_len)
         startTime = time.time()
         verbosePrint('Parsing OpenDRIVE file...')
         road_map.parse(path)
