@@ -2,7 +2,7 @@ FROM python:3.7
 
 WORKDIR /usr/src/app
 
-RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python - \
+RUN curl -sSL https://install.python-poetry.org | python - --version 1.5.1 \
     && export PATH="/root/.local/bin:$PATH"
 ENV PATH "/root/.local/bin:$PATH"
 

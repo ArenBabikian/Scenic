@@ -200,7 +200,7 @@ def fillSample(scenario, coords):
             # (places position to closest waypoint on lane which allows corresponding maneuevr, and assigns corresponding heading)
             v, currentLane, heading = findClosestWaypoint(scenario, v, assignedManeuver)
         else:
-            print('NO WAYPOINT')
+            # print('NO WAYPOINT')
             # (keep point as is)
             if assignedManeuver != None:
 

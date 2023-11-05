@@ -18,5 +18,5 @@
 # from .syntax.translator import scenarioFromFile, scenarioFromString
 
 import scenic.core.errors as _errors
-_errors.showInternalBacktrace = False
+# _errors.showInternalBacktrace = False
 del _errors

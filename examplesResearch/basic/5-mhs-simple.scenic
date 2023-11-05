@@ -10,7 +10,7 @@ param constraints = "ONROAD : [0, -1]; \
                    NOCOLLISION : [2, 3]; \
                    CANSEE : [0, 1]; \
                    HASTOLEFT : [1, 2]; \
-                  HASINFRONT : [2, 3]; \
+                   HASINFRONT : [2, 3]; \
                    DISTFAR : [1, 3];"
 model scenic.simulators.carla.model
 

@@ -2,22 +2,23 @@
 Use the scene specification files in this folder to get started with this repo.
 
 ## How to run the scene specification files
-* The best way to get started with this repo is to run the `runScenic.sh` file by using the command `bash runScenic.sh` while in the root directory.
-* `runScenic.sh` contains a few customizable variables such as `MAPNAME`, `PATHTOCONFIGFILE` and `USENSGA`:
+* The best way to get started with this repo is to run the `runScenic.sh` file located _in this directory_ by using the command `bash examplesResearch/basic/runScenic.sh` while in the root directory.
+* `runScenic.sh` contains a few customizable variables such as `MAPNAME`, `PATHTOCONFIGFILE` and `USEMHS`:
   * You can change the `PATHTOCONFIGFILE` variable to point to the scene you want to run
-  * The `USENSGA` variable specifies whether you want to use vanilla _Scenic_ (`USENSGA=False`), or whether you want to use the novel _NSGA_ approach implemented in this repo (`USENSGA=True`). 
-  * __NOTE 1:__ when `USENSGA=True`, make sure you are running a nsga-compatible scene specification. nsga-compatible means that the file name contains "nsga" (this is a coincidence for this directory, it is not checked by the program).
-  * __NOTE 2:__ when `USENSGA` is enabled, the program considers the constraints specified within the `param constraints` variable of the scene specification file. Otherwise, the variable value is ignored, and the remainder of the document is considered. This is not entirely true, but it is true enough to get started.
+  * The `USEMHS` variable specifies whether you want to use vanilla _Scenic_ (`USEMHS=False`), or whether you want to use the novel _MetaHeuristric Search (MHS)_ approach implemented in this repo (`USEMHS=True`). 
+  * __NOTE 1:__ when `USEMHS=True`, make sure you are running a mhs-compatible scene specification. mhs-compatible means that the file name contains "mhs" (this is a coincidence for this directory, it is not checked by the program).
+  * __NOTE 2:__ when `USEMHS` is enabled, the program considers the constraints specified within the `param constraints` variable of the scene specification file. Otherwise, the variable value is ignored, and the remainder of the document is considered. This is not entirely true, but it is true enough to get started.
+  * __NOTE 3:__ The specific configuration of _MHS_ to be used is defined by the `evol-algo` and `evol-opt` command line arguments, which represent the specific _MHS_ algorithm to use (default : _NSGA2_) and the objective function aggregation strategy (default : actor-based aggregation), respectively. Various other configurations exist, but are not necessarily relevant at this stage.
   * You can also play around with some of the other command line arguments, but this may not be very relevant.
 
 ## A note about certain command-line arguments
-* `--count N`: this specifies the total number of concrete scenes (solutions) we will end up with. So we will run the program in a loop until we generate `N` solutions.
-* `-p evol-NumSols M`: this specifies the maximum number of solutions that can be saved when running a single NSGA process.
+* `--count N` : this specifies the total number of concrete scenes (solutions) we will end up with. So we will run the program in a loop until we generate `N` solutions.
+* `-p evol-NumSols M` : this specifies the maximum number of solutions that can be saved when running a single MHS process.
 
 ### Example 1
-Let's say the NSGA process yield a set `S` of `X` solutions. Solutions are either all approximate, or all non-approximate.
+Let's say the MHS process yield a set `S` of `X` solutions. Solutions are either all approximate, or all non-approximate.
 
-As such, for a given NSGA process, the program will save `min(M, X)` solutions, since
+As such, for a given MHS process, the program will save `min(M, X)` solutions, since
 1. We don't want to save more than `M` solutions, and
 2. More than `X` solutions are not available.
 
@@ -28,7 +29,7 @@ The general trend is as follows:
 Note that if `M=-1`, then all solutions in `S` will be saved.
 
 ### Example 2
-For instance, in the case where `N=10` and `M=3`, we will continuously run NSGA processes (and store at most 3 solutions after each run) until we have stored a total of 10 solutions.
+For instance, in the case where `N=10` and `M=3`, we will continuously run MHS processes (and store at most 3 solutions after each run) until we have stored a total of 10 solutions.
 
 ## About the scene specifications
 * For a given directory `N-actor-scenes`, all included files represent the same scene (although there are certain limitations, as discussed in our paper).

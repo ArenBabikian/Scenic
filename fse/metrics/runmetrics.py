@@ -1,8 +1,7 @@
 
 
-from scenic.simulators.carla.utils.utils import carlaToScenicHeading, carlaToScenicPosition
-from utils_geometric import closestDistanceBetweenRectangles
-from scenic.core.regions import RectangularRegion
+from utils_aggregate import fill_aggregate_data, init_aggregate_data, printAggregateData
+from utils_geometric import closestDistanceBetweenRectangles, findIntersectionDetails, findLidarSquare, findVisibilitySector, getCarRegion, visualiseRegions, visualiseReset
 from scenic.simulators.carla.misc import compute_distance
 from tools.metrics_log import MetricsLog
 
@@ -15,25 +14,20 @@ import math
 import csv
 from tqdm import tqdm
 
-def validate_dir(d):
-    if not os.path.exists(d):
-        print(f"The folder '{d}' does not exist.")
-        return
+NUM_TAIL_FRAMES = 60
+NEAR_MISS_THRESHOLD = 1.0
 
-    if not os.path.isdir(d):
-        print(f"'{d}' is not a directory.")
-        return
+def validate_dir(d):
+    exit(f"The folder '{d}' does not exist.") if not os.path.exists(d) else None
+    exit(f"'{d}' is not a directory.") if not os.path.isdir(d) else None
     
 def validate_path(f):
-    if not os.path.exists(f):
-        print(f"The file '{f}' does not exist.")
-        return
+    exit(f"The file '{f}' does not exist.") if not os.path.exists(f) else None
+    exit(f"'{f}' is not a directory.") if not os.path.isfile(f) else None
 
-    if not os.path.isfile(f):
-        print(f"'{f}' is not a file.")
-        return
-
-def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measurements_data_path):
+def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measurements_data_path,
+                                 printAggregateSensorData=False,
+                                 showVisualisationPlots=False):
 
     # Validate and get started
     validate_dir(data_sim_dir)
@@ -42,7 +36,6 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
     sorted_files = sorted(os.listdir(data_sim_dir))
     with open(measurements_data_path) as j:
         carla_measurements_data = json.load(j)
-    
 
     ###############################################################
     # STEP 1 : FIND GROUND TRUTH EGO PATHS, with ONE actor scenarios
@@ -110,7 +103,6 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         assert len(all_runs) == 10
 
         # TODO also, try to make some measurements as to how varied the ego paths are, like a % or something
-
 
         # Calculate the maximum distance between the runs at each timestep
         all_max_distances = []
@@ -245,40 +237,87 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         collisions = log.get_actor_collisions(ego_id)
 
         # (D) EGO Is there a near-miss situation?
+        # (D) BOTH Is the collision avoidable?
         # TODO include which other vehicle there was a near-miss
         near_misses = [0 for _ in other_vehicle_paths]
-        # iterate through all scenes
-        for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
-            other_vehicle_path = other_vehicle_paths[other_vehicle_id]
 
-            for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
+        # Do frame-by-frame analysis
+        all_visibility_info = {'numCornersInVisibilitySector':[], 'numCornersInLidarSquare':[], 
+                               'percentageInVisibilitySector':[], 'percentageInLidarSquare':[]}
+        num_frames = len(current_ego_path['transforms'])
+        for frame_i, ego_tr_at_i in enumerate(current_ego_path['transforms']):
+
+            # Create ego region
+            ego_region = getCarRegion(ego_tr_at_i)
+
+            # Prepare for avoidable-collision analysis
+            if collisions:
+                # FIND VISIBILITY SECTOR (SectorRegion, 132deg, cenetered ahead of ego vehicle)
+                visibility_sector = findVisibilitySector(ego_tr_at_i)
+
+                # FIND LIDAR SQUARE (RectangularRegion, 32m x 32m ahead of ego vehicle)
+                lidar_square = findLidarSquare(ego_tr_at_i)
+
+            # iterate through other actors in the frame
+            for normalized_id, other_vehicle_id in enumerate(other_vehicle_paths):
+
+                # Handle Other Actor
+                other_vehicle_path = other_vehicle_paths[other_vehicle_id]
                 other_tr_at_i = other_vehicle_path['transforms'][frame_i]
+                other_region = getCarRegion(other_tr_at_i)
 
-                # EGO
-                ego_vec = carlaToScenicPosition(ego_tr_at_i.location)
-                ego_head = carlaToScenicHeading(ego_tr_at_i.rotation)
-                ego_region = RectangularRegion(ego_vec, ego_head, 2, 4.5)
+                # (1) if NEAR-MISS has not yet been found ...
+                if near_misses[normalized_id] == 0:
+                    # ... do near-miss analysis
+                    distance_between_ego_and_other = closestDistanceBetweenRectangles(ego_region, other_region)
 
-                # OTHER
-                other_vec = carlaToScenicPosition(other_tr_at_i.location)
-                other_head = carlaToScenicHeading(other_tr_at_i.rotation)
-                other_region = RectangularRegion(other_vec, other_head, 2, 4.5)
+                    if distance_between_ego_and_other < NEAR_MISS_THRESHOLD:
+                        # found a near-miss situation with the current other vehicle
+                        near_misses[normalized_id] = 1
 
-                distance_between_ego_and_other = closestDistanceBetweenRectangles(ego_region, other_region)
+                # (2) if this vehicle is colliding with ego ...
+                actor_is_colliding_with_ego = False
+                for _, colliding_ids in collisions.items():
+                    if other_vehicle_id in colliding_ids:
+                        actor_is_colliding_with_ego = True
+                        break
 
-                DISTANCE_THRESHOLD = 1.0
-                if distance_between_ego_and_other < DISTANCE_THRESHOLD:
-                    # found a near-miss situation with the current other vehicle
-                    near_misses[normalized_id] = 1
+                # ... get all visibility info
+                if actor_is_colliding_with_ego:
+                    
+                    # (1) VISIBILITY SECTOR:
+                    # (how much of) the non-ego that eventually collides with ego is in the visibility sector
+                    # Where is camera wrt the ego vehicle? TODO
+                    corners_in_vis, area_in_vis = findIntersectionDetails(other_region, visibility_sector, doCorners=True)
+                    all_visibility_info['numCornersInVisibilitySector'].append(corners_in_vis)
+                    all_visibility_info['percentageInVisibilitySector'].append(area_in_vis)
 
-                    # move on to the next other vehicle
-                    break
+                    # (2) LIDAR SQUARE:
+                    # (how much of) the non-ego that eventually collides with ego is in the lidar square
+                    # How many corners of the other vehicle are in the lidar square?
+                    corners_in_lid, area_in_lid = findIntersectionDetails(other_region, lidar_square, doCorners=True)
+                    all_visibility_info['numCornersInLidarSquare'].append(corners_in_lid)
+                    all_visibility_info['percentageInLidarSquare'].append(area_in_lid)
 
-        # (E) Is the collision avoidable/preventable?
-        # TODO TODO TODO
+                    # DEBUG visualise the ego vehicle, the lidar square and the other vehicle
+                    if showVisualisationPlots:
+                        # TODO improve this to show only last NUM_TAIL_FRAMES frames
+                        regions_to_display = [ego_region, other_region, visibility_sector]
+                        # regions_to_display = [ego_region, other_region]
+                        colors_to_display = ['b', 'r', 'g', 'y']
+                        visualiseRegions(regions_to_display, colors_to_display, False)
 
-
-
+                        allowed_corners = [0, 1, 2, 3, 4]
+                        # is_final_frame = frame_i == NUM_TAIL_FRAMES-1
+                        is_final_frame = frame_i == num_frames-1
+                        if is_final_frame:
+                            if corners_in_lid in allowed_corners:
+                                print(f"Number of corners of the other vehicle inside the lidar square: {corners_in_lid}")
+                                print(f"Number of corners of the other vehicle inside the visibility sector: {corners_in_vis}")
+                                # regions_to_display = [ego_region, lidar_square, other_region, visibility_sector]
+                                visualiseRegions(regions_to_display, colors_to_display, True)
+                            else:
+                                visualiseReset()
 
         # (F) Preventative Measures per frame
         PREVENTITIVE_THRESHOLD = 5
@@ -330,39 +369,108 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         deviation_from_median_gt_ratio = deviation_from_median_gt / gt_meadian_path_max_distance
 
         # (G) NONEGO Does scenario have a nonego collision?
-        nonego_collision = False
-        for nonego_id in all_actor_ids[1:]:
-            collisions = log.get_actor_collisions(nonego_id)
-            for frame, colliding_ids in collisions.items():
-                if any(actor_id in colliding_ids for actor_id in all_actor_ids[1:]):
-                    nonego_collision = True
-                    break
-            if nonego_collision:
-                break
+        # IMPOTANT NOTE:
+        # We cannot find non-ego collisions using the log.get_actor_collisions() method
+        # becuase we did not implement a collision sensor on the non-egos during simulation...
+
+        # SOLUTION NOTE:
+        # We claim that ego should be able to handle such cases,
+        # We are satisfied with the avoidable/non-preventable collision metric
+        # We do special handling for the "Failed - Agent timed out" case
+
+        # nonego_collision = False
+        # for nonego_id in all_actor_ids[1:]:
+        #     nonego_collisions = log.get_actor_collisions(nonego_id)
+        #     for _, colliding_ids in nonego_collisions.items():
+        #         if any(actor_id in colliding_ids for actor_id in all_actor_ids[:]):
+        #             nonego_collision = True
+        #             break
+        #     if nonego_collision:
+        #         break
+
+        # (H) Get intermediate aggregate_data
+        if printAggregateSensorData:
+            init_aggregate_data(aggregate_data, num_actors, status, near_misses)
 
         # (7) Do we disregard the scenario?
-        if num_actors not in aggregate_data:
-            aggregate_data[num_actors] = {
-                'status': {
-                    'Completed': 0,
-                    'Failed': 0,
-                    'Failed - Agent timed out': 0
+        num_frames = len(current_ego_path['transforms'])
+        if collisions:
+
+            # TODO In both sub functions, improve what it means for a vehicle to be seeable at a given frame.
+            def get_all_and_stretch_frames(key_list):
+                all_frames = 0
+                stretch_frames = 0
+
+                if len(key_list) == 1:
+                    key = key_list[0]
+
+                    for frameX_i, info_at_frameX in enumerate(reversed(all_visibility_info[key])):
+                        if info_at_frameX > 0:
+                            all_frames += 1
+                            if frameX_i < NUM_TAIL_FRAMES:
+                                stretch_frames += 1
+                else:
+                    assert len(key_list) == 2
+                    assert len(all_visibility_info[key_list[0]]) == len(all_visibility_info[key_list[1]])
+                    k0, k1 = key_list[0], key_list[1]
+                    for frame_i0, info0_at_frame in enumerate(reversed(all_visibility_info[k0])):
+                        info1_at_frame = all_visibility_info[k1][-frame_i0-1]
+                        if info0_at_frame > 0 and info1_at_frame > 0:
+                            all_frames += 1
+                            if frame_i0 < NUM_TAIL_FRAMES:
+                                stretch_frames += 1
+                
+                return all_frames, stretch_frames
+
+            # (7.1) number of frames in which actor is visible
+            # (7.2) number of frames in the last NUM_TAIL_FRAMES where the actor is visible
+            # TODO Maybe use the percentage instead of the number of corners
+            num_frames_tot_in_lid, num_frames_stretch_in_lid = get_all_and_stretch_frames( ['numCornersInLidarSquare'])
+            num_frames_tot_in_vis, num_frames_stretch_in_vis = get_all_and_stretch_frames(['numCornersInVisibilitySector'])
+            num_frames_tot_in_both, num_frames_stretch_in_both = get_all_and_stretch_frames(['numCornersInLidarSquare', 'numCornersInVisibilitySector'])
+
+            # (7.3) number of consecutive frames right before the collision (tail frames) where the actor is visible
+            def get_tail_frame_number(key):
+                tailFrames = 0
+                all_frames = all_visibility_info[key]
+                
+                while tailFrames < len(all_frames) and all_frames[-tailFrames-1] > 0:
+                    tailFrames += 1
+                return tailFrames
+
+            num_frames_tail_in_lid = get_tail_frame_number('numCornersInLidarSquare')
+            num_frames_tail_in_vis = get_tail_frame_number('numCornersInVisibilitySector')
+            num_frames_tail_in_both = min(num_frames_tail_in_lid, num_frames_tail_in_vis)
+
+            # (7.4) Aggregate the data for this scenario
+            preventability_info = {
+                'vis' : {
+                    'tot_frames' : num_frames_tot_in_vis,
+                    'stretch_frames' : num_frames_stretch_in_vis,
+                    'tail_frames' : num_frames_tail_in_vis
                 },
-                'nonego_collision': {
-                    'True': 0,
-                    'False': 0
+                'lid' : {
+                    'tot_frames' : num_frames_tot_in_lid,
+                    'stretch_frames' : num_frames_stretch_in_lid,
+                    'tail_frames' : num_frames_tail_in_lid
                 },
-                'total_scenarios': 0
+                'both' : {
+                    'tot_frames' : num_frames_tot_in_both,
+                    'stretch_frames' : num_frames_stretch_in_both,
+                    'tail_frames' : num_frames_tail_in_both
+                }
             }
-        aggregate_data[num_actors]['status'][status] += 1
-        aggregate_data[num_actors]['nonego_collision'][str(nonego_collision)] += 1
-        aggregate_data[num_actors]['total_scenarios'] += 1
 
-
-
+            # Temporary
+            if printAggregateSensorData:
+                fill_aggregate_data(num_actors, aggregate_data, num_frames,
+                                num_frames_tot_in_lid, num_frames_tot_in_vis, num_frames_tot_in_both,
+                                num_frames_stretch_in_lid, num_frames_stretch_in_vis, num_frames_stretch_in_both,
+                                num_frames_tail_in_lid, num_frames_tail_in_vis, num_frames_tail_in_both)
+        else:
+            preventability_info = None
 
         # ###### (6) SAVE THE COOKED DATA
-        # BIG TODOs HERE
         data_for_this_scenario_execution = {'runtime_in_game':record_info['meta']['duration_game'],
                                             'runtime_system_time': record_info['meta']['duration_system'],
                                             'deviation_from_closest_gt' : deviation_from_closest_gt,
@@ -371,10 +479,10 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                             'deviation_from_median_gt_ratio' : deviation_from_median_gt_ratio,
                                             'collided with' : collisions,
                                             'num_preventative_maneuver' : number_of_preventitive_maneuvers,
-                                            'near_miss_with' : near_misses
+                                            'near_miss_with' : near_misses, 
+                                            'num_frames' : num_frames,
+                                            'preventability' : preventability_info,   
                                }
-
-                               
 
         # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES
         if num_actors == 2:
@@ -434,12 +542,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
         data_for_figures['scenarios'][num_actors][scenario_instance_id][rep_id] = data_for_this_scenario_execution
 
     # (8) Print preliminary measurement info
-    for num_actors, data in aggregate_data.items():
-        print(f"Num Actors: {num_actors}")
-        print(f"Status: {data['status']}")
-        print(f"Nonego Collision: {data['nonego_collision']}")
-        print()
-    # for given size, tot_num scenarios, num_successes, num_failures, num_failures_with_nonego_collision
+    if printAggregateSensorData:
+        printAggregateData(aggregate_data)
 
     return data_for_figures, all_paths_coordinates
 
@@ -447,7 +551,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 def main():
     # Set the folder path here
     data_path = "fse/data-sim/Town05_2240"
-    # data_path = "fse/data-sim/Town04_916"
+    data_path = "fse/data-sim/Town04_916"
     sim_data_dir = f'{data_path}/txt'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     measurements_dat_path = f'{data_path}/log/measurements.json'
@@ -455,7 +559,9 @@ def main():
     coords_out_path = f'{data_path}/path_coords.json'
     
     # Get the list of file contents
-    file_contents_list, paths_coordinates = iterate_text_files_in_folder(sim_data_dir, abs_scenario_dir, measurements_dat_path)
+    file_contents_list, paths_coordinates = iterate_text_files_in_folder(sim_data_dir, abs_scenario_dir, measurements_dat_path,
+                                                                         printAggregateSensorData=True,
+                                                                         showVisualisationPlots=False,)
 
     # Save the list as a JSON file
     with open(out_path, "w") as json_file:
