@@ -178,9 +178,29 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
 
                 near_miss_occurance = 1 if sum(rep_info['near_miss_with']) else 0
                 num_preventative_maneuver = rep_info['num_preventative_maneuver']
+                num_frames = rep_info['num_frames']
+                preventability = rep_info['preventability']
+                if preventability is None:
+                    preventability = {
+                        'vis' : {
+                            'tot_frames' : 0,
+                            'stretch_frames' : 0,
+                            'tail_frames' : 0
+                        },
+                        'lid' : {
+                            'tot_frames' : 0,
+                            'stretch_frames' : 0,
+                            'tail_frames' : 0
+                        },
+                        'both' : {
+                            'tot_frames' : 0,
+                            'stretch_frames' : 0,
+                            'tail_frames' : 0
+                        }
+                    }
                 
 
-                # GATHER SPECIFIC INFO (2 actors only, for now)
+                # GATHER SPECIFIC INFO
                 # EGO
                 scen_base = {}
                 scen_base['map_name'] = cooked_measurements['map_name']
@@ -191,6 +211,16 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
                 scen_base['num_collisions'] = num_collisions
                 scen_base['num_preventative_maneuvers'] = num_preventative_maneuver
                 scen_base['near_miss_occurance'] = near_miss_occurance
+                scen_base['num_frames'] = num_frames
+                scen_base['prevent_vis_tot_frames'] = preventability['vis']['tot_frames']
+                scen_base['prevent_vis_stretch_frames'] = preventability['vis']['stretch_frames']
+                scen_base['prevent_vis_tail_frames'] = preventability['vis']['tail_frames']
+                scen_base['prevent_lid_tot_frames'] = preventability['lid']['tot_frames']
+                scen_base['prevent_lid_stretch_frames'] = preventability['lid']['stretch_frames']
+                scen_base['prevent_lid_tail_frames'] = preventability['lid']['tail_frames']
+                scen_base['prevent_both_tot_frames'] = preventability['both']['tot_frames']
+                scen_base['prevent_both_stretch_frames'] = preventability['both']['stretch_frames']
+                scen_base['prevent_both_tail_frames'] = preventability['both']['tail_frames']
 
                 data_to_add = {}
                 data_to_add.update(scen_base)
@@ -233,6 +263,7 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
 
 def main():
     map_junction = 'Town04_916'
+    # map_junction = 'Town05_2240'
     data_path = f"fse/data-sim/{map_junction}" # Attila, modify this
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'

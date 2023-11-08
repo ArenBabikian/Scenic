@@ -2,8 +2,10 @@
 
 from utils_aggregate import fill_aggregate_data, init_aggregate_data, printAggregateData
 from utils_geometric import closestDistanceBetweenRectangles, findIntersectionDetails, findLidarSquare, findVisibilitySector, getCarRegion, visualiseRegions, visualiseReset
+from scenic.core.regions import RectangularRegion
 from scenic.simulators.carla.misc import compute_distance
 from tools.metrics_log import MetricsLog
+from scenic.simulators.carla.utils.utils import carlaToScenicPosition, carlaToScenicHeading
 
 import os
 import json
@@ -613,7 +615,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
 def main():
     # Set the folder path here
-    data_path = "fse/data-sim/Town05_2240"
+    # data_path = "fse/data-sim/Town05_2240"
     data_path = "fse/data-sim/Town04_916"
     sim_data_dir = f'{data_path}/txt'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
