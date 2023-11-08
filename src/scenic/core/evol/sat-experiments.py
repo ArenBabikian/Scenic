@@ -10,7 +10,7 @@ from z3 import *
 from sat import *
 
 # Add a global implication rule, for all objects, one constraint => not(other constraints)
-def validateWithGlobalImplicationsWithNegations(constraints):
+def validateWithGlobalImplications(constraints):
     solver = Solver()
     o1 = Const('__dummyObject1__', SceneObject)
     o2 = Const('__dummyObject2__', SceneObject)
@@ -30,7 +30,7 @@ def validateWithGlobalImplicationsWithNegations(constraints):
     result = solver.check()
     print(str(result) + '\n')
 
-def validate_constraints(constraints):
+def validateWithCounts(constraints):
     solver = Solver()
     o1 = Const('__dummyObject1__', SceneObject)
     o2 = Const('__dummyObject2__', SceneObject)
@@ -62,13 +62,15 @@ def validateWithIndividualNegations(constraints):
     result = solver.check()
     print(str(result) + '\n')
 
-validateWithGlobalImplicationsWithNegations([
+alternatives = [validateWithGlobalImplications, validateWithCounts, validateWithIndividualNegations]
+
+validateWithGlobalImplications([
     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
     Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
 ])
 
-validateWithGlobalImplicationsWithNegations([
+validateWithGlobalImplications([
     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
     Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'),
     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
@@ -76,7 +78,13 @@ validateWithGlobalImplicationsWithNegations([
     Cstr(Cstr_type.DISTFAR, 'o5', 'o6')
 ])
 
-bigExample = """HASTOLEFT : [2, 4]; \
+def convertLineToScenicConstraint(s):
+    elements = re.search('([A-Z]*) : \[(.*), (.*)\]', s)
+    return Cstr(Cstr_type[elements.group(1)], f'object{elements.group(2)}', f'object{elements.group(3)}')
+def convertInputToScenicConstraints(s):
+    return map(convertLineToScenicConstraint, filter(lambda s: re.search('([A-Z]*) : \[(.*), (.*)\]', s), s.split('; ')))
+
+bigExample_sat = """HASTOLEFT : [2, 4]; \
 HASTOLEFT : [3, 1]; \
 HASTOLEFT : [3, 2]; \
 HASTOLEFT : [4, 5]; \
@@ -128,10 +136,8 @@ DISTFAR : [6, 3]; \
 DISTFAR : [6, 4]; \
 """
 
-def convertLineToScenicConstraint(s):
-    elements = re.search('([A-Z]*) : \[(.*), (.*)\]', s)
-    return Cstr(Cstr_type[elements.group(1)], f'object{elements.group(2)}', f'object{elements.group(3)}')
-def convertInputToScenicConstraints(s):
-    return map(convertLineToScenicConstraint, filter(lambda s: re.search('([A-Z]*) : \[(.*), (.*)\]', s), s.split('; ')))
+bigExample_unsat = bigExample_sat + "DISTCLOSE : [6, 4]"
 
-validate_constraints(convertInputToScenicConstraints(bigExample))
+for f in alternatives:
+    f(convertInputToScenicConstraints(bigExample_sat))
+    f(convertInputToScenicConstraints(bigExample_unsat))
