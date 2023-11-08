@@ -31,6 +31,11 @@ constraintMap = {
     Cstr_type.DISTFAR: far
 }
 
+def convertToZ3Constraint(constraint):
+    src = Const(constraint.src, SceneObject)
+    tgt = Const(constraint.tgt, SceneObject)
+    return constraintMap.get(constraint.type)(src, tgt)
+
 def validate_constraints(constraints):
     solver = Solver()
     for constraint in constraints:
@@ -49,20 +54,20 @@ def validate_constraints(constraints):
     #     for c in z3Constraints:
     #         print(c, solver.model().eval(c)) # Expect all true
     # else:
-        # print(solver.proof()) # This is extremely long and not readable
+    #     print(solver.proof()) # This is extremely long and not readable
 
 #satisfied
-validate_constraints([
-    Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
-    Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
-    Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
-])
+# validate_constraints([
+#     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
+#     Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
+#     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
+# ])
 
 #unsatisfied
-validate_constraints([
-    Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
-    Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'),
-    Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
-    Cstr(Cstr_type.DISTMED, 'o5', 'o6'),
-    Cstr(Cstr_type.DISTFAR, 'o5', 'o6')
-])
+# validate_constraints([
+#     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
+#     Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'),
+#     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
+#     Cstr(Cstr_type.DISTMED, 'o5', 'o6'),
+#     Cstr(Cstr_type.DISTFAR, 'o5', 'o6')
+# ])
