@@ -141,3 +141,7 @@ docker*/
 examplesResearch/basic/_output
 .vscode/
 fse/data/
+
+# modified pyproject
+
+pyproject.toml.bak
