@@ -16,7 +16,7 @@ close = Function('close', SceneObject, SceneObject, Bool)
 med = Function('med', SceneObject, SceneObject, Bool)
 far = Function('far', SceneObject, SceneObject, Bool)
 
-constraintClasses = {
+constraintFunctionsInClass = {
     'positional': { left, right, front, behind },
     'distance': { close, med, far }
 }
@@ -36,18 +36,26 @@ def convertToZ3Constraint(constraint):
     tgt = Const(constraint.tgt, SceneObject)
     return constraintMap.get(constraint.type)(src, tgt)
 
-def validate_constraints(constraints):
+def validate_sat(constraints):
     solver = Solver()
+
+    o1 = Const('__dummyObject1__', SceneObject)
+    o2 = Const('__dummyObject2__', SceneObject)
+
+    for constraintClass in { 'positional', 'distance' }:
+        constraintFunctions = constraintFunctionsInClass[constraintClass]
+        for f in constraintFunctions:
+            others = constraintFunctions.difference({f})
+            for g in others:
+                solver.add(ForAll([o1, o2], Implies(f(o1, o2), Not(g(o1, o2)))))
+
     for constraint in constraints:
-        f = constraintMap[constraint.type]
-        src = Const(constraint.src, SceneObject)
-        tgt = Const(constraint.tgt, SceneObject)
-        if f in constraintClasses['positional'] or f in constraintClasses['distance']:
-            solver.add(f(src, tgt))
-            for g in next(filter(lambda c: f in c, constraintClasses.values())).difference({f}):
-                solver.add(Not(g(src, tgt)))
+        if constraint.type in constraintMap.keys(): # TODO: remove after we finish all constraints
+            solver.add(convertToZ3Constraint(constraint))
+
     result = solver.check()
     print(str(result) + '\n')
+    return str(result) == 'sat'
 
     # if str(result) == 'sat':
     #     print(solver.model()) # Doesn't really matter
