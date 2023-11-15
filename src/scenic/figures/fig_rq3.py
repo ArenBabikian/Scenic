@@ -39,7 +39,7 @@ def figRQ3():
         data = {}
         for j in range(len(configs)):
             c = configs[j]
-            config_data = {'num_att':0, 'num_succ':0, 'times_succ':[], }
+            config_data = {'num_att':0, 'num_succ':0, 'times_succ':[], 'srps':[]}
 
             for i in range(10):
                 # id, numcons, succ rate, median time
@@ -51,7 +51,7 @@ def figRQ3():
                     
                     json_res = json_data['results']
                     config_data['num_att'] += len(json_res)
-                    scene_num_successes = 0
+                    sr_per_scene = 0
 
 
                     scene_succ_times = []
@@ -65,6 +65,9 @@ def figRQ3():
                         if r['success']:
                             config_data['num_succ'] += 1
                             config_data['times_succ'].append(r['time'])
+                            sr_per_scene += 10
+
+                    config_data['srps'].append(sr_per_scene)
                 else:
                     print(f'Did not find file at {json_path}')
                     exit()
@@ -76,11 +79,12 @@ def figRQ3():
 
     allPlotData = {}
     for mhsc in mhsConfigs:
-        plot_data = {'nm':[], 'sr':[], 'rt':[], 'new_ns':[], 'new_at':[], 'new_rt':[]}
+        plot_data = {'nm':[], 'sr':[], 'srps':[], 'rt':[], 'new_ns':[], 'new_at':[], 'new_rt':[]}
         data = allData[mhsc] 
         for x in data:
             plot_data['nm'].append(x)
             plot_data['sr'].append(100* data[x]['num_succ'] / data[x]['num_att'])
+            plot_data['srps'].append(data[x]['srps'])
             plot_data['rt'].append(data[x]['median_time'])
             plot_data['new_ns'].append(data[x]['num_succ'])
             plot_data['new_at'].append(data[x]['num_att'])
@@ -307,7 +311,46 @@ def figRQ3():
 
         plt.clf()
 
+    def f3():
+
+        #FIGURE 3
+        adjustSize(s=12)
+        ratio = 0.4
+        n_groups = len(configs)
+        fig, ax = plt.subplots()
+        index = np.arange(n_groups)
+        bar_width = 1/(len(mhsConfigs)+1)
+
+        for i, mhsc in enumerate(mhsConfigs):
+            color = '#2F9E00'
+            color = colors[i]
+            # THIS FOR BOX
+            ax.boxplot(allPlotData[mhsc]['srps'],
+                       positions=index+i*bar_width,
+                       widths=bar_width,
+                       patch_artist=True,
+                       boxprops=dict(facecolor=colors[i],color='k'),
+                       capprops=dict(color='k'),
+                       whiskerprops=dict(color=colors[i]),
+                       flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+                       medianprops=dict(color='k'))     
+        x_left, x_right = ax.get_xlim()
+        y_low, y_high = ax.get_ylim()
+        ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio) 
+        
+        plt.xlabel('Included constraint types and number')
+        plt.xticks(index + (-0.5+len(mhsConfigs)/2.0)*bar_width, tuple(names))
+        plt.ylabel('Scene-level Succ. Rate (%)')
+        save_path = f'{out_dir}/{m}-srps.pdf'
+
+        plt.savefig(save_path, bbox_inches='tight')
+
+        print(f'Saved figure at {save_path}')
+
+        plt.clf()
+
     f1()
     f2()
+    f3()
 
 figRQ3()

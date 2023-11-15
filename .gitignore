@@ -140,7 +140,8 @@ measurements
 docker*/
 examplesResearch/basic/_output
 .vscode/
-fse/data/
+fse/data*
+fse/metrics/logs/
 
 # modified pyproject
 

@@ -51,6 +51,7 @@ def figRQ1(stat_sig=True):
     global_out_dir = 'docker/figures/RQ1'
     rt_out_dir = mk(f'{global_out_dir}/runtime')
     sr_out_dir = mk(f'{global_out_dir}/success-rate')
+    srps_out_dir = mk(f'{global_out_dir}/success-rate-distribution')
     if not stat_sig:
         hist_out_dir = mk(f'docker/figures/extra0/history')
 
@@ -62,6 +63,7 @@ def figRQ1(stat_sig=True):
             rt_data = [] # 2D array, {num_actors * num_successful_runs}
             ns_data = []
             sr_data = []
+            srps_data = [] # 2D array, {num_actors * num_scenes}
             num_at_data = []
             hist_data = [] # 3d array, {num_actors * num_all_runs * tot_num_history points_padded}
             for config in configurations:
@@ -69,6 +71,7 @@ def figRQ1(stat_sig=True):
                 num_attempts = 0
                 num_successes = 0
                 hist_con_data = []
+                sr_per_scene = []
 
                 for i in num_scenes:
                     json_path = f'{src_dir}/{m}/{config}/{i}-0/d-nsga/{approach}/_measurementstats.json'
@@ -78,10 +81,12 @@ def figRQ1(stat_sig=True):
                         
                         json_res = json_data['results']
                         num_attempts += len(json_res)
+                        num_successes_for_scene = 0
 
                         for r in json_res:
                             if r['success']:
                                 num_successes += 1
+                                num_successes_for_scene += (100/len(num_scenes))
                                 rt_con_data.append(r['time'])
 
                             # history
@@ -93,14 +98,17 @@ def figRQ1(stat_sig=True):
                                 hist_con_res_data.append(None)
                             hist_con_data.append(hist_con_res_data)
 
+                        sr_per_scene.append(num_successes_for_scene)
+
                 rt_data.append(rt_con_data)
                 hist_data.append(hist_con_data)
                 ns_data.append(num_successes)
                 succ_rate = 100*(-0.1 if num_attempts == 0 else num_successes / num_attempts)
                 sr_data.append(succ_rate)
+                srps_data.append(sr_per_scene)
                 num_at_data.append(num_attempts)
                 
-            fig1_data[approach] = {'rt':rt_data, 'sr':sr_data, 'ns':ns_data, 'at':num_at_data, 'hist':hist_data}
+            fig1_data[approach] = {'rt':rt_data, 'sr':sr_data, 'ns':ns_data, 'at':num_at_data, 'hist':hist_data, 'srps':srps_data}
 
         data[m] = fig1_data
 
@@ -218,6 +226,40 @@ def figRQ1(stat_sig=True):
                 print()
             print(">>>End Statistical Significance<<<")
 
+        ######################
+        # SUCCESS RATE PER SCENE
+        bps = []
+        fig, ax = plt.subplots()
+        for i, approach in enumerate(evol_approaches):
+            name = names_app[i]
+            pos = index+i*bar_width
+
+            vals = data[m][approach]['srps']
+            
+            ax.boxplot(vals, positions=pos, widths=bar_width,
+                patch_artist=True,
+                boxprops=dict(facecolor=colors[i],color='k'),
+                capprops=dict(color='k'),
+                whiskerprops=dict(color=colors[i]),
+                flierprops=dict(color=colors[i], markeredgecolor=colors[i]),
+                medianprops=dict(color='k'),
+                labels=[approach, approach, approach])
+
+        ratio = 0.5
+        x_left, x_right = ax.get_xlim()
+        y_low, y_high = ax.get_ylim()
+        ax.set_aspect(abs((x_right-x_left)/(y_low-y_high))*ratio)
+
+        plt.xlabel('Scene size')
+        plt.ylabel('Scene-level Succ. rate (%)')
+        plt.xticks(index + 3.5*bar_width, ('2 actors', '3 actors', '4 actors'))
+        plt.tight_layout()
+        save_path = f'{srps_out_dir}/{m}.pdf'
+        plt.savefig(save_path, bbox_inches='tight')
+
+        print(f'Saved figure at {save_path}')
+        plt.clf()
+        
         ######################
         # RUNTIME ANALYSIS
         bps = []
