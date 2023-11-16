@@ -11,8 +11,11 @@ from datetime import datetime
 from pathlib import Path
 import json
 import gc
+from scenic.core.map.map_visualisation_utils import show_alt
 import scenic.core.printer.printer as printer
 from scenic.core.static_analysis.static_analysis_util import doStaticAnalysis
+from scenic.core.visuals.src_figures import figs_src
+from scenic.figures.util import mk
 
 
 if sys.version_info >= (3, 8):
@@ -224,6 +227,10 @@ try:
             measurementStats['approach'] = approach
             measurementStats['results'] = []
 
+        # Viuslaise for figures
+        if params.get('vis-figs') == 'src':
+            figs_src(scenario, mk(p), view=view_imgs)
+            exit()
 
         # Static Analysis
         if params.get('static-element-at') != None:
@@ -275,6 +282,8 @@ try:
                 # MATPLOTLIB representation
                 if save_imgs or view_imgs or save_paths:
                     image_params = {'save_im':save_imgs, 'view_im':view_imgs, 'view_path':view_paths}
+                    show_alt(scene, zoom=args.zoom, dirPath=dirPath, params=image_params)
+                    break
                     if delay is None:
                         scene.show(zoom=args.zoom, dirPath=dirPath, params=image_params)
                     else:
