@@ -9,8 +9,8 @@ command = ['poetry', 'run', 'scenic']
 command.extend(['-b'])
 command.extend(['--zoom', '0'])
 # command.extend(['-v', str(verbosity)])
-command.extend(['-p', 'outputWS', 'fse'])
-command.extend(['-p', 'outputDir', 'figs'])
+command.extend(['-p', 'outputWS', 'fse/src/figs'])
+command.extend(['-p', 'outputDir', 'overview'])
 
 command.extend(['-p', 'vis-figs', 'src'])
 command.extend(['-p', 'intersectiontesting', f'{intersection}'])
