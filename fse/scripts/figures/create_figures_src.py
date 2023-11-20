@@ -122,7 +122,7 @@ def create_bar_chart(df, groupby, title, xlabel, width, height, output_path):
 
 def main():
     input_path = 'fse/data-sim'
-    output_path = 'fse/src/figs/evaluation'
+    output_path = 'fse/figures/src/evaluation'
     os.makedirs(output_path, exist_ok=True)
 
     map_junction_names = ['Town04_916']
