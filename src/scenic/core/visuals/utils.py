@@ -53,7 +53,7 @@ def show_regions(plt, regions, c):
         show_reg(plt, r, c)
 
 def show_reg(plt, r, c):
-    r.show(plt, style='-', color=c)
+    r.show(plt, style='-', color='w')
     points = tuple(r.polygons[0].exterior.coords)
     x, y = zip(*points)
     plt.fill(x, y, color=c)

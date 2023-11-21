@@ -25,15 +25,10 @@ def figs_issta(scene, dirPath=None, view=False):
     # FIG 1 : CARLA sample scenario
 
     actors = [
-        {'position': (86.26, -328.67), 'color': dark_red, 'model': 'vehicle.mercedes.coupe_2020'},
-        {'position': (93.77,-326.63), 'color': car_blue, 'model': 'vehicle.mercedes.coupe_2020'},
-    ]
-
-    actors = [
         {'position': (84.42, -329.82), 'color': dark_red, 'model': 'vehicle.mercedes.coupe_2020'},
         {'position': (97.77,-326.63), 'color': car_blue, 'model': 'vehicle.mercedes.coupe_2020'},
     ]
-    show_carla_intersection(actors)
+    # show_carla_intersection(actors)
 
     # ###############
     # FIG 2.1 : Scenario at logical levels of abstraction
@@ -64,7 +59,6 @@ def figs_issta(scene, dirPath=None, view=False):
     zoomToIntersection(scene, plt, zoom_margins)
     save_show_clear(plt, f'{dirPath}/fig21.png', view)
 
-    
     # ###############
     # FIG 2.2 : Scenario at concrete levels of abstraction
     
@@ -95,5 +89,67 @@ def figs_issta(scene, dirPath=None, view=False):
     zoomToIntersection(scene, plt, zoom_margins)
     save_show_clear(plt, f'{dirPath}/fig22.png', view)
 
-    exit()
+    # ###############
+    # FIG 3 : Full scenario
+    
+    # Add regions
+    show_reg(plt, r2.predecessor, red)
+    show_reg(plt, r2, gray)
+    show_reg(plt, r2.successor, blue)
+    
+    show_network_alt(scene.workspace.network, plt)
 
+    # Add arrows
+    show_arrows(plt, full_cl2, white, pointsDelts=5, size=1.5)
+
+    # save and view
+    zoomToIntersection(scene, plt, (25, 5, 2, 10))
+    save_show_clear(plt, f'{dirPath}/fig3.png', view)
+
+    # ###############
+    # FIG 4 : All possible scenarios
+
+    laneregions = {
+        93: scene.workspace.network.elements['road93_lane0'],
+        94: scene.workspace.network.elements['road94_lane0'],
+        102: scene.workspace.network.elements['road102_lane0'],
+        103: scene.workspace.network.elements['road103_lane0'],
+        108: scene.workspace.network.elements['road108_lane0'],
+        109: scene.workspace.network.elements['road109_lane0']
+    }
+
+    specifiers = {
+        'fig410':(93, -1, -1),
+        'fig411':(94, -1, -1),
+        'fig412':(102, -1, -1),
+        'fig413':(103, -1, -1),
+        'fig414':(108, -1, -1),
+        'fig415':(109, -1, -1),
+        'fig420':(93, 102, -1),
+        'fig420':(93, 109, -1),
+        'fig421':(93, 103, -1),
+        'fig422':(94, 109, -1),
+        'fig423':(102, 108, -1),
+        'fig424':(108, 102, -1),
+        'fig425':(102, 109, -1),
+        'fig430':(93, 103, 109),
+        'fig431':(109, 93, 94),
+        'fig440':(108, 109, 102),
+        'fig441':(108, 103, 94)
+    }
+
+    colors = (red, blue, blue)
+
+    for figname, spec in specifiers.items():
+        for i, laneid in enumerate(spec):
+            if laneid == -1:
+                continue
+            cur_lane = laneregions[laneid]
+            show_reg(plt, cur_lane, colors[i])
+            show_arrows(plt, cur_lane.centerline, white, pointsDelts=-1, size=1.5)
+            if i > 0:
+                showPairwiseCollidingRegions([laneregions[spec[0]], cur_lane], plt, gray)
+            
+        show_network_alt(scene.workspace.network, plt)
+        zoomToIntersection(scene, plt, 2)
+        save_show_clear(plt, f'{dirPath}/{figname}.png', view)
