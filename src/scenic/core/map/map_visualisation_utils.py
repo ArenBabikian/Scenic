@@ -33,7 +33,7 @@ def showLaneSections(scene, map_plt):
                 laneSec.show(map_plt, style=':', color='r')
 
 
-def showPairwiseCollidingRegions(all_roads, map_plt, color='r'):
+def showPairwiseCollidingRegions(all_roads, map_plt, color='r', zorder=99):
     for i, roadi in enumerate(all_roads[1:2]):
         for roadj in all_roads[:]:
             if roadi == roadj:
@@ -47,7 +47,7 @@ def showPairwiseCollidingRegions(all_roads, map_plt, color='r'):
                 continue
             points = tuple(collidingRegion.polygons[0].exterior.coords)
             x, y = zip(*points)
-            plt.fill(x, y, color=color)
+            plt.fill(x, y, color=color, zorder=zorder)
 
 
 def zoomToIntersection(scene, map_plt, margin=10):

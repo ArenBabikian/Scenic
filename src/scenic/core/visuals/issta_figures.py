@@ -148,7 +148,7 @@ def figs_issta(scene, dirPath=None, view=False):
             show_reg(plt, cur_lane, colors[i])
             show_arrows(plt, cur_lane.centerline, white, pointsDelts=-1, size=1.5)
             if i > 0:
-                showPairwiseCollidingRegions([laneregions[spec[0]], cur_lane], plt, gray)
+                showPairwiseCollidingRegions([laneregions[spec[0]], cur_lane], plt, gray, zorder=103)
             
         show_network_alt(scene.workspace.network, plt)
         zoomToIntersection(scene, plt, 2)
