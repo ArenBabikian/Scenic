@@ -4,43 +4,60 @@ from z3 import *
 
 # set_param(proof = True)
 
-SceneObject = DeclareSort('SceneObject')
-Bool = BoolSort()
-
-left = Function('left', SceneObject, SceneObject, Bool)
-right = Function('right', SceneObject, SceneObject, Bool)
-front = Function('front', SceneObject, SceneObject, Bool)
-behind = Function('behind', SceneObject, SceneObject, Bool)
-
-close = Function('close', SceneObject, SceneObject, Bool)
-med = Function('med', SceneObject, SceneObject, Bool)
-far = Function('far', SceneObject, SceneObject, Bool)
-
-constraintFunctionsInClass = {
-    'positional': { left, right, front, behind },
-    'distance': { close, med, far }
-}
-
-constraintMap = {
-    Cstr_type.HASTOLEFT: left,
-    Cstr_type.HASTORIGHT: right,
-    Cstr_type.HASBEHIND: behind,
-    Cstr_type.HASINFRONT: front,
-    Cstr_type.DISTCLOSE: close,
-    Cstr_type.DISTMED: med,
-    Cstr_type.DISTFAR: far
-}
-
-def convertToZ3Constraint(constraint):
-    src = Const(constraint.src, SceneObject)
-    tgt = Const(constraint.tgt, SceneObject)
-    return constraintMap.get(constraint.type)(src, tgt)
-
 def validate_sat(constraints):
+    # All objects in the constraints
+    objectNames = set()
+    for constraint in constraints:
+        objectNames.add(str(constraint.src))
+        if constraint.type != Cstr_type.ONREGIONTYPE:
+            objectNames.add(str(constraint.tgt))
+    objectNames = list(objectNames)
+    
+    SceneObject, objectRefs = EnumSort('SceneObject', objectNames)
+
+    # Look up the object literal ref (internal representation in z3) by name
+    objectRefsDict = dict(zip(objectNames, objectRefs))
+
+    Bool = BoolSort()
+
+    onRoad = Function('onRoad', SceneObject, SceneObject, Bool)
+
+    left = Function('left', SceneObject, SceneObject, Bool)
+    right = Function('right', SceneObject, SceneObject, Bool)
+    front = Function('front', SceneObject, SceneObject, Bool)
+    behind = Function('behind', SceneObject, SceneObject, Bool)
+
+    close = Function('close', SceneObject, SceneObject, Bool)
+    med = Function('med', SceneObject, SceneObject, Bool)
+    far = Function('far', SceneObject, SceneObject, Bool)
+
+    constraintFunctionsInClass = {
+        'positional': { left, right, front, behind },
+        'distance': { close, med, far }
+    }
+
+    constraintMap = {
+        Cstr_type.ONROAD: onRoad,
+        Cstr_type.HASTOLEFT: left,
+        Cstr_type.HASTORIGHT: right,
+        Cstr_type.HASBEHIND: behind,
+        Cstr_type.HASINFRONT: front,
+        Cstr_type.DISTCLOSE: close,
+        Cstr_type.DISTMED: med,
+        Cstr_type.DISTFAR: far
+    }
+
+    def convertToZ3Constraint(constraint):
+        src = objectRefsDict[str(constraint.src)]
+        tgt = objectRefsDict[str(constraint.tgt)]
+        return constraintMap.get(constraint.type)(src, tgt)
+
     solver = Solver()
 
     o1 = Const('__dummyObject1__', SceneObject)
     o2 = Const('__dummyObject2__', SceneObject)
+
+    solver.add(ForAll([o1, o2], Implies(onRoad(o1, o2), o2 == objectRefsDict['-1'])))
 
     for constraintClass in { 'positional', 'distance' }:
         constraintFunctions = constraintFunctionsInClass[constraintClass]
@@ -55,6 +72,8 @@ def validate_sat(constraints):
 
     result = solver.check()
     print(str(result) + '\n')
+    # if str(result) == 'sat':
+        # print(solver.model())
     return str(result) == 'sat'
 
     # if str(result) == 'sat':
