@@ -28,7 +28,9 @@ def validate_path(f):
     exit(f"'{f}' is not a directory.") if not os.path.isfile(f) else None
 
 def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measurements_data_path,
+                                 scenarioSizes=[2, 3, 4],
                                  printAggregateSensorData=False,
+                                 printAdditionalData=False,
                                  showVisualisationPlots=False):
 
     # Validate and get started
@@ -158,7 +160,12 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
     ###############################################################
     # STEP 2 : Handle 2-3-4 actor scenario data
-    more_actors_scenarios = list(filter(lambda x: '_1ac_' not in x, sorted_files))
+
+    more_actors_scenarios = []
+    for numActorsRef in scenarioSizes:
+        if numActorsRef == 1:
+            continue
+        more_actors_scenarios.extend(list(filter(lambda x: f'_{numActorsRef}ac_' in x, sorted_files)))
 
     # get measurements data
     data_for_figures = {'map_name' : town, 'junction_id' : junc_id, 'scenarios' : {1:{}, 2:{}, 3:{}, 4:{}}}
@@ -550,7 +557,7 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                                }
 
         # ###### (5.1) ADDITIONAL MEASUREMENT ANALYSIS FOR 2-ACTOR SCENES
-        if num_actors == 2:
+        if num_actors == 2 and printAdditionalData:
             concrete_relative_statistics_sequence = {'distances':[],
                                                      'ego_to_other_angles':[],
                                                      'other_to_ego_angles':[]
@@ -617,6 +624,7 @@ def main():
     # Set the folder path here
     # data_path = "fse/data-sim/Town05_2240"
     data_path = "fse/data-sim/Town04_916"
+    scenarioSizes = [2]
     sim_data_dir = f'{data_path}/txt'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     measurements_dat_path = f'{data_path}/log/measurements.json'
@@ -625,7 +633,9 @@ def main():
     
     # Get the list of file contents
     file_contents_list, paths_coordinates = iterate_text_files_in_folder(sim_data_dir, abs_scenario_dir, measurements_dat_path,
-                                                                         printAggregateSensorData=True,
+                                                                         scenarioSizes=scenarioSizes,
+                                                                         printAggregateSensorData=False,
+                                                                         printAdditionalData=False,
                                                                          showVisualisationPlots=False,)
 
     # Save the list as a JSON file

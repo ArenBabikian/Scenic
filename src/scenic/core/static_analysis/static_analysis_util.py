@@ -5,6 +5,7 @@ from scenic.core.distributions import Samplable
 from scenic.core.evol.evol_utils import fillSample
 from scenic.core.map.map_utils_definitive import find_colliding_region
 from scenic.core.lazy_eval import needsLazyEvaluation
+from scenic.core.map.map_visualisation_utils import show_alt
 from scenic.core.printer.utils_abstract import saveJsonAbstractScenario
 from scenic.core.printer.utils_concrete import MANTYPE2ID, saveAllScenariosToXml, saveScenarioToXml
 from scenic.core.regions import EmptyRegion
@@ -42,6 +43,7 @@ def doStaticAnalysis(scenario, dirPath):
     # Handle params
     params = scenario.params
     viewIm = params.get('viewImgs') == 'True'
+    saveIm = params.get('saveImgs') == 'True'
     viewPath = params.get('showPaths') == 'True'
     savePaths = params.get('savePaths') == 'True'
     saveAbsScenarios = params.get('static-saveAbsScenarios') == 'True'
@@ -224,7 +226,8 @@ def doStaticAnalysis(scenario, dirPath):
             setup_actor(scenario.objects[other_i+1], other_starting_point, other_starting_reg, other_reg, other_man, other_pre_junc_point, other_pre_junc_reg)
 
         # CREATE SCENE
-        if savePaths or saveAbsScenarios:
+        save_dir = None
+        if savePaths or saveAbsScenarios or saveIm:
             save_dir = mk(dirPath)
         scene = create_dummy_scene(scenario, None)
         
@@ -268,9 +271,10 @@ def doStaticAnalysis(scenario, dirPath):
         
         # VISUALISATION
         image_params = {'view_im':viewIm,
+                        'save_im':saveIm,
                         'view_path':viewPath}
-        if image_params['view_im']:
-            scene.show(None, None, image_params, True,  collision_reg)
+        if image_params['view_im'] or image_params['save_im']:
+            show_alt(scene, None, save_dir, f'{global_depth}-{i_sc}-image.png', image_params, True,  None)
 
         # ADD ABSTRACT SCENARIO
         if saveAbsScenarios:

@@ -14,6 +14,7 @@ import gc
 from scenic.core.map.map_visualisation_utils import show_alt
 import scenic.core.printer.printer as printer
 from scenic.core.static_analysis.static_analysis_util import doStaticAnalysis
+from scenic.core.visuals.issta_figures import figs_issta
 from scenic.core.visuals.src_figures import figs_src
 from scenic.figures.util import mk
 
@@ -228,8 +229,13 @@ try:
             measurementStats['results'] = []
 
         # Viuslaise for figures
-        if params.get('vis-figs') == 'src':
-            figs_src(scenario, mk(p), view=view_imgs)
+        vis_figs = params.get('vis-figs')
+        if vis_figs != None:            
+            func = {
+                "src": figs_src,
+                "issta": figs_issta
+                }
+            func[vis_figs](scenario, mk(p), view=view_imgs)
             exit()
 
         # Static Analysis
