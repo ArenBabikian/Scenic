@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-FILE_FORMAT = 'png'
+FILE_FORMAT = 'PDF'
+PRVENTABLE_THRESHOLD = 60
 
 style_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -32,23 +33,54 @@ def agg_attempt_collision_near_miss(data):
     return pd.Series(d)
 
 
+def agg_attempt_preventable_collision_near_miss(data):
+    d = {}
+    d['attempts'] = data['num_collisions'].count()
+    d['total collision'] = data['num_collisions'].sum()
+    d['vis preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    d['lid preventable collision'] = data[(data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    d['both preventable collision'] = data[(data['prevent_both_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    # d['either preventable collision'] = d['vis preventable collision'] + d['lid preventable collision'] - d['both preventable collision']
+    d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD) | (data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    # d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= 30) | (data['prevent_lid_stretch_frames'] >= 30)]['num_collisions'].sum()
+    d['non-preventable collision'] = d['total collision'] - d['preventable collision']
+
+    d['near miss'] = (data['near_miss_occurance'].sum() - d['total collision'])
+    d['no incident'] = d['attempts'] - d['total collision'] - d['near miss']
+    d['preventative measure'] = (data['num_preventative_maneuvers'] > 0).sum()
+    
+    d['total collision'] = d['total collision'] / d['attempts']
+    d['vis preventable collision'] = d['vis preventable collision'] / d['attempts']
+    d['lid preventable collision'] = d['lid preventable collision'] / d['attempts']
+    d['both preventable collision'] = d['both preventable collision'] / d['attempts']
+    # d['either preventable collision'] = d['either preventable collision'] / d['attempts']
+    d['preventable collision'] = d['preventable collision'] / d['attempts']
+    d['non-preventable collision'] = d['non-preventable collision'] / d['attempts']
+    d['near miss'] = d['near miss'] / d['attempts']
+    d['no incident'] = d['no incident'] / d['attempts']
+    d['preventative measure'] = d['preventative measure'] / d['attempts']
+    d['attempts'] = d['attempts'] / d['attempts']
+    return pd.Series(d)
+
+
 def create_bar_chart(df, groupby, title, xlabel, width, height, output_path, rotate_ticks=False):
-    df_agg = df.groupby([groupby]).apply(agg_attempt_collision_near_miss)
+    # df_agg = df.groupby([groupby]).apply(agg_attempt_collision_near_miss)
+    df_agg = df.groupby([groupby]).apply(agg_attempt_preventable_collision_near_miss)
     # Set up the figure and axis
     fig, ax = plt.subplots(figsize=(width, height))
     # Extracting data for plotting
     categories = df_agg.index
-    attributes = ['attempts', 'collision', 'near miss', 'preventative measure']
+    attributes = ['preventable collision', 'non-preventable collision', 'near miss', 'preventative measure', 'no incident']
     # attributes = ['attempts', 'collision']
     # data = df_agg[attributes].values
 
-    df_agg[['attempts']].plot.bar(width = 0.2, position = -1, stacked = True, ax = ax, color = style_colors[0])
-    df_agg[['collision', 'near miss']].plot.bar(width = 0.2, position = -2, stacked = True, ax = ax, color = [style_colors[3], style_colors[1]])
-    # df_agg['near miss'].plot.bar(width = 0.2, position = 1, stacked = True, ax = ax, color = 'orange')
-    df_agg[['preventative measure']].plot.bar(width = 0.2, position = -3, stacked = True, ax = ax, color = style_colors[2])
-
     # # Set the bar width
-    bar_width = 0.2
+    bar_width = 0.4
+
+    # df_agg[['attempts']].plot.bar(width = 0.2, position = -1, stacked = True, ax = ax, color = 'tab:blue')
+    df_agg[['preventable collision', 'non-preventable collision', 'near miss', 'no incident']].plot.bar(width = bar_width, position = -0.5, stacked = True, ax = ax, edgecolor='white', color = ['tab:red', 'tab:gray', 'tab:orange', 'tab:olive'])
+    # df_agg['near miss'].plot.bar(width = 0.2, position = 1, stacked = True, ax = ax, color = 'orange')
+    df_agg[['preventative measure']].plot.bar(width = bar_width, position = -1.5, stacked = True, ax = ax, edgecolor='white', color = 'tab:green')
 
     # # Create positions for bars
     x = range(len(categories))
@@ -61,16 +93,19 @@ def create_bar_chart(df, groupby, title, xlabel, width, height, output_path, rot
     #     plt.bar(x_positions[i], data[:, i], width=bar_width, label=attributes[i])
 
     # Set x-axis labels
-    plt.xticks([i + (len(attributes) + 1) / 2 * bar_width for i in x], categories, rotation=90 if rotate_ticks else 0)
+    # plt.xticks([i + (len(attributes) + 1) / 2 * bar_width for i in x], categories, rotation=90 if rotate_ticks else 0)    # This is for total collision
+    plt.xticks([i + 1.5 * bar_width for i in x], categories, rotation=90 if rotate_ticks else 0)    # This is for total collision
+    # plt.xticks([i + (len(attributes)) / 2 * bar_width for i in x], categories, rotation=90 if rotate_ticks else 0)        # This is for preventable and non-preventable collision
 
     # Set the title and legend
     plt.title(title, y=1.2)
     # plt.legend()
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2), shadow=False, ncol=4)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.2), shadow=False, ncol=5, labels=['Prev. Coll.', 'Non-Prev. Coll.', 'Near-Miss', 'No Incident', 'Prev. Measure'], fontsize=10)
 
     # Add axis titles
     ax.set_xlabel(xlabel)
 
+    # Show the plot
     plt.tight_layout()
 
     # Save the plot
@@ -85,7 +120,6 @@ def create_bar_chart(df, groupby, title, xlabel, width, height, output_path, rot
     with open(f'{output_path}/latex/{filename}.tex', 'w') as f:
         f.write(df_agg.to_latex())
 
-    # Show the plot
     # plt.show()
     plt.close()
 
@@ -134,7 +168,8 @@ def create_coordinates_chart(df, man_id, title, width, height, output_path, fix_
     # plt.show()
 
     # Save the plot
-    plt.savefig(f'{output_path}/{title}.{FILE_FORMAT}')
+    os.makedirs(f'{output_path}/coordinates', exist_ok=True)
+    plt.savefig(f'{output_path}/coordinates/{title}.{FILE_FORMAT}')
     plt.close()
 
 
@@ -293,7 +328,7 @@ def create_collision_near_miss_preventative_matrix_table(df, output_path):
 
 def main():
     input_path = 'fse/data-sim'
-    output_path = 'fse/figures_all_TEST'
+    output_path = 'fse/figures_all_TEST_2'
     os.makedirs(output_path, exist_ok=True)
 
     map_junction_names = ['Town05_2240', 'Town04_916']
@@ -319,18 +354,21 @@ def main():
     
 
     plot_types = [
-        (df_actor[df_actor['ego']],                               'maneuver.id',            'ego____specific Ego attempts per maneuver'                        , 'Maneuver id',             False),
-        (df_actor[df_actor['ego']],                               'maneuver.type',          'ego________type Ego attempts per maneuver type'                   , 'Maneuver type',           False),
-        (df_actor[df_actor['ego']],                               'maneuver.start_lane_id', 'ego_______start Ego attempts per start lane'                      , 'Start lane',              True),
-        (df_actor[df_actor['ego']],                               'maneuver.end_lane_id',   'ego_________end Ego attempts per end lane'                        , 'End lane',                True),
-        (df_actor[~df_actor['ego']],                              'maneuver.id',            'nonego_specific Ego attempts per maneuver'                        , 'Maneuver id',             True),
-        (df_actor[~df_actor['ego']],                              'maneuver.type',          'nonego_____type Ego attempts per maneuver type'                   , 'Maneuver type',           False),
-        (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'nonego____start Ego attempts per start lane'                      , 'Start lane',              True),
-        (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'nonego______end Ego attempts per end lane'                        , 'End lane',                True),
-        (df_relationship[df_relationship['time'] == 'initial'],   'relationship',           'rel________init Relationship attempts per relationship (initial)' , 'Initial relationship',    True),
-        (df_relationship[df_relationship['time'] == 'final'],     'relationship',           'rel_______final Relationship attempts per relationship (final)'   , 'Final relationship',      True),
-        (df_actor[df_actor['ego']],                               'num_actors',             'Ego attempts per number of actors'                                , 'Number of actors',        True),
-        (df_actor[df_actor['ego']],                               'num_adv_actors',         'Attempts per number of adversarial actors'                        , 'Adversarial actors',      False),
+        # (df_actor[(df_actor['ego']) & (df_actor['maneuver.id'] == 'road962_lane0')], 'scenario_spec_id','ego____specific Ego attempts per maneuver'            , '(road962_lane0) Maneuver instance id'),
+        # (df_actor[(df_actor['ego']) & (df_actor['maneuver.id'] == 'road974_lane0')], 'scenario_spec_id','ego____specific Ego attempts per maneuver'            , '(road974_lane0) Maneuver instance id '),
+        (df_actor[df_actor['ego']],                               lambda _ : True,          'Total'                        , 'Total', False),
+        (df_actor[df_actor['ego']],                               'maneuver.type',          'Attempts per maneuver type'                   , 'Maneuver type', False),
+        (df_actor[(df_actor['ego']) & (df_actor['num_actors'] == '2')],  'maneuver.type',     'Attempts per maneuver type (2 actor only)'                   , 'Maneuver type', False),
+        (df_actor[df_actor['ego']],                               'num_adv_actors',         'Attempts per number of adversarial actors'    , 'Adversarial actors', False),
+        (df_actor[df_actor['ego']],                               'maneuver.start_lane_id', 'Attempts per start lane'                      , 'Start lane', True),
+        (df_actor[df_actor['ego']],                               'maneuver.end_lane_id',   'Attempts per end lane'                        , 'End lane', True),
+        (df_actor[~df_actor['ego']],                              'maneuver.id',            'Non-ego attempts per maneuver'                        , 'Maneuver id', True),
+        (df_actor[~df_actor['ego']],                              'maneuver.type',          'Non-ego attempts per maneuver type'                   , 'Maneuver type', False),
+        (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'Non-ego attempts per start lane'                      , 'Start lane', True),
+        (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'Non-ego attempts per end lane'                        , 'End lane', True),
+        (df_relationship[df_relationship['time'] == 'initial'],   'relationship',           'Relationship attempts per relationship (initial)' , 'Initial relationship', False),
+        (df_relationship[df_relationship['time'] == 'final'],     'relationship',           'Relationship attempts per relationship (final)'   , 'Final relationship', False),
+        (df_actor[df_actor['ego']],                               'num_actors',             'Ego attempts per number of actors'                                , 'Number of actors', False),
     ]
 
     for df, groupby, title, xlabel, rotate_ticks in plot_types:
@@ -344,6 +382,7 @@ def main():
     create_box_plot(df_actor, output_path)
     create_closest_points_plot(df_coordinates, output_path)
 
+    # for "tab:result-per-measure"
     create_collision_near_miss_preventative_matrix_table(df_actor[df_actor['ego']], output_path=output_path)
 
 
