@@ -448,9 +448,9 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
                 coord['man_id'] = other_maneuver_id
                 coord['actor_id'] = other_vehicle_id
                 coord['frame'] = frame_i
-                coord['x'] = ego_tr_at_i.location.x
-                coord['y'] = ego_tr_at_i.location.y
-                coord['z'] = ego_tr_at_i.location.z
+                coord['x'] = other_tr_at_i.location.x
+                coord['y'] = other_tr_at_i.location.y
+                coord['z'] = other_tr_at_i.location.z
                 coord['pitch'] = other_tr_at_i.rotation.pitch
                 coord['yaw'] = other_tr_at_i.rotation.yaw
                 coord['roll'] = other_tr_at_i.rotation.roll
