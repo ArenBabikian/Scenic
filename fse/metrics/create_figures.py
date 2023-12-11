@@ -37,11 +37,11 @@ def agg_attempt_preventable_collision_near_miss(data):
     d = {}
     d['attempts'] = data['num_collisions'].count()
     d['total collision'] = data['num_collisions'].sum()
-    d['vis preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
-    d['lid preventable collision'] = data[(data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
-    d['both preventable collision'] = data[(data['prevent_both_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
-    # d['either preventable collision'] = d['vis preventable collision'] + d['lid preventable collision'] - d['both preventable collision']
-    d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD) | (data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    # d['lid preventable collision'] = data[(data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    # d['both preventable collision'] = data[(data['prevent_both_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
+    # # d['either preventable collision'] = d['vis preventable collision'] + d['lid preventable collision'] - d['both preventable collision']
+    # d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= PRVENTABLE_THRESHOLD) | (data['prevent_lid_stretch_frames'] >= PRVENTABLE_THRESHOLD)]['num_collisions'].sum()
     # d['preventable collision'] = data[(data['prevent_vis_stretch_frames'] >= 30) | (data['prevent_lid_stretch_frames'] >= 30)]['num_collisions'].sum()
     d['non-preventable collision'] = d['total collision'] - d['preventable collision']
 
@@ -50,9 +50,9 @@ def agg_attempt_preventable_collision_near_miss(data):
     d['preventative measure'] = (data['num_preventative_maneuvers'] > 0).sum()
     
     d['total collision'] = d['total collision'] / d['attempts']
-    d['vis preventable collision'] = d['vis preventable collision'] / d['attempts']
-    d['lid preventable collision'] = d['lid preventable collision'] / d['attempts']
-    d['both preventable collision'] = d['both preventable collision'] / d['attempts']
+    # d['vis preventable collision'] = d['vis preventable collision'] / d['attempts']
+    # d['lid preventable collision'] = d['lid preventable collision'] / d['attempts']
+    # d['both preventable collision'] = d['both preventable collision'] / d['attempts']
     # d['either preventable collision'] = d['either preventable collision'] / d['attempts']
     d['preventable collision'] = d['preventable collision'] / d['attempts']
     d['non-preventable collision'] = d['non-preventable collision'] / d['attempts']
@@ -328,7 +328,7 @@ def create_collision_near_miss_preventative_matrix_table(df, output_path):
 
 def main():
     input_path = 'fse/data-sim'
-    output_path = 'fse/figures_all_TEST_2'
+    output_path = 'fse/figures'
     os.makedirs(output_path, exist_ok=True)
 
     map_junction_names = ['Town05_2240', 'Town04_916']
@@ -354,21 +354,21 @@ def main():
     
 
     plot_types = [
-        # (df_actor[(df_actor['ego']) & (df_actor['maneuver.id'] == 'road962_lane0')], 'scenario_spec_id','ego____specific Ego attempts per maneuver'            , '(road962_lane0) Maneuver instance id'),
-        # (df_actor[(df_actor['ego']) & (df_actor['maneuver.id'] == 'road974_lane0')], 'scenario_spec_id','ego____specific Ego attempts per maneuver'            , '(road974_lane0) Maneuver instance id '),
         (df_actor[df_actor['ego']],                               lambda _ : True,          'Total'                        , 'Total', False),
         (df_actor[df_actor['ego']],                               'maneuver.type',          'Attempts per maneuver type'                   , 'Maneuver type', False),
-        (df_actor[(df_actor['ego']) & (df_actor['num_actors'] == '2')],  'maneuver.type',     'Attempts per maneuver type (2 actor only)'                   , 'Maneuver type', False),
         (df_actor[df_actor['ego']],                               'num_adv_actors',         'Attempts per number of adversarial actors'    , 'Adversarial actors', False),
         (df_actor[df_actor['ego']],                               'maneuver.start_lane_id', 'Attempts per start lane'                      , 'Start lane', True),
         (df_actor[df_actor['ego']],                               'maneuver.end_lane_id',   'Attempts per end lane'                        , 'End lane', True),
-        (df_actor[~df_actor['ego']],                              'maneuver.id',            'Non-ego attempts per maneuver'                        , 'Maneuver id', True),
-        (df_actor[~df_actor['ego']],                              'maneuver.type',          'Non-ego attempts per maneuver type'                   , 'Maneuver type', False),
-        (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'Non-ego attempts per start lane'                      , 'Start lane', True),
-        (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'Non-ego attempts per end lane'                        , 'End lane', True),
-        (df_relationship[df_relationship['time'] == 'initial'],   'relationship',           'Relationship attempts per relationship (initial)' , 'Initial relationship', False),
-        (df_relationship[df_relationship['time'] == 'final'],     'relationship',           'Relationship attempts per relationship (final)'   , 'Final relationship', False),
-        (df_actor[df_actor['ego']],                               'num_actors',             'Ego attempts per number of actors'                                , 'Number of actors', False),
+        (df_actor[~df_actor['ego']],                              'maneuver.id',            'Non-ego attempts per maneuver'                             , 'Maneuver id', True),
+        (df_actor[~df_actor['ego']],                              'maneuver.type',          'Non-ego attempts per maneuver type'                        , 'Maneuver type', False),
+        (df_actor[~df_actor['ego']],                              'maneuver.start_lane_id', 'Non-ego attempts per start lane'                           , 'Start lane', True),
+        (df_actor[~df_actor['ego']],                              'maneuver.end_lane_id',   'Non-ego attempts per end lane'                             , 'End lane', True),
+        (df_relationship[df_relationship['time'] == 'initial'],   'relationship',           'Relationship attempts per relationship (initial)'          , 'Initial relationship', False),
+        (df_relationship[df_relationship['time'] == 'final'],     'relationship',           'Relationship attempts per relationship (final)'            , 'Final relationship', False),
+        (df_actor[(df_actor['ego']) & (df_actor['num_actors'] == '2')],             'maneuver.type',    'Attempts per maneuver type (2 actor only)'     , 'Maneuver type', False),
+        (df_actor[(df_actor['ego']) & (df_actor['maneuver.type'] == 'left')],       'maneuver.id',      'Ego attempts per left turn maneuver'           , 'Maneuver id', True),
+        (df_actor[(df_actor['ego']) & (df_actor['maneuver.type'] == 'right')],      'maneuver.id',      'Ego attempts per right turn maneuver'          , 'Maneuver id', True),
+        (df_actor[(df_actor['ego']) & (df_actor['maneuver.type'] == 'straight')],   'maneuver.id',      'Ego attempts per straight maneuver'            , 'Maneuver id', True),
     ]
 
     for df, groupby, title, xlabel, rotate_ticks in plot_types:
@@ -382,7 +382,7 @@ def main():
     create_box_plot(df_actor, output_path)
     create_closest_points_plot(df_coordinates, output_path)
 
-    # for "tab:result-per-measure"
+    # for "tab:result-per-measure" in "{output_path}/latex/tab-result-per-measure.tex"
     create_collision_near_miss_preventative_matrix_table(df_actor[df_actor['ego']], output_path=output_path)
 
 
