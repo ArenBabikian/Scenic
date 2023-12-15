@@ -3,9 +3,10 @@ import sys
 
 intersections = {'town05':[2240],
                  'town04':[916]}
-# intersections = {'town05':[2240]} # OFFICIAL: Done
-# intersections = {'town04':[916]} # Standard, 4-way. Residential. GOOD
+intersections = {'town05':[2240]} # OFFICIAL: Done
+intersections = {'town04':[916]} # Standard, 4-way. Residential. GOOD
 # intersections = {'town07':[918]} # Weird, 3-way. Rural, trees. GOOD
+# intersections = {'town01':[87]} # FIGURES
 
 # NOTE:
 # 'town05':[207] # Original one where testing was done
@@ -17,14 +18,16 @@ intersections = {'town05':[2240],
 # intersections = {'town04':[1452]} # Standard, 4-way. Residential. Scenery issues
 
 actor_configs = [1, 2, 3, 4]
-# actor_configs = [2]
+# actor_configs = [1]
 
 view_im, view_path = True, True
-# view_im, view_path = False, False
+view_im, view_path = False, False
+save_im = True
+save_im = False
 save_path = True
-# save_path = False
+save_path = False
 save_abs_scene = True
-# save_abs_scene = False
+save_abs_scene = False
 
 for m in intersections:
 
@@ -33,7 +36,8 @@ for m in intersections:
         for config in actor_configs:
             command = ['poetry', 'run', 'scenic']
             command.extend(['-b'])
-            # command.extend(['-v', str(verbosity)])
+            command.extend(['--zoom', '0'])
+            command.extend(['-v', '0'])
             command.extend(['-p', 'outputWS', 'fse/data'])
             command.extend(['-p', 'outputDir', f'{m}-{intersection}/{config}actors/'])
 
@@ -44,6 +48,7 @@ for m in intersections:
             command.extend(['-p', 'intersectiontesting', f'{intersection}'])
             
             command.extend(['-p', 'viewImgs', str(view_im)])
+            command.extend(['-p', 'saveImgs', str(save_im)])
             command.extend(['-p', 'showPaths', str(view_path)])
             command.extend(['-p', 'savePaths', str(save_path)])
 

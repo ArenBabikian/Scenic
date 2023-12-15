@@ -106,7 +106,7 @@ def show_object(plt, pos, head, c, size=(3, 5), zorder=101):
     plt.fill(x, y, "w", zorder=zorder)
     plt.plot(x + (x[0],), y + (y[0],), color="k", linewidth=1, zorder=zorder)
 
-def show_carla_intersection(actors_list, camera=None, weather='Default'):
+def show_carla_intersection(actors_list, camera=None, town="Town01", weather='Default'):
 
     from scenic.simulators.carla.utils.utils import scenicToCarlaLocation
     from matplotlib.colors import to_rgb
@@ -117,8 +117,8 @@ def show_carla_intersection(actors_list, camera=None, weather='Default'):
     client.set_timeout(5.0)
     world = client.get_world()
 
-    if world.get_map().name != "Town01":
-        client.load_world("Town01")
+    if world.get_map().name != town:
+        client.load_world(town)
     world.set_weather(getattr(carla.WeatherParameters, weather))
     # 'Default', 'ClearNoon', 'CloudyNoon', 'WetNoon', 'WetCloudyNoon', 'MidRainyNoon',
     # 'HardRainNoon', 'SoftRainNoon', 'ClearSunset', 'CloudySunset', 'WetSunset',

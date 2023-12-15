@@ -5,7 +5,7 @@ from scenic.core.distributions import Samplable
 from scenic.core.evol.evol_utils import fillSample
 from scenic.core.map.map_utils_definitive import find_colliding_region
 from scenic.core.lazy_eval import needsLazyEvaluation
-from scenic.core.map.map_visualisation_utils import show_alt
+from scenic.core.map.map_visualisation_utils import show_alt, zoomToIntersection
 from scenic.core.printer.utils_abstract import saveJsonAbstractScenario
 from scenic.core.printer.utils_concrete import MANTYPE2ID, saveAllScenariosToXml, saveScenarioToXml
 from scenic.core.regions import EmptyRegion
@@ -15,6 +15,7 @@ from scenic.core.vectors import Vector
 import shapely.geometry
 import shapely.ops
 import shapely.prepared
+from scenic.core.visuals.utils import show_network_alt, show_reg
 from scenic.domains.driving.roads import Intersection, ManeuverType
 
 from scenic.figures.util import mk
@@ -74,6 +75,19 @@ def doStaticAnalysis(scenario, dirPath):
     #     else:
     #         print(tuple)
 
+    # UNCOMMENT THIS TO PRINT AND SHOW ALL POSSIBLE TUPLES
+    # import matplotlib.pyplot as plt
+    # for i, m in enumerate(all_possible_maneuvers):
+    #     print(f'{i}: {m.connectingLane.uid} {m.type}')
+    #     r = scenario.workspace.network.elements[m.connectingLane.uid]
+    #     show_network_alt(scenario.workspace.network, plt)
+    #     show_reg(plt, r, 'k')
+    #     zoomToIntersection(scenario, plt, 5)
+    #     plt.show()
+
+    # exit()
+
+
     def recursiveForLoop(maneuvers, depth, tuple):
         if depth >= 1:
 
@@ -86,8 +100,11 @@ def doStaticAnalysis(scenario, dirPath):
                 if len(tuple) > 0 and man.startLane == tuple[0][0].startLane:
                     # CONSTRAINT 2: Non-ego paths must have different starting lane than ego path
                     continue
-                if len(tuple) > 1 and tuple[-1][1] >= maneuver_id:
-                    # CONSTRAINT 3: All non-ego paths must be distinct (and no permutations)
+                if len(tuple) > 1 and tuple[-1][1] == maneuver_id:
+                    # CONSTRAINT 3: All non-ego paths must be distinct
+                    continue 
+                if len(tuple) > 1 and tuple[-1][1] > maneuver_id:
+                    # CONSTRAINT 4: No permutations among all non-ego paths
                     continue 
 
                 tuple.append((man, maneuver_id))
@@ -112,6 +129,15 @@ def doStaticAnalysis(scenario, dirPath):
 
     print(f'We evaluate {len(all_tuples)} {global_depth}-tuples. {len(all_colliding_tuples)} of them are colliding.')
 
+    # # Print all_colliding_tuples
+    # man2id={}
+    # for m in all_possible_maneuvers:
+    #     if m not in man2id:
+    #         man2id[m] = len(man2id)
+    # for colliding_tuple in all_colliding_tuples:
+    #     print([man2id[t] for t in colliding_tuple])
+
+    # exit()
     ######################################
     # GENERATE SCENES + FURTHER VALIDATION
 
@@ -235,14 +261,15 @@ def doStaticAnalysis(scenario, dirPath):
         positioning_problem = False
         for i_ac, vi in enumerate(scene.objects):
             for j_ac_raw, vj in enumerate(scene.objects[i_ac+1:]):
+                # For a pair of objects...
                 j_ac = i_ac+1+j_ac_raw
 
-                # VAL : non-egos should initially not overlap
+                # VALIDATION 1 : non-egos should initially not overlap
                 if vi.intersects(vj):
                     positioning_problem = True
                     print(f'WARNING: SCENARIO {i_sc} VOIDED, actors {i_ac} and {j_ac} are initially overlapping.')
 
-                # VAL : are non-ego paths overlapping?
+                # VALIDATION 2 : are non-ego paths overlapping?
                 if i_ac != 0:
                     # avoid checking thiss for ego
                     i_reg = colliding_tuple[i_ac].connectingLane

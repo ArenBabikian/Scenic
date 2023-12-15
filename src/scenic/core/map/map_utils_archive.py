@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from scenic.formats.opendrive import xodr_parser
 from src.scenic.formats.opendrive.xodr_parser import Lane, Poly3
 
-colors = ['#000000',  '#0000EE', '#0000EE', '#0000EE']
+colors = ['#0000EE', '#000000',  '#0000EE', '#0000EE']
 
 class TwoWaySegment:
     def __init__(self, segment_region):
@@ -74,7 +74,10 @@ def addAbstractPathsToMap(actor2nodes, actor2intersRegs, style, map_plt):
     # Show all possible paths of each object
     for k, nodes in enumerate(actor2nodes.values()):
         combinedRegion = PolygonalRegion.unionAll(nodes)
-        combinedRegion.show(map_plt, style=style, color=colors[k])
+        combinedRegion.show(map_plt, style=style, color='w')
+        points = tuple(combinedRegion.polygons[0].exterior.coords)
+        x, y = zip(*points)
+        plt.fill(x, y, color=colors[k])
 
     if actor2intersRegs  == None:
         return

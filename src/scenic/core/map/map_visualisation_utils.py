@@ -50,8 +50,11 @@ def showPairwiseCollidingRegions(all_roads, map_plt, color='r', zorder=99):
             plt.fill(x, y, color=color, zorder=zorder)
 
 
-def zoomToIntersection(scene, map_plt, margin=10):
-    intersection_id = scene.params.get('intersectiontesting')
+def zoomToIntersection(scene, map_plt, margin=10, id=None):
+    if id is not None:
+        intersection_id = id
+    else:
+        intersection_id = scene.params.get('intersectiontesting')
     intersectionsWithId = list(filter(lambda x: x.id == intersection_id, scene.workspace.network.intersections))
     assert len(intersectionsWithId) == 1, f"Invalid intersection id <{intersection_id}>. Select among the following ids {[x.id for x in scene.workspace.network.intersections]}"
     intersection =  intersectionsWithId[0]

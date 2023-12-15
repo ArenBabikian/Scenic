@@ -185,6 +185,9 @@ def handle_paths(scene, params, map_plt, includeLongPathToIntersection):
             # 2 Get next road segment (target segment) and previous segment (source segment)
             actorPath = getPrevAndNext(currentRoad)
             actor2nodes[actor] = actorPath
+            # TODO: TEMP this is a slight modification
+            actor2nodes[actor] = [currentRoad]
+            print(currentRoad)
         
     if params['view_path']:
 
@@ -199,5 +202,5 @@ def handle_paths(scene, params, map_plt, includeLongPathToIntersection):
 
         showLaneSections(scene, plt) # TODO will probably  end up as default
         # map_utils.highlightSpecificElement(self, plt, )
-        zoomToIntersection(scene, plt)
+        zoomToIntersection(scene, plt, 3)
         # visualizeAbstractGraphs(scene.egoObject, actor2graph, True)

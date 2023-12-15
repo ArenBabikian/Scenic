@@ -30,6 +30,28 @@ def figs_issta(scene, dirPath=None, view=False):
     ]
     # show_carla_intersection(actors)
 
+
+    # ###############
+    # FIG 1 : CARLA juntion-under-test figures
+
+    # Junc 1
+    camera = {'x': 202.259171, 'y': -246.311935, 'z': 47,
+              'pitch': -88.997894, 'yaw': -89.080635, 'roll': 0.007030}
+    # show_carla_intersection([], camera=camera, town="Town04", weather='CloudySunset')
+    camera = {'x': 202.259171, 'y': -246.311935, 'z': 27.6,
+              'pitch': -88.997894, 'yaw': -89.080635, 'roll': 0.007030}
+    # show_carla_intersection([], camera=camera, town="Town04", weather='CloudySunset')
+
+
+    # Junc 2
+    camera = {'x': -125.428398, 'y': 146.298004, 'z': 63.861748,
+              'pitch': -88.863220, 'yaw': -89.531082, 'roll': 0.001980}
+    # show_carla_intersection([], camera=camera, town="Town05", weather='CloudySunset')
+    camera = {'x': -125.448662, 'y': 148.708664, 'z': 33.1,
+          'pitch': -88.864594, 'yaw': -89.631866, 'roll': 0.001379}
+    # show_carla_intersection([], camera=camera, town="Town05", weather='CloudySunset')
+
+
     # ###############
     # FIG 2.1 : Scenario at logical levels of abstraction
     
@@ -46,7 +68,9 @@ def figs_issta(scene, dirPath=None, view=False):
 
     # Add regions
     show_regions(plt, full_r1, blue)
+    show_reg(plt, r1.predecessor, dark_blue)
     show_regions(plt, full_r2, red)
+    show_reg(plt, r2.predecessor, dark_red)
     showPairwiseCollidingRegions([r1, r2], plt, gray)
     
     show_network_alt(scene.workspace.network, plt)
@@ -130,7 +154,7 @@ def figs_issta(scene, dirPath=None, view=False):
         'fig421':(93, 103, -1),
         'fig422':(94, 109, -1),
         'fig423':(102, 108, -1),
-        'fig424':(108, 102, -1),
+        'fig424':(93, 102, -1),
         'fig425':(102, 109, -1),
         'fig430':(93, 103, 109),
         'fig431':(109, 93, 94),
@@ -146,7 +170,7 @@ def figs_issta(scene, dirPath=None, view=False):
                 continue
             cur_lane = laneregions[laneid]
             show_reg(plt, cur_lane, colors[i])
-            show_arrows(plt, cur_lane.centerline, white, pointsDelts=-1, size=1.5)
+            show_arrows(plt, cur_lane.centerline, white, pointsDelts=-1, size=1.5, zorder=104 if i == 0 else 102)
             if i > 0:
                 showPairwiseCollidingRegions([laneregions[spec[0]], cur_lane], plt, gray, zorder=103)
             
