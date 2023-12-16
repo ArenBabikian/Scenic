@@ -1,0 +1,947 @@
+{
+  "map_name": "town05",
+  "junction_id": "intersection2240",
+  "num_actors": 3,
+  "all_maneuvers": [
+    "road2241_lane0",
+    "road2281_lane0",
+    "road2242_lane0",
+    "road2280_lane1",
+    "road2280_lane0",
+    "road2282_lane0",
+    "road2281_lane1",
+    "road2292_lane0"
+  ],
+  "lane_relationships": {
+    "road41_lane1": {
+      "road41_lane1": "same",
+      "road41_lane0": "adjacent",
+      "road51_lane2": "right",
+      "road51_lane3": "right",
+      "road42_lane2": "ahead",
+      "road42_lane3": "ahead"
+    },
+    "road41_lane0": {
+      "road41_lane1": "adjacent",
+      "road41_lane0": "same",
+      "road51_lane2": "right",
+      "road51_lane3": "right",
+      "road42_lane2": "ahead",
+      "road42_lane3": "ahead"
+    },
+    "road51_lane2": {
+      "road41_lane1": "left",
+      "road41_lane0": "left",
+      "road51_lane2": "same",
+      "road51_lane3": "adjacent",
+      "road42_lane2": "right",
+      "road42_lane3": "right"
+    },
+    "road51_lane3": {
+      "road41_lane1": "left",
+      "road41_lane0": "left",
+      "road51_lane2": "adjacent",
+      "road51_lane3": "same",
+      "road42_lane2": "right",
+      "road42_lane3": "right"
+    },
+    "road42_lane2": {
+      "road41_lane1": "ahead",
+      "road41_lane0": "ahead",
+      "road51_lane2": "left",
+      "road51_lane3": "left",
+      "road42_lane2": "same",
+      "road42_lane3": "adjacent"
+    },
+    "road42_lane3": {
+      "road41_lane1": "ahead",
+      "road41_lane0": "ahead",
+      "road51_lane2": "left",
+      "road51_lane3": "left",
+      "road42_lane2": "adjacent",
+      "road42_lane3": "same"
+    },
+    "road41_lane3": {
+      "road41_lane3": "same",
+      "road41_lane2": "adjacent",
+      "road51_lane0": "right",
+      "road51_lane1": "right",
+      "road42_lane0": "ahead",
+      "road42_lane1": "ahead"
+    },
+    "road41_lane2": {
+      "road41_lane3": "adjacent",
+      "road41_lane2": "same",
+      "road51_lane0": "right",
+      "road51_lane1": "right",
+      "road42_lane0": "ahead",
+      "road42_lane1": "ahead"
+    },
+    "road51_lane0": {
+      "road41_lane3": "left",
+      "road41_lane2": "left",
+      "road51_lane0": "same",
+      "road51_lane1": "adjacent",
+      "road42_lane0": "right",
+      "road42_lane1": "right"
+    },
+    "road51_lane1": {
+      "road41_lane3": "left",
+      "road41_lane2": "left",
+      "road51_lane0": "adjacent",
+      "road51_lane1": "same",
+      "road42_lane0": "right",
+      "road42_lane1": "right"
+    },
+    "road42_lane0": {
+      "road41_lane3": "ahead",
+      "road41_lane2": "ahead",
+      "road51_lane0": "left",
+      "road51_lane1": "left",
+      "road42_lane0": "same",
+      "road42_lane1": "adjacent"
+    },
+    "road42_lane1": {
+      "road41_lane3": "ahead",
+      "road41_lane2": "ahead",
+      "road51_lane0": "left",
+      "road51_lane1": "left",
+      "road42_lane0": "adjacent",
+      "road42_lane1": "same"
+    }
+  },
+  "all_scenarios": [
+    {
+      "scenario_id": 0,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "left",
+          "2": "right"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "left"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "left"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "right"
+        },
+        "2": {
+          "0": "right",
+          "1": "left"
+        }
+      }
+    },
+    {
+      "scenario_id": 1,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2292_lane0",
+            "type": "right",
+            "start_lane_id": "road51_lane3",
+            "end_lane_id": "road42_lane0"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "right"
+        },
+        "1": {
+          "0": "left",
+          "2": "adjacent"
+        },
+        "2": {
+          "0": "left",
+          "1": "adjacent"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "same"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "same",
+          "1": "ahead"
+        }
+      }
+    },
+    {
+      "scenario_id": 2,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2292_lane0",
+            "type": "right",
+            "start_lane_id": "road51_lane3",
+            "end_lane_id": "road42_lane0"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "right"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "left"
+        },
+        "2": {
+          "0": "left",
+          "1": "right"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "left",
+          "2": "same"
+        },
+        "1": {
+          "0": "right",
+          "2": "right"
+        },
+        "2": {
+          "0": "same",
+          "1": "left"
+        }
+      }
+    },
+    {
+      "scenario_id": 3,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2280_lane0",
+            "type": "straight",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "left",
+          "2": "right"
+        },
+        "1": {
+          "0": "right",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "left",
+          "1": "ahead"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "same"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "same",
+          "1": "ahead"
+        }
+      }
+    },
+    {
+      "scenario_id": 4,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "left",
+          "2": "right"
+        },
+        "1": {
+          "0": "right",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "left",
+          "1": "ahead"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "right"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "left"
+        },
+        "2": {
+          "0": "left",
+          "1": "right"
+        }
+      }
+    },
+    {
+      "scenario_id": 5,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "left",
+          "2": "left"
+        },
+        "1": {
+          "0": "right",
+          "2": "adjacent"
+        },
+        "2": {
+          "0": "right",
+          "1": "adjacent"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "adjacent"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "adjacent"
+        }
+      }
+    },
+    {
+      "scenario_id": 6,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2280_lane0",
+            "type": "straight",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "right"
+        },
+        "1": {
+          "0": "left",
+          "2": "same"
+        },
+        "2": {
+          "0": "left",
+          "1": "same"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "same",
+          "2": "right"
+        },
+        "1": {
+          "0": "same",
+          "2": "right"
+        },
+        "2": {
+          "0": "left",
+          "1": "left"
+        }
+      }
+    },
+    {
+      "scenario_id": 7,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2280_lane0",
+            "type": "straight",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "left"
+        },
+        "1": {
+          "0": "left",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "right",
+          "1": "ahead"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "same",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "same",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "ahead"
+        }
+      }
+    },
+    {
+      "scenario_id": 8,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "left"
+        },
+        "1": {
+          "0": "left",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "right",
+          "1": "ahead"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "right",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "left",
+          "2": "right"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "left"
+        }
+      }
+    },
+    {
+      "scenario_id": 9,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "left"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "right"
+        },
+        "2": {
+          "0": "right",
+          "1": "left"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "right",
+          "2": "left"
+        },
+        "1": {
+          "0": "left",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "right",
+          "1": "ahead"
+        }
+      }
+    },
+    {
+      "scenario_id": 10,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "adjacent"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "adjacent"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "right",
+          "2": "right"
+        },
+        "1": {
+          "0": "left",
+          "2": "adjacent"
+        },
+        "2": {
+          "0": "left",
+          "1": "adjacent"
+        }
+      }
+    },
+    {
+      "scenario_id": 11,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "left",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "right",
+          "2": "left"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "right"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "left",
+          "2": "right"
+        },
+        "1": {
+          "0": "right",
+          "2": "ahead"
+        },
+        "2": {
+          "0": "left",
+          "1": "ahead"
+        }
+      }
+    },
+    {
+      "scenario_id": 12,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        },
+        {
+          "id": 1,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        },
+        {
+          "id": 2,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {
+          "1": "right",
+          "2": "ahead"
+        },
+        "1": {
+          "0": "left",
+          "2": "right"
+        },
+        "2": {
+          "0": "ahead",
+          "1": "left"
+        }
+      },
+      "encounter_order": [
+        1,
+        2
+      ],
+      "final_relations": {
+        "0": {
+          "1": "ahead",
+          "2": "left"
+        },
+        "1": {
+          "0": "ahead",
+          "2": "right"
+        },
+        "2": {
+          "0": "right",
+          "1": "left"
+        }
+      }
+    }
+  ]
+}

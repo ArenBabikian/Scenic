@@ -1,0 +1,40 @@
+>>>Success Rate Statistical Significance<<<
+>>>issta/figures/issta/evaluation/Town05_2240<<<
+[[10  0  0]
+ [70 59  2]
+ [30 30 30]]
+    gs_eastA(at=10, nm=0, col=0)
+    gs_westA(at=70, nm=59, col=2)
+    gs_westB(at=30, nm=30, col=30)
+
+    gs_eastA-gs_westA
+     nm   * nm   : (pvalue=0.005) (oddsrat=0.000)
+~~~~ col  * col  : (pvalue=1.000) (oddsrat=0.000)
+~~~~ nm   * col  : (pvalue=1.000) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.005) (oddsrat=0.000)
+    gs_eastA-gs_westB
+     nm   * nm   : (pvalue=0.004) (oddsrat=0.000)
+     col  * col  : (pvalue=0.004) (oddsrat=0.000)
+     nm   * col  : (pvalue=0.004) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.004) (oddsrat=0.000)
+    gs_westA-gs_eastA
+     nm   * nm   : (pvalue=0.005) (oddsrat=inf)
+~~~~ col  * col  : (pvalue=1.000) (oddsrat=inf)
+     nm   * col  : (pvalue=0.005) (oddsrat=inf)
+~~~~ col  * nm   : (pvalue=1.000) (oddsrat=inf)
+    gs_westA-gs_westB
+~~~~ nm   * nm   : (pvalue=0.640) (oddsrat=0.843)
+     col  * col  : (pvalue=0.000) (oddsrat=0.029)
+~~~~ nm   * col  : (pvalue=0.640) (oddsrat=0.843)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.029)
+    gs_westB-gs_eastA
+     nm   * nm   : (pvalue=0.004) (oddsrat=inf)
+     col  * col  : (pvalue=0.004) (oddsrat=inf)
+     nm   * col  : (pvalue=0.004) (oddsrat=inf)
+     col  * nm   : (pvalue=0.004) (oddsrat=inf)
+    gs_westB-gs_westA
+~~~~ nm   * nm   : (pvalue=0.640) (oddsrat=1.186)
+     col  * col  : (pvalue=0.000) (oddsrat=35.000)
+     nm   * col  : (pvalue=0.000) (oddsrat=35.000)
+~~~~ col  * nm   : (pvalue=0.640) (oddsrat=1.186)
+>>>End Statistical Significance<<<

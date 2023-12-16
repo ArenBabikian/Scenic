@@ -1,0 +1,228 @@
+>>>Success Rate Statistical Significance<<<
+>>>issta/figures/issta/evaluation/both<<<
+[[ 10   0   0]
+ [ 70  59   2]
+ [ 30  30  30]
+ [399 379 342]
+ [396 307 156]
+ [400 380 379]
+ [400 374 243]]
+    gs_eastA(at=10, nm=0, col=0)
+    gs_westA(at=70, nm=59, col=2)
+    gs_westB(at=30, nm=30, col=30)
+    tl_east(at=399, nm=379, col=342)
+    tl_north(at=396, nm=307, col=156)
+    tl_south(at=400, nm=380, col=379)
+    tl_west(at=400, nm=374, col=243)
+
+    gs_eastA-gs_westA
+     nm   * nm   : (pvalue=0.005) (oddsrat=0.000)
+~~~~ col  * col  : (pvalue=1.000) (oddsrat=0.000)
+~~~~ nm   * col  : (pvalue=1.000) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.005) (oddsrat=0.000)
+    gs_eastA-gs_westB
+     nm   * nm   : (pvalue=0.004) (oddsrat=0.000)
+     col  * col  : (pvalue=0.004) (oddsrat=0.000)
+     nm   * col  : (pvalue=0.004) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.004) (oddsrat=0.000)
+    gs_eastA-tl_east
+     nm   * nm   : (pvalue=0.002) (oddsrat=0.000)
+     col  * col  : (pvalue=0.003) (oddsrat=0.000)
+     nm   * col  : (pvalue=0.003) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.002) (oddsrat=0.000)
+    gs_eastA-tl_north
+     nm   * nm   : (pvalue=0.006) (oddsrat=0.000)
+~~~~ col  * col  : (pvalue=0.069) (oddsrat=0.000)
+~~~~ nm   * col  : (pvalue=0.069) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.006) (oddsrat=0.000)
+    gs_eastA-tl_south
+     nm   * nm   : (pvalue=0.002) (oddsrat=0.000)
+     col  * col  : (pvalue=0.002) (oddsrat=0.000)
+     nm   * col  : (pvalue=0.002) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.002) (oddsrat=0.000)
+    gs_eastA-tl_west
+     nm   * nm   : (pvalue=0.002) (oddsrat=0.000)
+     col  * col  : (pvalue=0.016) (oddsrat=0.000)
+     nm   * col  : (pvalue=0.016) (oddsrat=0.000)
+     col  * nm   : (pvalue=0.002) (oddsrat=0.000)
+    gs_westA-gs_eastA
+     nm   * nm   : (pvalue=0.005) (oddsrat=inf)
+~~~~ col  * col  : (pvalue=1.000) (oddsrat=inf)
+     nm   * col  : (pvalue=0.005) (oddsrat=inf)
+~~~~ col  * nm   : (pvalue=1.000) (oddsrat=inf)
+    gs_westA-gs_westB
+~~~~ nm   * nm   : (pvalue=0.640) (oddsrat=0.843)
+     col  * col  : (pvalue=0.000) (oddsrat=0.029)
+~~~~ nm   * col  : (pvalue=0.640) (oddsrat=0.843)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.029)
+    gs_westA-tl_east
+~~~~ nm   * nm   : (pvalue=0.569) (oddsrat=0.887)
+     col  * col  : (pvalue=0.000) (oddsrat=0.033)
+~~~~ nm   * col  : (pvalue=1.000) (oddsrat=0.983)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.030)
+    gs_westA-tl_north
+~~~~ nm   * nm   : (pvalue=0.700) (oddsrat=1.087)
+     col  * col  : (pvalue=0.000) (oddsrat=0.073)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.140)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.037)
+    gs_westA-tl_south
+~~~~ nm   * nm   : (pvalue=0.569) (oddsrat=0.887)
+     col  * col  : (pvalue=0.000) (oddsrat=0.030)
+~~~~ nm   * col  : (pvalue=0.569) (oddsrat=0.890)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.030)
+    gs_westA-tl_west
+~~~~ nm   * nm   : (pvalue=0.634) (oddsrat=0.901)
+     col  * col  : (pvalue=0.000) (oddsrat=0.047)
+~~~~ nm   * col  : (pvalue=0.094) (oddsrat=1.387)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.031)
+    gs_westB-gs_eastA
+     nm   * nm   : (pvalue=0.004) (oddsrat=inf)
+     col  * col  : (pvalue=0.004) (oddsrat=inf)
+     nm   * col  : (pvalue=0.004) (oddsrat=inf)
+     col  * nm   : (pvalue=0.004) (oddsrat=inf)
+    gs_westB-gs_westA
+~~~~ nm   * nm   : (pvalue=0.640) (oddsrat=1.186)
+     col  * col  : (pvalue=0.000) (oddsrat=35.000)
+     nm   * col  : (pvalue=0.000) (oddsrat=35.000)
+~~~~ col  * nm   : (pvalue=0.640) (oddsrat=1.186)
+    gs_westB-tl_east
+~~~~ nm   * nm   : (pvalue=0.894) (oddsrat=1.053)
+~~~~ col  * col  : (pvalue=0.592) (oddsrat=1.167)
+~~~~ nm   * col  : (pvalue=0.592) (oddsrat=1.167)
+~~~~ col  * nm   : (pvalue=0.894) (oddsrat=1.053)
+    gs_westB-tl_north
+~~~~ nm   * nm   : (pvalue=0.347) (oddsrat=1.290)
+     col  * col  : (pvalue=0.001) (oddsrat=2.538)
+     nm   * col  : (pvalue=0.001) (oddsrat=2.538)
+~~~~ col  * nm   : (pvalue=0.347) (oddsrat=1.290)
+    gs_westB-tl_south
+~~~~ nm   * nm   : (pvalue=0.894) (oddsrat=1.053)
+~~~~ col  * col  : (pvalue=0.894) (oddsrat=1.055)
+~~~~ nm   * col  : (pvalue=0.894) (oddsrat=1.055)
+~~~~ col  * nm   : (pvalue=0.894) (oddsrat=1.053)
+    gs_westB-tl_west
+~~~~ nm   * nm   : (pvalue=0.893) (oddsrat=1.070)
+~~~~ col  * col  : (pvalue=0.072) (oddsrat=1.646)
+~~~~ nm   * col  : (pvalue=0.072) (oddsrat=1.646)
+~~~~ col  * nm   : (pvalue=0.893) (oddsrat=1.070)
+    tl_east-gs_eastA
+     nm   * nm   : (pvalue=0.002) (oddsrat=inf)
+     col  * col  : (pvalue=0.003) (oddsrat=inf)
+     nm   * col  : (pvalue=0.002) (oddsrat=inf)
+     col  * nm   : (pvalue=0.003) (oddsrat=inf)
+    tl_east-gs_westA
+~~~~ nm   * nm   : (pvalue=0.569) (oddsrat=1.127)
+     col  * col  : (pvalue=0.000) (oddsrat=30.000)
+     nm   * col  : (pvalue=0.000) (oddsrat=33.246)
+~~~~ col  * nm   : (pvalue=1.000) (oddsrat=1.017)
+    tl_east-gs_westB
+~~~~ nm   * nm   : (pvalue=0.894) (oddsrat=0.950)
+~~~~ col  * col  : (pvalue=0.592) (oddsrat=0.857)
+~~~~ nm   * col  : (pvalue=0.894) (oddsrat=0.950)
+~~~~ col  * nm   : (pvalue=0.592) (oddsrat=0.857)
+    tl_east-tl_north
+~~~~ nm   * nm   : (pvalue=0.054) (oddsrat=1.225)
+     col  * col  : (pvalue=0.000) (oddsrat=2.176)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.411)
+~~~~ col  * nm   : (pvalue=0.368) (oddsrat=1.106)
+    tl_east-tl_south
+~~~~ nm   * nm   : (pvalue=1.000) (oddsrat=1.000)
+~~~~ col  * col  : (pvalue=0.355) (oddsrat=0.905)
+~~~~ nm   * col  : (pvalue=1.000) (oddsrat=1.003)
+~~~~ col  * nm   : (pvalue=0.329) (oddsrat=0.902)
+    tl_east-tl_west
+~~~~ nm   * nm   : (pvalue=0.879) (oddsrat=1.016)
+     col  * col  : (pvalue=0.002) (oddsrat=1.411)
+     nm   * col  : (pvalue=0.000) (oddsrat=1.564)
+~~~~ col  * nm   : (pvalue=0.410) (oddsrat=0.917)
+    tl_north-gs_eastA
+     nm   * nm   : (pvalue=0.006) (oddsrat=inf)
+~~~~ col  * col  : (pvalue=0.069) (oddsrat=inf)
+     nm   * col  : (pvalue=0.006) (oddsrat=inf)
+~~~~ col  * nm   : (pvalue=0.069) (oddsrat=inf)
+    tl_north-gs_westA
+~~~~ nm   * nm   : (pvalue=0.700) (oddsrat=0.920)
+     col  * col  : (pvalue=0.000) (oddsrat=13.788)
+     nm   * col  : (pvalue=0.000) (oddsrat=27.134)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.467)
+    tl_north-gs_westB
+~~~~ nm   * nm   : (pvalue=0.347) (oddsrat=0.775)
+     col  * col  : (pvalue=0.001) (oddsrat=0.394)
+~~~~ nm   * col  : (pvalue=0.347) (oddsrat=0.775)
+     col  * nm   : (pvalue=0.001) (oddsrat=0.394)
+    tl_north-tl_east
+~~~~ nm   * nm   : (pvalue=0.054) (oddsrat=0.816)
+     col  * col  : (pvalue=0.000) (oddsrat=0.460)
+~~~~ nm   * col  : (pvalue=0.368) (oddsrat=0.904)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.415)
+    tl_north-tl_south
+~~~~ nm   * nm   : (pvalue=0.054) (oddsrat=0.816)
+     col  * col  : (pvalue=0.000) (oddsrat=0.416)
+~~~~ nm   * col  : (pvalue=0.060) (oddsrat=0.818)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.415)
+    tl_north-tl_west
+~~~~ nm   * nm   : (pvalue=0.076) (oddsrat=0.829)
+     col  * col  : (pvalue=0.001) (oddsrat=0.648)
+     nm   * col  : (pvalue=0.030) (oddsrat=1.276)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.421)
+    tl_south-gs_eastA
+     nm   * nm   : (pvalue=0.002) (oddsrat=inf)
+     col  * col  : (pvalue=0.002) (oddsrat=inf)
+     nm   * col  : (pvalue=0.002) (oddsrat=inf)
+     col  * nm   : (pvalue=0.002) (oddsrat=inf)
+    tl_south-gs_westA
+~~~~ nm   * nm   : (pvalue=0.569) (oddsrat=1.127)
+     col  * col  : (pvalue=0.000) (oddsrat=33.163)
+     nm   * col  : (pvalue=0.000) (oddsrat=33.250)
+~~~~ col  * nm   : (pvalue=0.569) (oddsrat=1.124)
+    tl_south-gs_westB
+~~~~ nm   * nm   : (pvalue=0.894) (oddsrat=0.950)
+~~~~ col  * col  : (pvalue=0.894) (oddsrat=0.948)
+~~~~ nm   * col  : (pvalue=0.894) (oddsrat=0.950)
+~~~~ col  * nm   : (pvalue=0.894) (oddsrat=0.948)
+    tl_south-tl_east
+~~~~ nm   * nm   : (pvalue=1.000) (oddsrat=1.000)
+~~~~ col  * col  : (pvalue=0.355) (oddsrat=1.105)
+~~~~ nm   * col  : (pvalue=0.329) (oddsrat=1.108)
+~~~~ col  * nm   : (pvalue=1.000) (oddsrat=0.998)
+    tl_south-tl_north
+~~~~ nm   * nm   : (pvalue=0.054) (oddsrat=1.225)
+     col  * col  : (pvalue=0.000) (oddsrat=2.405)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.412)
+~~~~ col  * nm   : (pvalue=0.060) (oddsrat=1.222)
+    tl_south-tl_west
+~~~~ nm   * nm   : (pvalue=0.879) (oddsrat=1.016)
+     col  * col  : (pvalue=0.000) (oddsrat=1.560)
+     nm   * col  : (pvalue=0.000) (oddsrat=1.564)
+~~~~ col  * nm   : (pvalue=0.919) (oddsrat=1.013)
+    tl_west-gs_eastA
+     nm   * nm   : (pvalue=0.002) (oddsrat=inf)
+     col  * col  : (pvalue=0.016) (oddsrat=inf)
+     nm   * col  : (pvalue=0.002) (oddsrat=inf)
+     col  * nm   : (pvalue=0.016) (oddsrat=inf)
+    tl_west-gs_westA
+~~~~ nm   * nm   : (pvalue=0.634) (oddsrat=1.109)
+     col  * col  : (pvalue=0.000) (oddsrat=21.262)
+     nm   * col  : (pvalue=0.000) (oddsrat=32.725)
+~~~~ col  * nm   : (pvalue=0.094) (oddsrat=0.721)
+    tl_west-gs_westB
+~~~~ nm   * nm   : (pvalue=0.893) (oddsrat=0.935)
+~~~~ col  * col  : (pvalue=0.072) (oddsrat=0.608)
+~~~~ nm   * col  : (pvalue=0.893) (oddsrat=0.935)
+~~~~ col  * nm   : (pvalue=0.072) (oddsrat=0.608)
+    tl_west-tl_east
+~~~~ nm   * nm   : (pvalue=0.879) (oddsrat=0.984)
+     col  * col  : (pvalue=0.002) (oddsrat=0.709)
+~~~~ nm   * col  : (pvalue=0.410) (oddsrat=1.091)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.640)
+    tl_west-tl_north
+~~~~ nm   * nm   : (pvalue=0.076) (oddsrat=1.206)
+     col  * col  : (pvalue=0.001) (oddsrat=1.542)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.373)
+     col  * nm   : (pvalue=0.030) (oddsrat=0.784)
+    tl_west-tl_south
+~~~~ nm   * nm   : (pvalue=0.879) (oddsrat=0.984)
+     col  * col  : (pvalue=0.000) (oddsrat=0.641)
+~~~~ nm   * col  : (pvalue=0.919) (oddsrat=0.987)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.639)
+>>>End Statistical Significance<<<

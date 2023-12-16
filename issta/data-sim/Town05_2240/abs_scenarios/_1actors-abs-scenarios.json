@@ -1,0 +1,283 @@
+{
+  "map_name": "town05",
+  "junction_id": "intersection2240",
+  "num_actors": 1,
+  "all_maneuvers": [
+    "road2241_lane0",
+    "road2281_lane0",
+    "road2242_lane0",
+    "road2280_lane1",
+    "road2280_lane0",
+    "road2282_lane0",
+    "road2281_lane1",
+    "road2292_lane0"
+  ],
+  "lane_relationships": {
+    "road41_lane1": {
+      "road41_lane1": "same",
+      "road41_lane0": "adjacent",
+      "road51_lane2": "right",
+      "road51_lane3": "right",
+      "road42_lane2": "ahead",
+      "road42_lane3": "ahead"
+    },
+    "road41_lane0": {
+      "road41_lane1": "adjacent",
+      "road41_lane0": "same",
+      "road51_lane2": "right",
+      "road51_lane3": "right",
+      "road42_lane2": "ahead",
+      "road42_lane3": "ahead"
+    },
+    "road51_lane2": {
+      "road41_lane1": "left",
+      "road41_lane0": "left",
+      "road51_lane2": "same",
+      "road51_lane3": "adjacent",
+      "road42_lane2": "right",
+      "road42_lane3": "right"
+    },
+    "road51_lane3": {
+      "road41_lane1": "left",
+      "road41_lane0": "left",
+      "road51_lane2": "adjacent",
+      "road51_lane3": "same",
+      "road42_lane2": "right",
+      "road42_lane3": "right"
+    },
+    "road42_lane2": {
+      "road41_lane1": "ahead",
+      "road41_lane0": "ahead",
+      "road51_lane2": "left",
+      "road51_lane3": "left",
+      "road42_lane2": "same",
+      "road42_lane3": "adjacent"
+    },
+    "road42_lane3": {
+      "road41_lane1": "ahead",
+      "road41_lane0": "ahead",
+      "road51_lane2": "left",
+      "road51_lane3": "left",
+      "road42_lane2": "adjacent",
+      "road42_lane3": "same"
+    },
+    "road41_lane3": {
+      "road41_lane3": "same",
+      "road41_lane2": "adjacent",
+      "road51_lane0": "right",
+      "road51_lane1": "right",
+      "road42_lane0": "ahead",
+      "road42_lane1": "ahead"
+    },
+    "road41_lane2": {
+      "road41_lane3": "adjacent",
+      "road41_lane2": "same",
+      "road51_lane0": "right",
+      "road51_lane1": "right",
+      "road42_lane0": "ahead",
+      "road42_lane1": "ahead"
+    },
+    "road51_lane0": {
+      "road41_lane3": "left",
+      "road41_lane2": "left",
+      "road51_lane0": "same",
+      "road51_lane1": "adjacent",
+      "road42_lane0": "right",
+      "road42_lane1": "right"
+    },
+    "road51_lane1": {
+      "road41_lane3": "left",
+      "road41_lane2": "left",
+      "road51_lane0": "adjacent",
+      "road51_lane1": "same",
+      "road42_lane0": "right",
+      "road42_lane1": "right"
+    },
+    "road42_lane0": {
+      "road41_lane3": "ahead",
+      "road41_lane2": "ahead",
+      "road51_lane0": "left",
+      "road51_lane1": "left",
+      "road42_lane0": "same",
+      "road42_lane1": "adjacent"
+    },
+    "road42_lane1": {
+      "road41_lane3": "ahead",
+      "road41_lane2": "ahead",
+      "road51_lane0": "left",
+      "road51_lane1": "left",
+      "road42_lane0": "adjacent",
+      "road42_lane1": "same"
+    }
+  },
+  "all_scenarios": [
+    {
+      "scenario_id": 0,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2241_lane0",
+            "type": "right",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road51_lane0"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 1,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane0",
+            "type": "straight",
+            "start_lane_id": "road41_lane0",
+            "end_lane_id": "road42_lane0"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 2,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2242_lane0",
+            "type": "left",
+            "start_lane_id": "road51_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 3,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2280_lane1",
+            "type": "straight",
+            "start_lane_id": "road42_lane3",
+            "end_lane_id": "road41_lane3"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 4,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2280_lane0",
+            "type": "straight",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road41_lane2"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 5,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2282_lane0",
+            "type": "left",
+            "start_lane_id": "road42_lane2",
+            "end_lane_id": "road51_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 6,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2281_lane1",
+            "type": "straight",
+            "start_lane_id": "road41_lane1",
+            "end_lane_id": "road42_lane1"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    },
+    {
+      "scenario_id": 7,
+      "actors": [
+        {
+          "id": 0,
+          "maneuver": {
+            "id": "road2292_lane0",
+            "type": "right",
+            "start_lane_id": "road51_lane3",
+            "end_lane_id": "road42_lane0"
+          }
+        }
+      ],
+      "initial_relations": {
+        "0": {}
+      },
+      "encounter_order": [],
+      "final_relations": {
+        "0": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+>>>Success Rate Statistical Significance<<<
+>>>issta/figures/issta/evaluation/Town05_2240<<<
+[[210 199 177]
+ [ 10   5   0]
+ [110  89  32]]
+    turnLeft(at=210, nm=199, col=177)
+    turnRight(at=10, nm=5, col=0)
+    goStraight(at=110, nm=89, col=32)
+
+    turnLeft-turnRight
+~~~~ nm   * nm   : (pvalue=0.298) (oddsrat=1.895)
+     col  * col  : (pvalue=0.003) (oddsrat=inf)
+     nm   * col  : (pvalue=0.002) (oddsrat=inf)
+~~~~ col  * nm   : (pvalue=0.433) (oddsrat=1.686)
+    turnLeft-goStraight
+~~~~ nm   * nm   : (pvalue=0.387) (oddsrat=1.171)
+     col  * col  : (pvalue=0.000) (oddsrat=2.897)
+     nm   * col  : (pvalue=0.000) (oddsrat=3.257)
+~~~~ col  * nm   : (pvalue=0.861) (oddsrat=1.042)
+    turnRight-turnLeft
+~~~~ nm   * nm   : (pvalue=0.298) (oddsrat=0.528)
+     col  * col  : (pvalue=0.003) (oddsrat=0.000)
+~~~~ nm   * col  : (pvalue=0.433) (oddsrat=0.593)
+     col  * nm   : (pvalue=0.002) (oddsrat=0.000)
+    turnRight-goStraight
+~~~~ nm   * nm   : (pvalue=0.433) (oddsrat=0.618)
+~~~~ col  * col  : (pvalue=0.122) (oddsrat=0.000)
+~~~~ nm   * col  : (pvalue=0.348) (oddsrat=1.719)
+     col  * nm   : (pvalue=0.006) (oddsrat=0.000)
+    goStraight-turnLeft
+~~~~ nm   * nm   : (pvalue=0.387) (oddsrat=0.854)
+     col  * col  : (pvalue=0.000) (oddsrat=0.345)
+~~~~ nm   * col  : (pvalue=0.861) (oddsrat=0.960)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.307)
+    goStraight-turnRight
+~~~~ nm   * nm   : (pvalue=0.433) (oddsrat=1.618)
+~~~~ col  * col  : (pvalue=0.122) (oddsrat=inf)
+     nm   * col  : (pvalue=0.006) (oddsrat=inf)
+~~~~ col  * nm   : (pvalue=0.348) (oddsrat=0.582)
+>>>End Statistical Significance<<<

@@ -1,0 +1,40 @@
+>>>Success Rate Statistical Significance<<<
+>>>issta/figures/issta/evaluation/Town04_916<<<
+[[ 560  252  128  418]
+ [1134  899  493  987]
+ [1565 1452 1034 1387]]
+    2(at=560, nm=252, col=128)
+    3(at=1134, nm=899, col=493)
+    4(at=1565, nm=1452, col=1034)
+
+    2-3
+     nm   * nm   : (pvalue=0.000) (oddsrat=0.568)
+     col  * col  : (pvalue=0.000) (oddsrat=0.526)
+~~~~ nm   * col  : (pvalue=0.709) (oddsrat=1.035)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.288)
+    2-4
+     nm   * nm   : (pvalue=0.000) (oddsrat=0.485)
+     col  * col  : (pvalue=0.000) (oddsrat=0.346)
+     nm   * col  : (pvalue=0.000) (oddsrat=0.681)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.246)
+    3-2
+     nm   * nm   : (pvalue=0.000) (oddsrat=1.762)
+     col  * col  : (pvalue=0.000) (oddsrat=1.902)
+     nm   * col  : (pvalue=0.000) (oddsrat=3.468)
+~~~~ col  * nm   : (pvalue=0.709) (oddsrat=0.966)
+    3-4
+     nm   * nm   : (pvalue=0.007) (oddsrat=0.854)
+     col  * col  : (pvalue=0.000) (oddsrat=0.658)
+     nm   * col  : (pvalue=0.002) (oddsrat=1.200)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.469)
+    4-2
+     nm   * nm   : (pvalue=0.000) (oddsrat=2.062)
+     col  * col  : (pvalue=0.000) (oddsrat=2.891)
+     nm   * col  : (pvalue=0.000) (oddsrat=4.059)
+     col  * nm   : (pvalue=0.000) (oddsrat=1.468)
+    4-3
+     nm   * nm   : (pvalue=0.007) (oddsrat=1.170)
+     col  * col  : (pvalue=0.000) (oddsrat=1.520)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.134)
+     col  * nm   : (pvalue=0.002) (oddsrat=0.833)
+>>>End Statistical Significance<<<

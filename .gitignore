@@ -140,6 +140,5 @@ measurements
 docker*/
 examplesResearch/basic/_output
 .vscode/
-issta/data*
+issta/data
 issta/metrics/logs/
-issta/figures/
