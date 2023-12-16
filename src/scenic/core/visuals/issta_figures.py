@@ -13,10 +13,12 @@ def figs_issta(scene, dirPath=None, view=False):
     red = '#c25c55' # 194,92,85
     car_red = '#A8001B' # 140,61,54
     dark_red = '#9B2721'
+    light_red = '#D99B96'
 
     blue = '#4b779d' # 75,119,157
     car_blue = '#2663E6' # 45,77,111
     dark_blue = '#283F52'
+    light_blue = '#83A5C3'
 
     white = '#FFFFFF'
     gray = '#808080'
@@ -69,8 +71,10 @@ def figs_issta(scene, dirPath=None, view=False):
     # Add regions
     show_regions(plt, full_r1, blue)
     show_reg(plt, r1.predecessor, dark_blue)
+    show_reg(plt, r1.successor, light_blue)
     show_regions(plt, full_r2, red)
     show_reg(plt, r2.predecessor, dark_red)
+    show_reg(plt, r2.successor, light_red)
     showPairwiseCollidingRegions([r1, r2], plt, gray)
     
     show_network_alt(scene.workspace.network, plt)
@@ -81,7 +85,7 @@ def figs_issta(scene, dirPath=None, view=False):
 
     # save and view
     zoomToIntersection(scene, plt, zoom_margins)
-    save_show_clear(plt, f'{dirPath}/fig21.png', view)
+    save_show_clear(plt, f'{dirPath}/fig21newer.png', view)
 
     # ###############
     # FIG 2.2 : Scenario at concrete levels of abstraction

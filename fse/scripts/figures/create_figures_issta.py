@@ -138,7 +138,7 @@ def create_bar_chart(df, groupby, title, xlabel, add_prev, width, height, output
     plt.xticks([i + (len(attributes) - 1) / 2 * bar_width for i in x], categories)
     # Add axis titles
     if add_prev:
-        ax.set_ylabel('Percentage of scenarios')
+        ax.set_ylabel('Percentage of simulation runs')
 
     # Add axis titles
     ax.set_xlabel(xlabel)
@@ -440,7 +440,7 @@ def create_collision_near_miss_preventative_matrix_table(df, output_path):
                              weight='bold', 
                              fontsize=10)
 
-        ax.set_xlabel('Percentage of scenarios')
+        ax.set_xlabel('Percentage of simulation runs')
         # ax.set_ylabel('Categories')
         ax.set_yticks(index)
         ax.set_yticklabels(['w/o PM', 'w/ PM'])
