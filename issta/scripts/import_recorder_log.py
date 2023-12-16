@@ -20,12 +20,12 @@ def main():
 
     filepath = args.logpath
     # print(os.path.exists(filepath))
-    # print(os.path.exists('/home/aren/git/Scenic/fse/data-sim/log/0919-231039/RouteScenario_scen_Town05_2240_1ac_0_rep0.log'))
+    # print(os.path.exists('/home/aren/git/Scenic/issta/data-sim/log/0919-231039/RouteScenario_scen_Town05_2240_1ac_0_rep0.log'))
  
-    # filepath = "\\\\wsl.localhost\\Ubuntu-18.04\\home\\aren\\git\\Scenic\\fse\\data-sim\\log\\0919-231039\\RouteScenario_scen_Town05_2240_1ac_0_rep0"
-    filepath = "\\\\wsl.localhost\\Ubuntu-18.04\\mnt\\c\\git\\carla\\fse\\data-sim\\log\\0919-231039\\RouteScenario_scen_Town05_2240_1ac_0_rep0.log"
-    # fse\data-sim\log\0919-231039\RouteScenario_scen_Town05_2240_1ac_0_rep6.log
-    # fse/data-sim/log/0919-231039/RouteScenario_scen_Town05_2240_1ac_0_rep0.log
+    # filepath = "\\\\wsl.localhost\\Ubuntu-18.04\\home\\aren\\git\\Scenic\\issta\\data-sim\\log\\0919-231039\\RouteScenario_scen_Town05_2240_1ac_0_rep0"
+    filepath = "\\\\wsl.localhost\\Ubuntu-18.04\\mnt\\c\\git\\carla\\issta\\data-sim\\log\\0919-231039\\RouteScenario_scen_Town05_2240_1ac_0_rep0.log"
+    # issta\data-sim\log\0919-231039\RouteScenario_scen_Town05_2240_1ac_0_rep6.log
+    # issta/data-sim/log/0919-231039/RouteScenario_scen_Town05_2240_1ac_0_rep0.log
 
     exit(f"The save file '{filepath}' does not exist.") if not os.path.exists(filepath) else None
     # filepath = "\\\\wsl.localhost\\Ubuntu-18.04\\init"

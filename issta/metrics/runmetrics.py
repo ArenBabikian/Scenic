@@ -622,8 +622,8 @@ def iterate_text_files_in_folder(data_sim_dir, abs_scenario_file_dir, measuremen
 
 def main():
     # Set the folder path here
-    # data_path = "fse/data-sim/Town05_2240"
-    data_path = "fse/data-sim/Town04_916"
+    # data_path = "issta/data-sim/Town05_2240"
+    data_path = "issta/data-sim/Town04_916"
     scenarioSizes = [2]
     sim_data_dir = f'{data_path}/txt'
     abs_scenario_dir = f'{data_path}/abs_scenarios'

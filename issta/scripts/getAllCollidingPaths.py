@@ -38,7 +38,7 @@ for m in intersections:
             command.extend(['-b'])
             command.extend(['--zoom', '0'])
             command.extend(['-v', '0'])
-            command.extend(['-p', 'outputWS', 'fse/data'])
+            command.extend(['-p', 'outputWS', 'issta/data'])
             command.extend(['-p', 'outputDir', f'{m}-{intersection}/{config}actors/'])
 
             # command.extend(['-p', 'no-validation', 'True'])
@@ -53,7 +53,7 @@ for m in intersections:
             command.extend(['-p', 'savePaths', str(save_path)])
 
             command.extend(['-p', 'map', f'maps/{m}.xodr'])
-            command.append(f'fse/config/dummy{config}.scenic')
+            command.append(f'issta/config/dummy{config}.scenic')
             p = subprocess.Popen(command, stderr=sys.stderr, stdout=sys.stdout)
             
             p.wait()

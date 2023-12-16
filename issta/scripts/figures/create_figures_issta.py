@@ -502,8 +502,8 @@ def create_collision_near_miss_preventative_matrix_table(df, output_path):
 
 
 def main():
-    input_path = 'fse/data-sim'
-    output_path_meta = 'fse/figures/issta/evaluation'
+    input_path = 'issta/data-sim'
+    output_path_meta = 'issta/figures/issta/evaluation'
     # os.makedirs(output_path, exist_ok=True)
 
     map_junction_names = ['Town04_916', 'Town05_2240', 'both']

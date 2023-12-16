@@ -2,16 +2,16 @@
 KEYPATH='~/.ssh/av-testing-key.pem'
 
 IP='16.171.8.34' #ADJUST
-SRCDIR='/home/ubuntu/git/transfuser/fse/res'
+SRCDIR='/home/ubuntu/git/transfuser/issta/res'
 DIRNAME='town04-916'
 # DIRNAME='town04-916-3-4-colored'
 # DIRNAME='town05-2240-3-4'
 
 DIRPATH=$SRCDIR/$DIRNAME
 # TGTWS='/c/git/carla/PythonAPI/custom/replay/_logs'
-# TGTWS='/c/git/Scenic/fse/sim-data'
-TGTWS='/home/aren/git/Scenic/fse/data-sim/Town04_916'
-# TGTWS='/home/aren/git/Scenic/fse/data-sim/town05_2240_3_4'
+# TGTWS='/c/git/Scenic/issta/sim-data'
+TGTWS='/home/aren/git/Scenic/issta/data-sim/Town04_916'
+# TGTWS='/home/aren/git/Scenic/issta/data-sim/town05_2240_3_4'
 TGTDIR=$TGTWS/'log12'
 
 # SCP from server
@@ -30,7 +30,7 @@ exit
 # python Util/Run/runSimulator.py -v 0.9.14?
 
 TGTFULLDIR=$TGTDIR/$DIRNAME
-PYTHONFILEPATH='fse/scripts/import_recorder_log.py'
+PYTHONFILEPATH='issta/scripts/import_recorder_log.py'
 for f in $TGTFULLDIR/*.log; do
 
     if [ -e "$f" ]; then

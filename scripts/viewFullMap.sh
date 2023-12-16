@@ -3,7 +3,7 @@
 # General variable definitions
 ##############################
 MAPNAME='tram05-mod'
-PATHTOCONFIGFILE='fse/config/dummy1.scenic' # town10HD
+PATHTOCONFIGFILE='issta/config/dummy1.scenic' # town10HD
 USENSGA='True'
 
 cmd="poetry run scenic \

@@ -264,11 +264,11 @@ def to_dataframe(cooked_measurements_path, abs_scenario_dir, included_sizes):
 def main():
     map_junction = 'Town04_916'
     # map_junction = 'Town05_2240'
-    data_path = f"fse/data-sim/{map_junction}" # Attila, modify this
+    data_path = f"issta/data-sim/{map_junction}"
     cooked_measurements_path = f'{data_path}/cooked_measurements.json'
     abs_scenario_dir = f'{data_path}/abs_scenarios'
     included_sizes = [2, 3, 4]
-    out_path = f"fse/data-sim/{map_junction}"
+    out_path = f"issta/data-sim/{map_junction}"
     
     # Get the list of file contents
     data = gen_figures(cooked_measurements_path, abs_scenario_dir, included_sizes)
