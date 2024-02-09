@@ -1,4 +1,4 @@
-from scenic.core.evol.constraints import Cstr_type, Cstr
+from scenic.core.evol.constraints import Cstr_type
 
 from z3 import *
 
@@ -94,29 +94,4 @@ def validate_sat(constraints):
 
     result = solver.check()
     print(str(result) + '\n')
-    # if str(result) == 'sat':
-        # print(solver.model())
     return str(result) == 'sat'
-
-    # if str(result) == 'sat':
-    #     print(solver.model()) # Doesn't really matter
-    #     for c in z3Constraints:
-    #         print(c, solver.model().eval(c)) # Expect all true
-    # else:
-    #     print(solver.proof()) # This is extremely long and not readable
-
-#satisfied
-# validate_constraints([
-#     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
-#     Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
-#     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
-# ])
-
-#unsatisfied
-# validate_constraints([
-#     Cstr(Cstr_type.HASTOLEFT, 'o1', 'o2'),
-#     Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'),
-#     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
-#     Cstr(Cstr_type.DISTMED, 'o5', 'o6'),
-#     Cstr(Cstr_type.DISTFAR, 'o5', 'o6')
-# ])
