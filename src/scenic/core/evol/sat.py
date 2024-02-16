@@ -7,26 +7,16 @@ from z3 import *
 def validate_sat(constraints):
     # All objects in the constraints
     objectNames = set(['-1']) # Let -1 always exist, to make unary rules valid
-    regionTypeNames = ['default', # Default region wrt. actor type
-        'drivable', # All lanes union all intersections.
-        'walkable', # All sidewalks union all crossings.
-        'road', # All roads (not part of an intersection).
-        'lane', # All lanes
-        'intersection', # All intersections.
-        'crossing', # All pedestrian crossings.
-        'sidewalk', # All sidewalks
-        'curb', # All curbs of ordinary roads.
-        'shoulder']
+    regionTypeSet = set()
     for constraint in constraints:
         objectNames.add(str(constraint.src))
-        #if constraint.type == Cstr_type.ONREGIONTYPE:
-            #regionTypeNames.add(str(constraint.tgt))
-        #else:
-        if constraint.type != Cstr_type.ONREGIONTYPE and constraint.type != Cstr_type.ONROAD:
+        if constraint.type == Cstr_type.ONREGIONTYPE:
+            regionTypeSet.add(str(constraint.tgt))
+        elif constraint.type != Cstr_type.ONROAD:
             objectNames.add(str(constraint.tgt))
 
     objectNames = list(objectNames)
-    #regionTypeNames = list(regionTypeNames)
+    regionTypeNames = list(regionTypeSet)
     
     SceneObject, objectRefs = EnumSort('SceneObject', objectNames)
     RegionType, regionTypeRefs = EnumSort('RegionType', regionTypeNames)
@@ -68,7 +58,10 @@ def validate_sat(constraints):
 
     def convertToZ3Constraint(constraint):
         src = objectRefsDict[str(constraint.src)]
-        tgt = objectRefsDict[str(constraint.tgt)]
+        if (constraint.type == Cstr_type.ONREGIONTYPE):
+            tgt = regionTypeRefsDict[str(constraint.tgt)]
+        else:
+            tgt = objectRefsDict[str(constraint.tgt)]
         return constraintMap.get(constraint.type)(src, tgt)
 
     solver = Solver()
@@ -78,17 +71,10 @@ def validate_sat(constraints):
 
     solver.add(ForAll([o1, o2], Implies(onRoad(o1, o2), o2 == objectRefsDict['-1'])))
     # TODO: Region type
-    subtype = Function('isSubtypeOf', RegionType, RegionType, Bool)
 
-    solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['road']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['road'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['intersection'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['sidewalk'], regionTypeRefsDict['walkable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['crossing'], regionTypeRefsDict['walkable']))
-
-    solver.add(ForAll(x, subtype(x, x)))
-
+    r1 = Const('__dummyRegion1__', RegionType)
+    r2 = Const('__dummyRegion2__', RegionType)
+    solver.add(ForAll([o1, r1, r2], Implies(And(onRegionType(o1,r1), onRegionType(o1,r2)), r1 == r2)))
 
     # Loop
     for constraintClass in { 'positional', 'distance' }: # TODO: Add vis and coll
