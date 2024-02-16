@@ -49,9 +49,14 @@ def validate_sat(constraints):
     med = Function('med', SceneObject, SceneObject, Bool)
     far = Function('far', SceneObject, SceneObject, Bool)
 
+    canSee = Function('canSee', SceneObject, SceneObject, Bool)
+    noColl = Function('noColl', SceneObject, SceneObject, Bool)
+
     constraintFunctionsInClass = {
         'positional': { left, right, front, behind },
-        'distance': { close, med, far }
+        'distance': { close, med, far },
+        'visibility': { canSee },
+        'collision': { noColl }
     }
 
     constraintMap = {
@@ -63,7 +68,9 @@ def validate_sat(constraints):
         Cstr_type.HASINFRONT: front,
         Cstr_type.DISTCLOSE: close,
         Cstr_type.DISTMED: med,
-        Cstr_type.DISTFAR: far
+        Cstr_type.DISTFAR: far,
+        Cstr_type.CANSEE: canSee,
+        Cstr_type.NOCOLLISION: noColl
     }
 
     def convertToZ3Constraint(constraint):
@@ -77,27 +84,29 @@ def validate_sat(constraints):
     o2 = Const('__dummyObject2__', SceneObject)
 
     solver.add(ForAll([o1, o2], Implies(onRoad(o1, o2), o2 == objectRefsDict['-1'])))
-    # TODO: Region type
-    subtype = Function('isSubtypeOf', RegionType, RegionType, Bool)
 
-    solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['road']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['road'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['intersection'], regionTypeRefsDict['drivable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['sidewalk'], regionTypeRefsDict['walkable']))
-    solver.add(isSubtypeOf(regionTypeRefsDict['crossing'], regionTypeRefsDict['walkable']))
+    # TODO: Region type - I don't think this is working yet...? - Zhekai
+    
+    # subtype = Function('isSubtypeOf', RegionType, RegionType, Bool)
 
-    solver.add(ForAll(x, subtype(x, x)))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['road']))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['lane'], regionTypeRefsDict['drivable']))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['road'], regionTypeRefsDict['drivable']))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['intersection'], regionTypeRefsDict['drivable']))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['sidewalk'], regionTypeRefsDict['walkable']))
+    # solver.add(isSubtypeOf(regionTypeRefsDict['crossing'], regionTypeRefsDict['walkable']))
+
+    # solver.add(ForAll(x, subtype(x, x)))
 
 
     # Loop
-    for constraintClass in { 'positional', 'distance' }: # TODO: Add vis and coll
+    for constraintClass in { 'positional', 'distance', 'visibility', 'collision' }:
         constraintFunctions = constraintFunctionsInClass[constraintClass]
         for f in constraintFunctions:
             solver.add(ForAll([o1, o2], Implies(f(o1, o2), o1 != o2)))
     
     # Symmetry
-    for constraintClass in { 'distance' }: # TODO: Add noColl
+    for constraintClass in { 'distance', 'collision' }:
         constraintFunctions = constraintFunctionsInClass[constraintClass]
         for f in constraintFunctions:
             solver.add(ForAll([o1, o2], Implies(f(o1, o2), f(o2, o1))))

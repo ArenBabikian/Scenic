@@ -19,11 +19,14 @@ from scenic.core.evol.sat import validate_sat
 # ])
 
 # validate_sat([
-#     Cstr(Cstr_type.HASTORIGHT, 'o1', 'o2'),
-#     Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1')
+#     Cstr(Cstr_type.DISTMED, 'o5', 'o6'),
+#     Cstr(Cstr_type.DISTFAR, 'o6', 'o5')
 # ])
 
 # validate_sat([
-#     Cstr(Cstr_type.DISTMED, 'o5', 'o6'),
-#     Cstr(Cstr_type.DISTFAR, 'o6', 'o5')
+#     Cstr(Cstr_type.CANSEE, 'o1', 'o1')
+# ])
+
+# validate_sat([
+#     Cstr(Cstr_type.NOCOLLISION, 'o1', 'o1')
 # ])
