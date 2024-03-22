@@ -1,8 +1,23 @@
 from scenic.core.evol.constraints import Cstr_type
 
 from z3 import *
+from uuid import uuid4
 
-# set_param(proof = True)
+regionTypeNames = [
+    'default', # Default region wrt. actor type
+    'drivable', # All lanes union all intersections.
+    'walkable', # All sidewalks union all crossings.
+    'road', # All roads (not part of an intersection).
+    'lane', # All lanes
+    'intersection', # All intersections.
+    'crossing', # All pedestrian crossings.
+    'sidewalk', # All sidewalks
+    'curb', # All curbs of ordinary roads.
+    'shoulder'
+]
+RegionType, regionTypeRefs = EnumSort('RegionType', regionTypeNames)
+# Look up the region type literal ref (internal representation in z3) by name
+regionTypeRefsDict = dict(zip(regionTypeNames, regionTypeRefs))
 
 def validate_sat(constraints):
     # All objects in the constraints
@@ -16,14 +31,12 @@ def validate_sat(constraints):
             objectNames.add(str(constraint.tgt))
 
     objectNames = list(objectNames)
-    regionTypeNames = list(regionTypeSet)
     
-    SceneObject, objectRefs = EnumSort('SceneObject', objectNames)
-    RegionType, regionTypeRefs = EnumSort('RegionType', regionTypeNames)
+    # Add uuid to name to avoid duplicate definitions when testing multiple scenes in a row
+    SceneObject, objectRefs = EnumSort('SceneObject-' + str(uuid4()), objectNames)
 
     # Look up the object literal ref (internal representation in z3) by name
     objectRefsDict = dict(zip(objectNames, objectRefs))
-    regionTypeRefsDict = dict(zip(regionTypeNames, regionTypeRefs))
 
     Bool = BoolSort()
 
