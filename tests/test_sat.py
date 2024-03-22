@@ -44,6 +44,12 @@ def test_dist_symmetry_conflict():
         Cstr(Cstr_type.DISTFAR, 'o6', 'o5')
     ])
 
+def test_onregion_conflict():
+    assert not validate_sat([
+        Cstr(Cstr_type.ONREGIONTYPE, 'o1', 'drivable'),
+        Cstr(Cstr_type.ONREGIONTYPE, 'o1', 'curb')
+    ])
+
 # sat
 def test_position_sat():
     assert validate_sat([
@@ -51,6 +57,7 @@ def test_position_sat():
         Cstr(Cstr_type.HASTOLEFT, 'o2', 'o3'),
         Cstr(Cstr_type.HASTORIGHT, 'o2', 'o1'),
     ])
+
 
 def test_d_nsga_sat():
     d_nsga_constraints_text = """
