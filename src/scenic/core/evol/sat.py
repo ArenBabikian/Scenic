@@ -1,25 +1,26 @@
 from scenic.core.evol.constraints import Cstr_type
 
 from z3 import *
-from uuid import uuid4
-
-regionTypeNames = [
-    'default', # Default region wrt. actor type
-    'drivable', # All lanes union all intersections.
-    'walkable', # All sidewalks union all crossings.
-    'road', # All roads (not part of an intersection).
-    'lane', # All lanes
-    'intersection', # All intersections.
-    'crossing', # All pedestrian crossings.
-    'sidewalk', # All sidewalks
-    'curb', # All curbs of ordinary roads.
-    'shoulder'
-]
-RegionType, regionTypeRefs = EnumSort('RegionType', regionTypeNames)
-# Look up the region type literal ref (internal representation in z3) by name
-regionTypeRefsDict = dict(zip(regionTypeNames, regionTypeRefs))
 
 def validate_sat(constraints):
+    z3._main_ctx = z3.Context()
+
+    regionTypeNames = [
+        'default', # Default region wrt. actor type
+        'drivable', # All lanes union all intersections.
+        'walkable', # All sidewalks union all crossings.
+        'road', # All roads (not part of an intersection).
+        'lane', # All lanes
+        'intersection', # All intersections.
+        'crossing', # All pedestrian crossings.
+        'sidewalk', # All sidewalks
+        'curb', # All curbs of ordinary roads.
+        'shoulder'
+    ]
+    RegionType, regionTypeRefs = EnumSort('RegionType', regionTypeNames)
+    # Look up the region type literal ref (internal representation in z3) by name
+    regionTypeRefsDict = dict(zip(regionTypeNames, regionTypeRefs))
+
     # All objects in the constraints
     objectNames = set(['-1']) # Let -1 always exist, to make unary rules valid
     regionTypeSet = set()
@@ -32,8 +33,7 @@ def validate_sat(constraints):
 
     objectNames = list(objectNames)
     
-    # Add uuid to name to avoid duplicate definitions when testing multiple scenes in a row
-    SceneObject, objectRefs = EnumSort('SceneObject-' + str(uuid4()), objectNames)
+    SceneObject, objectRefs = EnumSort('SceneObject', objectNames)
 
     # Look up the object literal ref (internal representation in z3) by name
     objectRefsDict = dict(zip(objectNames, objectRefs))
