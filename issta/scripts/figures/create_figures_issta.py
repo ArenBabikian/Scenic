@@ -30,10 +30,28 @@ def agg_attempt_collision_near_miss(data):
     return pd.Series(d)
 
 
+def agg_attempt_collision_near_miss_prev(data):
+    df_prev = data[data['num_preventative_maneuvers'] > 0]
+    df_nopr = data[data['num_preventative_maneuvers'] == 0]
+    d = {}
+    d['attempts prev'] = df_prev['num_collisions'].count()
+    d['near miss prev'] = df_prev['near_miss_occurance'].sum()
+    d['collision prev'] = df_prev['num_collisions'].sum()
+    d['attempts nopr'] = df_nopr['num_collisions'].count()
+    d['near miss nopr'] = df_nopr['near_miss_occurance'].sum()
+    d['collision nopr'] = df_nopr['num_collisions'].sum()
+    # d['preventable collision'] = data['num_collisions'].sum()
+    # d['preventative measure'] = (data['num_preventative_maneuvers'] > 0).sum()
+    return pd.Series(d)
+
+
 def create_bar_chart(df, groupby, title, xlabel, add_prev, width, height, output_path):
+    add_prev = False
 
     # print(df)
-    df_agg = df.groupby([groupby]).apply(agg_attempt_collision_near_miss)
+    df_agg = df.groupby([groupby]).apply(agg_attempt_collision_near_miss_prev)
+    # df_prev_agg = df[df['num_preventative_maneuvers'] > 0].groupby([groupby]).apply(agg_attempt_collision_near_miss)
+    # df_nopr_agg = df[df['num_preventative_maneuvers'] == 0].groupby([groupby]).apply(agg_attempt_collision_near_miss)
 
     if groupby == 'maneuver.id':
         allowed = {'road981_lane0': 'tl_west', 'road949_lane0': 'tl_east', 'road974_lane0': 'tl_south', 'road962_lane0': 'tl_north'}
@@ -45,29 +63,32 @@ def create_bar_chart(df, groupby, title, xlabel, add_prev, width, height, output
 
         # fig, ax = plt.subplots(figsize=(3.33, 3))
         fig, ax = plt.subplots(figsize=(3, 3))
-        bar_width = 0.8
+        bar_width = 0.45
     elif groupby == 'maneuver.type':
         allowed = {'left': 'turnLeft', 'right': 'turnRight', 'straight': 'goStraight'}
         # fig, ax = plt.subplots(figsize=(3.33, 3))
         fig, ax = plt.subplots(figsize=(3, 3))
-        bar_width = 0.8
+        bar_width = 0.45
     elif groupby == 'num_actors':
         allowed = {'1': '1', '2': '2', '3': '3', '4': '4'}
         # fig, ax = plt.subplots(figsize=(5, 2.3))
         fig, ax = plt.subplots(figsize=(4, 3))
         bar_width = 0.45
         # plt.figure(figsize=(5, 2))  # Set the figure size
+    sec_ax = ax.secondary_xaxis(location=-0.2)
 
     # print(df_agg)
     df_agg = df_agg.loc[df_agg.index.isin(allowed)]
     categories = [allowed[x] for x in df_agg.index]
+    categories_prev = len(categories) * ['w/\nPM', 'w/o\nPM']
     
     # Extracting data for plotting
     
     # colors = ['#A50205', '#0876B5', '#CC6400', '#E8BFC0', '#C1DDEC', '#F2D8BF']
-    colors = ['#CC6400', '#0876B5', '#A50205', '#5C7B3D', '#C1DDEC', '#F2D8BF']
-    attributes = ['attempts', 'near miss', 'collision']
-    labels = ['Success', 'Near-miss', 'Collision']
+    # colors = ['#CC6400', '#0876B5', '#A50205', '#5C7B3D', '#C1DDEC', '#F2D8BF']
+    colors = ['#CC6400', '#0876B5', '#A50205', '#CC6400', '#0876B5', '#A50205']
+    attributes = ['attempts prev', 'near miss prev', 'collision prev','attempts nopr', 'near miss nopr', 'collision nopr']
+    labels = ['Success', 'Near-miss', 'Collision', 'Success', 'Near-miss', 'Collision']
 
 
     if add_prev:
@@ -113,17 +134,21 @@ def create_bar_chart(df, groupby, title, xlabel, add_prev, width, height, output
 
     # NORMALIZE DATA
     for i, d in enumerate(data):
-        d2 = d / d.max() * 100
-        data[i] = d2
+        d1 = d[:int(d.size/2)]
+        d2 = d[int(d.size/2):]
+        d1 = d1 / d1.max() * 100
+        d2 = d2 / d2.max() * 100
+        data[i] = np.concatenate((d1, d2))
 
     # Set the bar width
     # bar_width = 1
 
     # Create positions for bars
     x = range(len(categories))
+    x2 = range(len(categories_prev))
     x_positions = []
     for i in range(len(attributes)):
-        if i != 3:
+        if i < 3:
             x_positions.append([j+bar_width for j in x])
         else:
             x_positions.append([j+2*bar_width for j in x])
@@ -135,13 +160,16 @@ def create_bar_chart(df, groupby, title, xlabel, add_prev, width, height, output
         # plt.bar(x_positions[i], data[:, i], width=bar_width, label=attributes[i], edgecolor='black', color=colors[i % len(colors)])
 
     # Set x-axis labels
-    plt.xticks([i + (len(attributes) - 1) / 2 * bar_width for i in x], categories)
+    ax.set_xticks([x for a, b in zip(x_positions[0], x_positions[len(x_positions)//2]) for x in (a, b)], categories_prev)
+    sec_ax.set_xticks([i + (len(attributes)) / 4 * bar_width for i in x], categories)
     # Add axis titles
     if add_prev:
         ax.set_ylabel('Percentage of simulation runs')
 
     # Add axis titles
-    ax.set_xlabel(xlabel)
+    sec_ax.set_xlabel(xlabel)
+    sec_ax.tick_params('x', length=0)
+    sec_ax.spines['bottom'].set_linewidth(0)
 
     # Show the plot
     # plt.tight_layout()
