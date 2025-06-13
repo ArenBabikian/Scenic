@@ -1,4 +1,4 @@
-num_actors,attempts,near miss,collision,preventative measure
-2,140,105,67,92
-3,130,128,92,109
-4,60,60,50,50
+num_actors,attempts prev,near miss prev,collision prev,attempts nopr,near miss nopr,collision nopr
+2,92,74,36,48,31,31
+3,109,107,71,21,21,21
+4,50,50,40,10,10,10

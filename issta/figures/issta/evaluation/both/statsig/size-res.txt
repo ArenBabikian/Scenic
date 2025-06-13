@@ -1,40 +1,40 @@
 >>>Success Rate Statistical Significance<<<
 >>>issta/figures/issta/evaluation/both<<<
-[[ 700  357  195  510]
- [1264 1027  585 1096]
- [1625 1512 1084 1437]]
-    2(at=700, nm=357, col=195)
-    3(at=1264, nm=1027, col=585)
-    4(at=1625, nm=1512, col=1084)
+[[ 510  272  111  190   85   84]
+ [1096  859  417  168  168  168]
+ [1437 1324  896  188  188  188]]
+    2(at=510, nm=272, col=111)
+    3(at=1096, nm=859, col=417)
+    4(at=1437, nm=1324, col=896)
 
     2-3
-     nm   * nm   : (pvalue=0.000) (oddsrat=0.628)
-     col  * col  : (pvalue=0.000) (oddsrat=0.602)
-~~~~ nm   * col  : (pvalue=0.249) (oddsrat=1.102)
-     col  * nm   : (pvalue=0.000) (oddsrat=0.343)
+     nm   * nm   : (pvalue=0.000) (oddsrat=0.680)
+     col  * col  : (pvalue=0.000) (oddsrat=0.572)
+     nm   * col  : (pvalue=0.000) (oddsrat=1.402)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.278)
     2-4
-     nm   * nm   : (pvalue=0.000) (oddsrat=0.548)
-     col  * col  : (pvalue=0.000) (oddsrat=0.418)
-     nm   * col  : (pvalue=0.000) (oddsrat=0.765)
-     col  * nm   : (pvalue=0.000) (oddsrat=0.299)
+     nm   * nm   : (pvalue=0.000) (oddsrat=0.579)
+     col  * col  : (pvalue=0.000) (oddsrat=0.349)
+~~~~ nm   * col  : (pvalue=0.073) (oddsrat=0.855)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.236)
     3-2
-     nm   * nm   : (pvalue=0.000) (oddsrat=1.593)
-     col  * col  : (pvalue=0.000) (oddsrat=1.661)
-     nm   * col  : (pvalue=0.000) (oddsrat=2.917)
-~~~~ col  * nm   : (pvalue=0.249) (oddsrat=0.907)
+     nm   * nm   : (pvalue=0.000) (oddsrat=1.470)
+     col  * col  : (pvalue=0.000) (oddsrat=1.748)
+     nm   * col  : (pvalue=0.000) (oddsrat=3.601)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.713)
     3-4
-     nm   * nm   : (pvalue=0.014) (oddsrat=0.873)
-     col  * col  : (pvalue=0.000) (oddsrat=0.694)
-     nm   * col  : (pvalue=0.001) (oddsrat=1.218)
-     col  * nm   : (pvalue=0.000) (oddsrat=0.497)
+     nm   * nm   : (pvalue=0.007) (oddsrat=0.851)
+     col  * col  : (pvalue=0.000) (oddsrat=0.610)
+     nm   * col  : (pvalue=0.000) (oddsrat=1.257)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.413)
     4-2
-     nm   * nm   : (pvalue=0.000) (oddsrat=1.824)
-     col  * col  : (pvalue=0.000) (oddsrat=2.395)
-     nm   * col  : (pvalue=0.000) (oddsrat=3.340)
-     col  * nm   : (pvalue=0.000) (oddsrat=1.308)
+     nm   * nm   : (pvalue=0.000) (oddsrat=1.728)
+     col  * col  : (pvalue=0.000) (oddsrat=2.865)
+     nm   * col  : (pvalue=0.000) (oddsrat=4.233)
+~~~~ col  * nm   : (pvalue=0.073) (oddsrat=1.169)
     4-3
-     nm   * nm   : (pvalue=0.014) (oddsrat=1.145)
-     col  * col  : (pvalue=0.000) (oddsrat=1.441)
-     nm   * col  : (pvalue=0.000) (oddsrat=2.010)
-     col  * nm   : (pvalue=0.001) (oddsrat=0.821)
+     nm   * nm   : (pvalue=0.007) (oddsrat=1.176)
+     col  * col  : (pvalue=0.000) (oddsrat=1.639)
+     nm   * col  : (pvalue=0.000) (oddsrat=2.422)
+     col  * nm   : (pvalue=0.000) (oddsrat=0.796)
 >>>End Statistical Significance<<<
