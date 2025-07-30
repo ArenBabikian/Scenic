@@ -1,5 +1,5 @@
-maneuver.id,attempts prev,near miss prev,collision prev,attempts nopr,near miss nopr,collision nopr
-road949_lane0,261,244,207,138,135,135
-road962_lane0,363,294,143,33,13,13
-road974_lane0,211,193,192,189,187,187
-road981_lane0,344,333,202,56,41,41
+maneuver.id,attempts,near miss,collision,preventative measure
+road949_lane0,399,379,342,261
+road962_lane0,396,307,156,363
+road974_lane0,400,380,379,211
+road981_lane0,400,374,243,344

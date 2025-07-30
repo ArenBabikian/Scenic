@@ -1,4 +1,4 @@
-maneuver.id,attempts prev,near miss prev,collision prev,attempts nopr,near miss nopr,collision nopr
-road2280_lane0,7,0,0,3,0,0
-road2281_lane0,60,59,2,10,0,0
-road2281_lane1,29,29,29,1,1,1
+maneuver.id,attempts,near miss,collision,preventative measure
+road2280_lane0,10,0,0,7
+road2281_lane0,70,59,2,60
+road2281_lane1,30,30,30,29

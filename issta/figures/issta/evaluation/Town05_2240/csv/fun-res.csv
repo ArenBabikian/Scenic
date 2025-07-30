@@ -1,4 +1,4 @@
-maneuver.type,attempts prev,near miss prev,collision prev,attempts nopr,near miss nopr,collision nopr
-left,147,138,116,63,61,61
-right,8,5,0,2,0,0
-straight,96,88,31,14,1,1
+maneuver.type,attempts,near miss,collision,preventative measure
+left,210,199,177,147
+right,10,5,0,8
+straight,110,89,32,96
